@@ -145,6 +145,57 @@ function samePrinting(slot: SourcingSlotLike, stack: SourcingStackLike, exact: b
     return wanted === held;
 }
 
+/** The least a stack in the Physical deck has to say to be offered for replacing */
+export type ProxyStackLike = SourcingStackLike & {
+    /** Whether the stack holds Proxies rather than real cards */
+    proxy: boolean;
+    /** What the catalog knows about the printing the Proxies stand for */
+    card?: {
+        oracle_id?: string | null;
+        price_eur_cents?: number | null;
+        price_eur_foil_cents?: number | null;
+    } | null;
+};
+
+/** One Proxy stack and what could take its place */
+export type ProxyReplacement<P, C> = {
+    /** The Proxies */
+    proxy: P;
+    /** Copies of the card in the owner's collections, any printing or finish */
+    candidates: Array<C>;
+    /** What buying the printings the Proxies stand for would cost, in cents; `null` without a price */
+    cost: number | null;
+};
+
+/**
+ * Pairs every Proxy stack in the Physical deck with the owner's copies of its card and the price
+ * of buying it
+ *
+ * @param filed every stack lying in the Physical deck
+ * @param candidates every stack elsewhere in the account
+ *
+ * @returns one entry per Proxy stack, in the order they were filed
+ */
+export function proxyReplacements<P extends ProxyStackLike, C extends SourcingStackLike>(
+    filed: Array<P>,
+    candidates: Array<C>,
+): Array<ProxyReplacement<P, C>> {
+    return filed
+        .filter((stack) => stack.proxy)
+        .map((proxy) => {
+            const foil = proxy.finish === "Foil";
+            const slot: SourcingSlotLike = { ...proxy, foil };
+            const price = foil
+                ? (proxy.card?.price_eur_foil_cents ?? proxy.card?.price_eur_cents)
+                : proxy.card?.price_eur_cents;
+            return {
+                proxy,
+                candidates: candidates.filter((candidate) => fills(slot, candidate, ANY_MATCH)),
+                cost: price == null ? null : price * proxy.quantity,
+            };
+        });
+}
+
 /** The least a filed stack has to say to be put in reading order */
 export type NamedStack = {
     /** What the catalog knows, absent for a printing it has not caught up with */

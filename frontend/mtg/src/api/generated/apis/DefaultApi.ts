@@ -34,7 +34,6 @@ import type {
     AdminRenameAccountRequest,
     AdminSetBugReportNoteRequest,
     AdminSetRoleRequest,
-    AdminStartImpersonationRequest,
     AdminStatisticsResponse,
     AdminSyncsResponse,
     AdminUnlockAccountRequest,
@@ -89,7 +88,6 @@ import type {
     FormErrorResponseForAdminLockAccountErrors,
     FormErrorResponseForAdminRenameAccountErrors,
     FormErrorResponseForAdminSetRoleErrors,
-    FormErrorResponseForAdminStartImpersonationErrors,
     FormErrorResponseForAdminUnlockAccountErrors,
     FormErrorResponseForArrangeRoundErrors,
     FormErrorResponseForChooseUsernameErrors,
@@ -97,7 +95,6 @@ import type {
     FormErrorResponseForDeletePasskeyErrors,
     FormErrorResponseForDisputeResultErrors,
     FormErrorResponseForDropErrors,
-    FormErrorResponseForEndImpersonationErrors,
     FormErrorResponseForFinishLoginErrors,
     FormErrorResponseForRegisterDeckErrors,
     FormErrorResponseForRegistrationErrors,
@@ -140,8 +137,6 @@ import type {
     Me200Response,
     MergeCollectionEntriesRequest,
     MpcFillCardbacksResponse,
-    MpcFillFavoriteResponse,
-    MpcFillFavoritesResponse,
     MpcFillSearchRequest,
     MpcFillSearchResponse,
     MyMatchResponse,
@@ -161,6 +156,7 @@ import type {
     PushSettingsResponse,
     PutDeckCollaborator200Response,
     PutDeckCollaboratorRequest,
+    PutDeckProxiesRequest,
     ReadDeckUrlRequest,
     ReadDeckUrlResponse,
     RecoverAccountRequest,
@@ -169,7 +165,7 @@ import type {
     RenameAccount200Response,
     RenameAccountRequest,
     RenamePasskeyRequest,
-    ReplaceMpcFillFavoriteRequest,
+    ReplaceDeckProxyRequest,
     ReportResultRequest,
     ResolvePrintingsRequest,
     ResolvePrintingsResponse,
@@ -196,7 +192,6 @@ import type {
     SetDeckRuleZeroRequest,
     SetDeckVisibilityRequest,
     SetListSharingRequest,
-    SetMpcFillFavoriteDrivesRequest,
     SetPaidRequest,
     SetPushSettingsRequest,
     SetResultRequest,
@@ -212,7 +207,6 @@ import type {
     SplitCollectionEntryRequest,
     SplitCollectionEntryResponse,
     StandingsResponse,
-    StarMpcFillImageRequest,
     StartAddPasskeyResponse,
     StartLogin200Response,
     StartLoginRequest,
@@ -483,17 +477,6 @@ export interface AdminSetRoleOperationRequest {
      * 
      */
     AdminSetRoleRequest?: AdminSetRoleRequest;
-}
-
-export interface AdminStartImpersonationOperationRequest {
-    /**
-     * 
-     */
-    uuid: string;
-    /**
-     * 
-     */
-    AdminStartImpersonationRequest?: AdminStartImpersonationRequest;
 }
 
 export interface AdminUnlockAccountOperationRequest {
@@ -1501,6 +1484,17 @@ export interface PutDeckCollaboratorOperationRequest {
     PutDeckCollaboratorRequest?: PutDeckCollaboratorRequest;
 }
 
+export interface PutDeckProxiesOperationRequest {
+    /**
+     * 
+     */
+    deck: string;
+    /**
+     * 
+     */
+    PutDeckProxiesRequest?: PutDeckProxiesRequest;
+}
+
 export interface ReadDeckUrlOperationRequest {
     /**
      * 
@@ -1643,15 +1637,15 @@ export interface RenamePasskeyOperationRequest {
     RenamePasskeyRequest?: RenamePasskeyRequest;
 }
 
-export interface ReplaceMpcfillFavoriteRequest {
+export interface ReplaceDeckProxyOperationRequest {
     /**
      * 
      */
-    favorite: string;
+    deck: string;
     /**
      * 
      */
-    ReplaceMpcFillFavoriteRequest?: ReplaceMpcFillFavoriteRequest;
+    ReplaceDeckProxyRequest?: ReplaceDeckProxyRequest;
 }
 
 export interface ReportTournamentMatchResultRequest {
@@ -1861,13 +1855,6 @@ export interface SetDeckRuleZeroOperationRequest {
     SetDeckRuleZeroRequest?: SetDeckRuleZeroRequest;
 }
 
-export interface SetMpcfillFavoriteDrivesRequest {
-    /**
-     * 
-     */
-    SetMpcFillFavoriteDrivesRequest?: SetMpcFillFavoriteDrivesRequest;
-}
-
 export interface SetMyTournamentListSharingRequest {
     /**
      * 
@@ -2015,13 +2002,6 @@ export interface SplitCollectionEntryOperationRequest {
     SplitCollectionEntryRequest?: SplitCollectionEntryRequest;
 }
 
-export interface StarMpcfillImageRequest {
-    /**
-     * 
-     */
-    StarMpcFillImageRequest?: StarMpcFillImageRequest;
-}
-
 export interface StartLoginOperationRequest {
     /**
      * 
@@ -2159,13 +2139,6 @@ export interface UndoDeckChangeRequest {
      * 
      */
     deck: string;
-}
-
-export interface UnstarMpcfillImageRequest {
-    /**
-     * 
-     */
-    favorite: string;
 }
 
 export interface UnsubscribePushDeviceRequest {
@@ -3550,56 +3523,6 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async adminSetRole(requestParameters: AdminSetRoleOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForAdminSetRoleErrors> {
         const response = await this.adminSetRoleRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
-
-    /**
-     * Creates request options for adminStartImpersonation without sending the request
-     */
-    async adminStartImpersonationRequestOpts(requestParameters: AdminStartImpersonationOperationRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['uuid'] == null) {
-            throw new runtime.RequiredError(
-                'uuid',
-                'Required parameter "uuid" was null or undefined when calling adminStartImpersonation().'
-            );
-        }
-
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        headerParameters['Content-Type'] = 'application/json';
-
-
-        let urlPath = `/api/frontend/v1/admin/accounts/{uuid}/impersonation`;
-        urlPath = urlPath.replace('{uuid}', encodeURIComponent(String(requestParameters['uuid'])));
-
-        return {
-            path: urlPath,
-            method: 'POST',
-            headers: headerParameters,
-            query: queryParameters,
-            body: requestParameters['AdminStartImpersonationRequest'],
-        };
-    }
-
-    /**
-     * Start an Impersonation of a Member Account  From the session\'s next request on, it acts as the Account until the Admin ends the Impersonation, logs out, or it expires. Refused for the Admin\'s own Account and for another Admin; a locked Account can be impersonated.
-     * Start an Impersonation of a Member Account
-     */
-    async adminStartImpersonationRaw(requestParameters: AdminStartImpersonationOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForAdminStartImpersonationErrors>> {
-        const requestOptions = await this.adminStartImpersonationRequestOpts(requestParameters);
-        const response = await this.request(requestOptions, initOverrides);
-
-        return new runtime.JSONApiResponse(response);
-    }
-
-    /**
-     * Start an Impersonation of a Member Account  From the session\'s next request on, it acts as the Account until the Admin ends the Impersonation, logs out, or it expires. Refused for the Admin\'s own Account and for another Admin; a locked Account can be impersonated.
-     * Start an Impersonation of a Member Account
-     */
-    async adminStartImpersonation(requestParameters: AdminStartImpersonationOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForAdminStartImpersonationErrors> {
-        const response = await this.adminStartImpersonationRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -5484,45 +5407,6 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Creates request options for endImpersonation without sending the request
-     */
-    async endImpersonationRequestOpts(): Promise<runtime.RequestOpts> {
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-
-        let urlPath = `/api/frontend/v1/accounts/me/impersonation`;
-
-        return {
-            path: urlPath,
-            method: 'DELETE',
-            headers: headerParameters,
-            query: queryParameters,
-        };
-    }
-
-    /**
-     * End the session\'s Impersonation, returning it to the impersonating Admin  Writes the end entry of the Admin log.
-     * End the session\'s Impersonation, returning it to the impersonating Admin
-     */
-    async endImpersonationRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForEndImpersonationErrors>> {
-        const requestOptions = await this.endImpersonationRequestOpts();
-        const response = await this.request(requestOptions, initOverrides);
-
-        return new runtime.JSONApiResponse(response);
-    }
-
-    /**
-     * End the session\'s Impersonation, returning it to the impersonating Admin  Writes the end entry of the Admin log.
-     * End the session\'s Impersonation, returning it to the impersonating Admin
-     */
-    async endImpersonation(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForEndImpersonationErrors> {
-        const response = await this.endImpersonationRaw(initOverrides);
-        return await response.value();
-    }
-
-    /**
      * Creates request options for endTournamentRound without sending the request
      */
     async endTournamentRoundRequestOpts(requestParameters: EndTournamentRoundRequest): Promise<runtime.RequestOpts> {
@@ -5658,7 +5542,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Declare that the deck holds what its list asks for  Two things at once, because they are the same thing at different sizes: the way in for a deck that arrived from somewhere else, where the list is already right and saying so one card at a time would be an afternoon\'s work, and the answer to \"I bought that one\" for a single slot.  The slots are topped up to what they ask for, in the printing and finish they name, as near mint and without an origin: nothing was taken out of a collection, so there is nowhere to put it back. Sorting them into one later is the same return call with a target. The first card creates the Physical deck.
+     * Declare that the deck holds what its list asks for  Two things at once, because they are the same thing at different sizes: the way in for a deck that arrived from somewhere else, where the list is already right and saying so one card at a time would be an afternoon\'s work, and the answer to \"I bought that one\" for a single slot.  The slots are topped up to what they ask for, in the printing and finish they name, as near mint and without an origin: nothing was taken out of a collection, so there is nowhere to put it back. Sorting them into one later is the same return call with a target. The first card creates the Physical deck. Proxies of a slot\'s printing and finish count as held, and the list is never changed: filling a proxy slot leaves its flag as it is.
      * Declare that the deck holds what its list asks for
      */
     async fillDeckCollectionRaw(requestParameters: FillDeckCollectionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FillDeckCollectionResponse>> {
@@ -5669,7 +5553,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Declare that the deck holds what its list asks for  Two things at once, because they are the same thing at different sizes: the way in for a deck that arrived from somewhere else, where the list is already right and saying so one card at a time would be an afternoon\'s work, and the answer to \"I bought that one\" for a single slot.  The slots are topped up to what they ask for, in the printing and finish they name, as near mint and without an origin: nothing was taken out of a collection, so there is nowhere to put it back. Sorting them into one later is the same return call with a target. The first card creates the Physical deck.
+     * Declare that the deck holds what its list asks for  Two things at once, because they are the same thing at different sizes: the way in for a deck that arrived from somewhere else, where the list is already right and saying so one card at a time would be an afternoon\'s work, and the answer to \"I bought that one\" for a single slot.  The slots are topped up to what they ask for, in the printing and finish they name, as near mint and without an origin: nothing was taken out of a collection, so there is nowhere to put it back. Sorting them into one later is the same return call with a target. The first card creates the Physical deck. Proxies of a slot\'s printing and finish count as held, and the list is never changed: filling a proxy slot leaves its flag as it is.
      * Declare that the deck holds what its list asks for
      */
     async fillDeckCollection(requestParameters: FillDeckCollectionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FillDeckCollectionResponse> {
@@ -6839,45 +6723,6 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getMpcfillCardbacks(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MpcFillCardbacksResponse> {
         const response = await this.getMpcfillCardbacksRaw(initOverrides);
-        return await response.value();
-    }
-
-    /**
-     * Creates request options for getMpcfillFavorites without sending the request
-     */
-    async getMpcfillFavoritesRequestOpts(): Promise<runtime.RequestOpts> {
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-
-        let urlPath = `/api/frontend/v1/mpcfill/favorites`;
-
-        return {
-            path: urlPath,
-            method: 'GET',
-            headers: headerParameters,
-            query: queryParameters,
-        };
-    }
-
-    /**
-     * Everything the account starred
-     * Everything the account starred
-     */
-    async getMpcfillFavoritesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MpcFillFavoritesResponse>> {
-        const requestOptions = await this.getMpcfillFavoritesRequestOpts();
-        const response = await this.request(requestOptions, initOverrides);
-
-        return new runtime.JSONApiResponse(response);
-    }
-
-    /**
-     * Everything the account starred
-     * Everything the account starred
-     */
-    async getMpcfillFavorites(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MpcFillFavoritesResponse> {
-        const response = await this.getMpcfillFavoritesRaw(initOverrides);
         return await response.value();
     }
 
@@ -9311,7 +9156,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Log out, dropping the session  During an Impersonation the end entry of the Admin log is written first.
+     * Log out, dropping the session
      * Log out, dropping the session
      */
     async logoutRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
@@ -9322,7 +9167,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Log out, dropping the session  During an Impersonation the end entry of the Admin log is written first.
+     * Log out, dropping the session
      * Log out, dropping the session
      */
     async logout(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
@@ -9349,8 +9194,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The account the current session acts as  During an Impersonation that is the impersonated Account, with the Impersonation reported alongside. The one route a locked Account\'s session still reaches: it answers with the `locked` flag, never the Lock reason, and logs the session out.
-     * The account the current session acts as
+     * The account the current session belongs to  The one route a locked Account\'s session still reaches: it answers with the `locked` flag, never the Lock reason, and logs the session out.
+     * The account the current session belongs to
      */
     async meRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Me200Response>> {
         const requestOptions = await this.meRequestOpts();
@@ -9360,8 +9205,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The account the current session acts as  During an Impersonation that is the impersonated Account, with the Impersonation reported alongside. The one route a locked Account\'s session still reaches: it answers with the `locked` flag, never the Lock reason, and logs the session out.
-     * The account the current session acts as
+     * The account the current session belongs to  The one route a locked Account\'s session still reaches: it answers with the `locked` flag, never the Lock reason, and logs the session out.
+     * The account the current session belongs to
      */
     async me(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Me200Response> {
         const response = await this.meRaw(initOverrides);
@@ -9562,6 +9407,60 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async putDeckCollaborator(requestParameters: PutDeckCollaboratorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PutDeckCollaborator200Response> {
         const response = await this.putDeckCollaboratorRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for putDeckProxies without sending the request
+     */
+    async putDeckProxiesRequestOpts(requestParameters: PutDeckProxiesOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling putDeckProxies().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/sourcing/proxy`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['PutDeckProxiesRequest'],
+        };
+    }
+
+    /**
+     * Put Proxies into the Physical deck for a Deck entry  They stand for the entry\'s printing and finish. The first card creates the Physical deck.
+     * Put Proxies into the Physical deck for a Deck entry
+     */
+    async putDeckProxiesRaw(requestParameters: PutDeckProxiesOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.putDeckProxiesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Put Proxies into the Physical deck for a Deck entry  They stand for the entry\'s printing and finish. The first card creates the Physical deck.
+     * Put Proxies into the Physical deck for a Deck entry
+     */
+    async putDeckProxies(requestParameters: PutDeckProxiesOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.putDeckProxiesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -10297,13 +10196,13 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Creates request options for replaceMpcfillFavorite without sending the request
+     * Creates request options for replaceDeckProxy without sending the request
      */
-    async replaceMpcfillFavoriteRequestOpts(requestParameters: ReplaceMpcfillFavoriteRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['favorite'] == null) {
+    async replaceDeckProxyRequestOpts(requestParameters: ReplaceDeckProxyOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
             throw new runtime.RequiredError(
-                'favorite',
-                'Required parameter "favorite" was null or undefined when calling replaceMpcfillFavorite().'
+                'deck',
+                'Required parameter "deck" was null or undefined when calling replaceDeckProxy().'
             );
         }
 
@@ -10314,24 +10213,24 @@ export class DefaultApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
 
-        let urlPath = `/api/frontend/v1/mpcfill/favorites/images/{favorite}/replacement`;
-        urlPath = urlPath.replace('{favorite}', encodeURIComponent(String(requestParameters['favorite'])));
+        let urlPath = `/api/frontend/v1/decks/{deck}/sourcing/replace-proxy`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
 
         return {
             path: urlPath,
-            method: 'PUT',
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-            body: requestParameters['ReplaceMpcFillFavoriteRequest'],
+            body: requestParameters['ReplaceDeckProxyRequest'],
         };
     }
 
     /**
-     * Move a star to the file that replaced its image
-     * Move a star to the file that replaced its image
+     * Replace Proxies with real copies out of a collection  One step: the real copies move in, remembering where they came from, and as many Proxies are thrown away. Either both happen or neither does.
+     * Replace Proxies with real copies out of a collection
      */
-    async replaceMpcfillFavoriteRaw(requestParameters: ReplaceMpcfillFavoriteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
-        const requestOptions = await this.replaceMpcfillFavoriteRequestOpts(requestParameters);
+    async replaceDeckProxyRaw(requestParameters: ReplaceDeckProxyOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.replaceDeckProxyRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
         if (this.isJsonMime(response.headers.get('content-type'))) {
@@ -10342,11 +10241,11 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Move a star to the file that replaced its image
-     * Move a star to the file that replaced its image
+     * Replace Proxies with real copies out of a collection  One step: the real copies move in, remembering where they came from, and as many Proxies are thrown away. Either both happen or neither does.
+     * Replace Proxies with real copies out of a collection
      */
-    async replaceMpcfillFavorite(requestParameters: ReplaceMpcfillFavoriteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
-        const response = await this.replaceMpcfillFavoriteRaw(requestParameters, initOverrides);
+    async replaceDeckProxy(requestParameters: ReplaceDeckProxyOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.replaceDeckProxyRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -10536,7 +10435,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Sort copies out of the Physical deck back into a collection
+     * Sort copies out of the Physical deck back into a collection  Proxies have nowhere to go back to: returning them throws them away, and `target` is not read for them.
      * Sort copies out of the Physical deck back into a collection
      */
     async returnDeckCardsRaw(requestParameters: ReturnDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
@@ -10551,7 +10450,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Sort copies out of the Physical deck back into a collection
+     * Sort copies out of the Physical deck back into a collection  Proxies have nowhere to go back to: returning them throws them away, and `target` is not read for them.
      * Sort copies out of the Physical deck back into a collection
      */
     async returnDeckCards(requestParameters: ReturnDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
@@ -11282,52 +11181,6 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Creates request options for setMpcfillFavoriteDrives without sending the request
-     */
-    async setMpcfillFavoriteDrivesRequestOpts(requestParameters: SetMpcfillFavoriteDrivesRequest): Promise<runtime.RequestOpts> {
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        headerParameters['Content-Type'] = 'application/json';
-
-
-        let urlPath = `/api/frontend/v1/mpcfill/favorites/drives`;
-
-        return {
-            path: urlPath,
-            method: 'PUT',
-            headers: headerParameters,
-            query: queryParameters,
-            body: requestParameters['SetMpcFillFavoriteDrivesRequest'],
-        };
-    }
-
-    /**
-     * Set the starred drives, first one first
-     * Set the starred drives, first one first
-     */
-    async setMpcfillFavoriteDrivesRaw(requestParameters: SetMpcfillFavoriteDrivesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
-        const requestOptions = await this.setMpcfillFavoriteDrivesRequestOpts(requestParameters);
-        const response = await this.request(requestOptions, initOverrides);
-
-        if (this.isJsonMime(response.headers.get('content-type'))) {
-            return new runtime.JSONApiResponse<any>(response);
-        } else {
-            return new runtime.TextApiResponse(response) as any;
-        }
-    }
-
-    /**
-     * Set the starred drives, first one first
-     * Set the starred drives, first one first
-     */
-    async setMpcfillFavoriteDrives(requestParameters: SetMpcfillFavoriteDrivesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
-        const response = await this.setMpcfillFavoriteDrivesRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
-
-    /**
      * Creates request options for setMyTournamentListSharing without sending the request
      */
     async setMyTournamentListSharingRequestOpts(requestParameters: SetMyTournamentListSharingRequest): Promise<runtime.RequestOpts> {
@@ -12004,48 +11857,6 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async splitCollectionEntry(requestParameters: SplitCollectionEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SplitCollectionEntryResponse> {
         const response = await this.splitCollectionEntryRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
-
-    /**
-     * Creates request options for starMpcfillImage without sending the request
-     */
-    async starMpcfillImageRequestOpts(requestParameters: StarMpcfillImageRequest): Promise<runtime.RequestOpts> {
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        headerParameters['Content-Type'] = 'application/json';
-
-
-        let urlPath = `/api/frontend/v1/mpcfill/favorites/images`;
-
-        return {
-            path: urlPath,
-            method: 'PUT',
-            headers: headerParameters,
-            query: queryParameters,
-            body: requestParameters['StarMpcFillImageRequest'],
-        };
-    }
-
-    /**
-     * Star an image for a face, or star it again as the newest
-     * Star an image for a face, or star it again as the newest
-     */
-    async starMpcfillImageRaw(requestParameters: StarMpcfillImageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MpcFillFavoriteResponse>> {
-        const requestOptions = await this.starMpcfillImageRequestOpts(requestParameters);
-        const response = await this.request(requestOptions, initOverrides);
-
-        return new runtime.JSONApiResponse(response);
-    }
-
-    /**
-     * Star an image for a face, or star it again as the newest
-     * Star an image for a face, or star it again as the newest
-     */
-    async starMpcfillImage(requestParameters: StarMpcfillImageRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MpcFillFavoriteResponse> {
-        const response = await this.starMpcfillImageRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -12764,57 +12575,6 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async undoDeckChange(requestParameters: UndoDeckChangeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckUndoResponse> {
         const response = await this.undoDeckChangeRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
-
-    /**
-     * Creates request options for unstarMpcfillImage without sending the request
-     */
-    async unstarMpcfillImageRequestOpts(requestParameters: UnstarMpcfillImageRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['favorite'] == null) {
-            throw new runtime.RequiredError(
-                'favorite',
-                'Required parameter "favorite" was null or undefined when calling unstarMpcfillImage().'
-            );
-        }
-
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-
-        let urlPath = `/api/frontend/v1/mpcfill/favorites/images/{favorite}`;
-        urlPath = urlPath.replace('{favorite}', encodeURIComponent(String(requestParameters['favorite'])));
-
-        return {
-            path: urlPath,
-            method: 'DELETE',
-            headers: headerParameters,
-            query: queryParameters,
-        };
-    }
-
-    /**
-     * Take the star off an image
-     * Take the star off an image
-     */
-    async unstarMpcfillImageRaw(requestParameters: UnstarMpcfillImageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
-        const requestOptions = await this.unstarMpcfillImageRequestOpts(requestParameters);
-        const response = await this.request(requestOptions, initOverrides);
-
-        if (this.isJsonMime(response.headers.get('content-type'))) {
-            return new runtime.JSONApiResponse<any>(response);
-        } else {
-            return new runtime.TextApiResponse(response) as any;
-        }
-    }
-
-    /**
-     * Take the star off an image
-     * Take the star off an image
-     */
-    async unstarMpcfillImage(requestParameters: UnstarMpcfillImageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
-        const response = await this.unstarMpcfillImageRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

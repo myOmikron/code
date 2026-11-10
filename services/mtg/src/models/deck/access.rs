@@ -109,6 +109,8 @@ pub enum DeckOperation {
     TakeCards,
     /// Record copies bought straight into the Physical deck
     FillCollection,
+    /// Put Proxies into the Physical deck, or replace them with real cards
+    ChangeProxies,
     /// Sort copies out of the Physical deck back into a collection, or take
     /// it apart
     ReturnCards,
@@ -154,6 +156,7 @@ impl DeckOperation {
             | Self::ReadSourcing
             | Self::TakeCards
             | Self::FillCollection
+            | Self::ChangeProxies
             | Self::ReturnCards
             | Self::DeleteDeck
             | Self::ReadHistory
@@ -283,6 +286,7 @@ mod tests {
             DeckOperation::ReadSourcing,
             DeckOperation::TakeCards,
             DeckOperation::FillCollection,
+            DeckOperation::ChangeProxies,
             DeckOperation::ReturnCards,
             DeckOperation::DeleteDeck,
             DeckOperation::ReadHistory,

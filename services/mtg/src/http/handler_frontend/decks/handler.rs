@@ -34,9 +34,11 @@ use crate::http::handler_frontend::decks::schema::ImportDeckCardsResponse;
 use crate::http::handler_frontend::decks::schema::ImportMode;
 use crate::http::handler_frontend::decks::schema::ListDeckCardsResponse;
 use crate::http::handler_frontend::decks::schema::ListFormatsResponse;
+use crate::http::handler_frontend::decks::schema::PutDeckProxiesRequest;
 use crate::http::handler_frontend::decks::schema::ReadDeckCardResponse;
 use crate::http::handler_frontend::decks::schema::ReadDeckUrlRequest;
 use crate::http::handler_frontend::decks::schema::ReadDeckUrlResponse;
+use crate::http::handler_frontend::decks::schema::ReplaceDeckProxyRequest;
 use crate::http::handler_frontend::decks::schema::ReturnDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::RoleBansResponse;
 use crate::http::handler_frontend::decks::schema::RotateDeckShareTokenResponse;
@@ -60,6 +62,7 @@ use crate::models::card_attributes::CardCondition;
 use crate::models::card_attributes::CardFinish;
 use crate::models::collection::CollectionEntry;
 use crate::models::collection::CollectionEntryInsert;
+use crate::models::collection::DiscardOutcome;
 use crate::models::collection::MoveOutcome;
 use crate::models::deck::Deck;
 use crate::models::deck::DeckAccess;
@@ -245,7 +248,8 @@ pub async fn take_deck_cards(
 /// name, as near mint and without an origin: nothing was taken out of a
 /// collection, so there is nowhere to put it back. Sorting them into one later
 /// is the same return call with a target. The first card creates the Physical
-/// deck.
+/// deck. Proxies of a slot's printing and finish count as held, and the list
+/// is never changed: filling a proxy slot leaves its flag as it is.
 #[post("/{deck}/sourcing/fill")]
 pub async fn fill_deck_collection(
     account: Account,
@@ -263,7 +267,6 @@ pub async fn fill_deck_collection(
         )
         .await?,
     )?;
-    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
     let collection =
         granted(Deck::physical_deck_or_create(&mut tx, grant.owner(), deck_uuid).await?)?;
 
@@ -280,39 +283,9 @@ pub async fn fill_deck_collection(
         .into_iter()
         .filter(|listed| slot.is_none_or(|wanted| wanted == listed.uuid))
     {
-        let finish = if slot.foil {
-            CardFinish::Foil
-        } else {
-            CardFinish::Nonfoil
-        };
-
-        // A proxy slot has nothing to be short of: fill-all must not invent
-        // copies for a stand-in. A targeted fill is "I bought that one" —
-        // the flag clears here, the same way point_at clears it when cardboard
-        // is taken onto a slot, even if the slot turns out to need no filing.
-        if slot.proxy {
-            if fill_all {
-                continue;
-            }
-            let entry = DeckCard::get(&mut tx, deck_uuid, slot.uuid)
-                .await?
-                .ok_or_else(denied)?;
-            let updated = granted(
-                DeckCard::update(
-                    &mut tx,
-                    deck_uuid,
-                    slot.uuid,
-                    DeckCardPatch {
-                        proxy: Some(false),
-                        ..Default::default()
-                    },
-                )
-                .await?,
-            )?;
-            let mut difference = DeckDifference::default();
-            difference.updated(&entry, entry.quantity, updated.as_ref());
-            edit.record(&mut tx, DeckChangeKind::Sourcing, difference)
-                .await?;
+        let finish = finish_of_slot(slot.foil);
+        if slot.proxy && fill_all {
+            continue;
         }
 
         // Only what the deck is short of: a slot somebody already sourced out of
@@ -351,7 +324,118 @@ pub async fn fill_deck_collection(
     Ok(ApiJson(FillDeckCollectionResponse { filed }))
 }
 
+/// Put Proxies into the Physical deck for a Deck entry
+///
+/// They stand for the entry's printing and finish. The first card creates the
+/// Physical deck.
+#[post("/{deck}/sourcing/proxy")]
+pub async fn put_deck_proxies(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+    ApiJson(PutDeckProxiesRequest { slot, quantity }): ApiJson<PutDeckProxiesRequest>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let grant = granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::ChangeProxies,
+        )
+        .await?,
+    )?;
+    if quantity < 1 {
+        return Err(ApiError::bad_request("Put in at least one Proxy"));
+    }
+    let entry = DeckCard::get(&mut tx, deck_uuid, slot)
+        .await?
+        .ok_or_else(denied)?;
+    let collection =
+        granted(Deck::physical_deck_or_create(&mut tx, grant.owner(), deck_uuid).await?)?;
+
+    CollectionEntry::file_proxies(
+        &mut tx,
+        collection.uuid,
+        entry.printing,
+        finish_of_slot(entry.foil),
+        quantity,
+    )
+    .await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// Replace Proxies with real copies out of a collection
+///
+/// One step: the real copies move in, remembering where they came from, and
+/// as many Proxies are thrown away. Either both happen or neither does.
+#[post("/{deck}/sourcing/replace-proxy")]
+pub async fn replace_deck_proxy(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+    ApiJson(ReplaceDeckProxyRequest {
+        proxy,
+        entry,
+        quantity,
+    }): ApiJson<ReplaceDeckProxyRequest>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let grant = granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::ChangeProxies,
+        )
+        .await?,
+    )?;
+    let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
+        return Err(ApiError::bad_request("This deck has no Physical deck"));
+    };
+    let source = CollectionEntry::collection_of(&mut tx, grant.owner(), entry)
+        .await?
+        .ok_or_else(denied)?;
+    if source == collection.uuid {
+        return Err(ApiError::bad_request("Those cards are already in the deck"));
+    }
+
+    match CollectionEntry::discard_proxies(&mut tx, collection.uuid, proxy, quantity).await? {
+        DiscardOutcome::Discarded => {}
+        DiscardOutcome::TooFewCopies => {
+            return Err(ApiError::bad_request("There are not that many Proxies"));
+        }
+        DiscardOutcome::Denied => return Err(denied().into()),
+    }
+    match CollectionEntry::move_copies(
+        &mut tx,
+        grant.owner(),
+        entry,
+        quantity,
+        collection.uuid,
+        Some(source),
+    )
+    .await?
+    {
+        MoveOutcome::Moved { .. } => {}
+        MoveOutcome::TooFewCopies => {
+            return Err(ApiError::bad_request("The stack does not hold that many"));
+        }
+        MoveOutcome::Denied => return Err(denied().into()),
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
 /// Sort copies out of the Physical deck back into a collection
+///
+/// Proxies have nowhere to go back to: returning them throws them away, and
+/// `target` is not read for them.
 #[post("/{deck}/sourcing/return")]
 pub async fn return_deck_cards(
     account: Account,
@@ -374,6 +458,17 @@ pub async fn return_deck_cards(
     let stack = CollectionEntry::get(&mut tx, collection.uuid, entry)
         .await?
         .ok_or_else(|| ApiError::bad_request("Request was denied"))?;
+    if stack.proxy {
+        match CollectionEntry::discard_proxies(&mut tx, collection.uuid, entry, quantity).await? {
+            DiscardOutcome::Discarded => {}
+            DiscardOutcome::TooFewCopies => {
+                return Err(ApiError::bad_request("The stack does not hold that many"));
+            }
+            DiscardOutcome::Denied => return Err(denied().into()),
+        }
+        tx.commit().await?;
+        return Ok(ApiJson(()));
+    }
     // Where they came from, unless the client names somewhere else — which it
     // has to for cards that were bought straight into the deck.
     let into = target
@@ -1469,6 +1564,15 @@ pub(in crate::http::handler_frontend::decks) fn granted<T>(
     access: DeckAccess<T>,
 ) -> Result<T, CoreApiError> {
     access.granted().ok_or_else(denied)
+}
+
+/// The finish a Deck entry asks for
+fn finish_of_slot(foil: bool) -> CardFinish {
+    if foil {
+        CardFinish::Foil
+    } else {
+        CardFinish::Nonfoil
+    }
 }
 
 /// The answer a request that may not happen gets

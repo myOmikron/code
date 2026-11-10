@@ -7,8 +7,8 @@
     "paths": {
         "/api/frontend/v1/accounts/me": {
             "get": {
-                "summary": "The account the current session acts as",
-                "description": "The account the current session acts as\n\nDuring an Impersonation that is the impersonated Account, with the\nImpersonation reported alongside. The one route a locked Account's session\nstill reaches: it answers with the `locked` flag, never the Lock reason,\nand logs the session out.",
+                "summary": "The account the current session belongs to",
+                "description": "The account the current session belongs to\n\nThe one route a locked Account's session still reaches: it answers with\nthe `locked` flag, never the Lock reason, and logs the session out.",
                 "operationId": "me",
                 "responses": {
                     "200": {
@@ -85,348 +85,6 @@
                                         },
                                         {
                                             "$ref": "#/components/schemas/FormErrorResponse_for_DeleteAccountErrors"
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/frontend/v1/accounts/me/impersonation": {
-            "delete": {
-                "summary": "End the session's Impersonation, returning it to the impersonating Admin",
-                "description": "End the session's Impersonation, returning it to the impersonating Admin\n\nWrites the end entry of the Admin log.",
-                "operationId": "end_impersonation",
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "oneOf": [
-                                        {
-                                            "nullable": true
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/FormErrorResponse_for_EndImpersonationErrors"
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/frontend/v1/accounts/me/push": {
-            "get": {
-                "summary": "The logged-in account's push settings and the key its devices subscribe with",
-                "description": "The logged-in account's push settings and the key its devices subscribe with",
-                "operationId": "get_push_settings",
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PushSettingsResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "put": {
-                "summary": "Turn tournament pushes on or off for every device of the logged-in account",
-                "description": "Turn tournament pushes on or off for every device of the logged-in account",
-                "operationId": "set_push_settings",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SetPushSettingsRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "nullable": true
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/frontend/v1/accounts/me/push/devices/unsubscribe": {
-            "post": {
-                "summary": "Unsubscribe one of the logged-in account's devices; a device that is none of its is left alone",
-                "description": "Unsubscribe one of the logged-in account's devices; a device that is none of its is left alone",
-                "operationId": "unsubscribe_push_device",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PushDeviceRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "nullable": true
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/frontend/v1/accounts/me/push/devices/check": {
-            "post": {
-                "summary": "Whether a device gets the logged-in account's pushes",
-                "description": "Whether a device gets the logged-in account's pushes\n\nThe browser knows it has a subscription, not whose it is: another\naccount may have taken the device over since.",
-                "operationId": "check_push_device",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/PushDeviceRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/PushDeviceResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/frontend/v1/accounts/me/push/devices": {
-            "post": {
-                "summary": "Subscribe this device to the logged-in account's pushes",
-                "description": "Subscribe this device to the logged-in account's pushes\n\nA device subscribed for another account before gets this one's pushes\nfrom now on.",
-                "operationId": "subscribe_push_device",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SubscribePushDeviceRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "oneOf": [
-                                        {
-                                            "nullable": true
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/FormErrorResponse_for_SubscribePushDeviceErrors"
                                         }
                                     ]
                                 }
@@ -802,6 +460,292 @@
                                             "$ref": "#/components/schemas/FormErrorResponse_for_DeletePasskeyErrors"
                                         }
                                     ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/accounts/me/push": {
+            "get": {
+                "summary": "The logged-in account's push settings and the key its devices subscribe with",
+                "description": "The logged-in account's push settings and the key its devices subscribe with",
+                "operationId": "get_push_settings",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PushSettingsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Turn tournament pushes on or off for every device of the logged-in account",
+                "description": "Turn tournament pushes on or off for every device of the logged-in account",
+                "operationId": "set_push_settings",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetPushSettingsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/accounts/me/push/devices": {
+            "post": {
+                "summary": "Subscribe this device to the logged-in account's pushes",
+                "description": "Subscribe this device to the logged-in account's pushes\n\nA device subscribed for another account before gets this one's pushes\nfrom now on.",
+                "operationId": "subscribe_push_device",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SubscribePushDeviceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_SubscribePushDeviceErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/accounts/me/push/devices/unsubscribe": {
+            "post": {
+                "summary": "Unsubscribe one of the logged-in account's devices; a device that is none of its is left alone",
+                "description": "Unsubscribe one of the logged-in account's devices; a device that is none of its is left alone",
+                "operationId": "unsubscribe_push_device",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PushDeviceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/accounts/me/push/devices/check": {
+            "post": {
+                "summary": "Whether a device gets the logged-in account's pushes",
+                "description": "Whether a device gets the logged-in account's pushes\n\nThe browser knows it has a subscription, not whose it is: another\naccount may have taken the device over since.",
+                "operationId": "check_push_device",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PushDeviceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PushDeviceResponse"
                                 }
                             }
                         }
@@ -1365,84 +1309,6 @@
                                         },
                                         {
                                             "$ref": "#/components/schemas/FormErrorResponse_for_AdminRenameAccountErrors"
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/frontend/v1/admin/accounts/{uuid}/impersonation": {
-            "post": {
-                "summary": "Start an Impersonation of a Member Account",
-                "description": "Start an Impersonation of a Member Account\n\nFrom the session's next request on, it acts as the Account until the Admin\nends the Impersonation, logs out, or it expires. Refused for the Admin's own\nAccount and for another Admin; a locked Account can be impersonated.",
-                "operationId": "admin_start_impersonation",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "uuid",
-                        "required": true,
-                        "schema": {
-                            "description": "Wrapper for the primary key of the [`Account`] model. To have better distinguishable types.",
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "style": "simple"
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/AdminStartImpersonationRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "oneOf": [
-                                        {
-                                            "nullable": true
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/FormErrorResponse_for_AdminStartImpersonationErrors"
                                         }
                                     ]
                                 }
@@ -2469,7 +2335,7 @@
         "/api/frontend/v1/auth/logout": {
             "get": {
                 "summary": "Log out, dropping the session",
-                "description": "Log out, dropping the session\n\nDuring an Impersonation the end entry of the Admin log is written first.",
+                "description": "Log out, dropping the session",
                 "operationId": "logout",
                 "responses": {
                     "200": {
@@ -5264,7 +5130,7 @@
         "/api/frontend/v1/decks/{deck}/sourcing/fill": {
             "post": {
                 "summary": "Declare that the deck holds what its list asks for",
-                "description": "Declare that the deck holds what its list asks for\n\nTwo things at once, because they are the same thing at different sizes: the\nway in for a deck that arrived from somewhere else, where the list is already\nright and saying so one card at a time would be an afternoon's work, and the\nanswer to \"I bought that one\" for a single slot.\n\nThe slots are topped up to what they ask for, in the printing and finish they\nname, as near mint and without an origin: nothing was taken out of a\ncollection, so there is nowhere to put it back. Sorting them into one later\nis the same return call with a target. The first card creates the Physical\ndeck.",
+                "description": "Declare that the deck holds what its list asks for\n\nTwo things at once, because they are the same thing at different sizes: the\nway in for a deck that arrived from somewhere else, where the list is already\nright and saying so one card at a time would be an afternoon's work, and the\nanswer to \"I bought that one\" for a single slot.\n\nThe slots are topped up to what they ask for, in the printing and finish they\nname, as near mint and without an origin: nothing was taken out of a\ncollection, so there is nowhere to put it back. Sorting them into one later\nis the same return call with a target. The first card creates the Physical\ndeck. Proxies of a slot's printing and finish count as held, and the list\nis never changed: filling a proxy slot leaves its flag as it is.",
                 "operationId": "fill_deck_collection",
                 "parameters": [
                     {
@@ -5332,10 +5198,152 @@
                 }
             }
         },
+        "/api/frontend/v1/decks/{deck}/sourcing/proxy": {
+            "post": {
+                "summary": "Put Proxies into the Physical deck for a Deck entry",
+                "description": "Put Proxies into the Physical deck for a Deck entry\n\nThey stand for the entry's printing and finish. The first card creates the\nPhysical deck.",
+                "operationId": "put_deck_proxies",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PutDeckProxiesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/sourcing/replace-proxy": {
+            "post": {
+                "summary": "Replace Proxies with real copies out of a collection",
+                "description": "Replace Proxies with real copies out of a collection\n\nOne step: the real copies move in, remembering where they came from, and\nas many Proxies are thrown away. Either both happen or neither does.",
+                "operationId": "replace_deck_proxy",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReplaceDeckProxyRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/decks/{deck}/sourcing/return": {
             "post": {
                 "summary": "Sort copies out of the Physical deck back into a collection",
-                "description": "Sort copies out of the Physical deck back into a collection",
+                "description": "Sort copies out of the Physical deck back into a collection\n\nProxies have nowhere to go back to: returning them throws them away, and\n`target` is not read for them.",
                 "operationId": "return_deck_cards",
                 "parameters": [
                     {
@@ -8156,304 +8164,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/MpcFillCardbacksResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/frontend/v1/mpcfill/favorites": {
-            "get": {
-                "summary": "Everything the account starred",
-                "description": "Everything the account starred",
-                "operationId": "get_mpcfill_favorites",
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MpcFillFavoritesResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/frontend/v1/mpcfill/favorites/images": {
-            "put": {
-                "summary": "Star an image for a face, or star it again as the newest",
-                "description": "Star an image for a face, or star it again as the newest",
-                "operationId": "star_mpcfill_image",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/StarMpcFillImageRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MpcFillFavoriteResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/frontend/v1/mpcfill/favorites/images/{favorite}": {
-            "delete": {
-                "summary": "Take the star off an image",
-                "description": "Take the star off an image",
-                "operationId": "unstar_mpcfill_image",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "favorite",
-                        "required": true,
-                        "schema": {
-                            "description": "Wrapper for the primary key of [`MpcFillFavoriteModel`]",
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "style": "simple"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "nullable": true
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/frontend/v1/mpcfill/favorites/images/{favorite}/replacement": {
-            "put": {
-                "summary": "Move a star to the file that replaced its image",
-                "description": "Move a star to the file that replaced its image",
-                "operationId": "replace_mpcfill_favorite",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "favorite",
-                        "required": true,
-                        "schema": {
-                            "description": "Wrapper for the primary key of [`MpcFillFavoriteModel`]",
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "style": "simple"
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ReplaceMpcFillFavoriteRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "nullable": true
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/frontend/v1/mpcfill/favorites/drives": {
-            "put": {
-                "summary": "Set the starred drives, first one first",
-                "description": "Set the starred drives, first one first",
-                "operationId": "set_mpcfill_favorite_drives",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SetMpcFillFavoriteDrivesRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "nullable": true
                                 }
                             }
                         }
@@ -16340,54 +16050,6 @@
                             "new_username",
                             "reason"
                         ]
-                    },
-                    {
-                        "description": "Started an Impersonation of the Account",
-                        "type": "object",
-                        "properties": {
-                            "expires_at": {
-                                "description": "When the Impersonation ends at the latest",
-                                "allOf": [
-                                    {
-                                        "$ref": "#/components/schemas/SchemaDateTime"
-                                    }
-                                ]
-                            },
-                            "kind": {
-                                "type": "string",
-                                "enum": [
-                                    "ImpersonationStart"
-                                ]
-                            },
-                            "reason": {
-                                "description": "Why the Admin impersonates the Account",
-                                "allOf": [
-                                    {
-                                        "$ref": "#/components/schemas/MaxStr_1024"
-                                    }
-                                ]
-                            }
-                        },
-                        "required": [
-                            "expires_at",
-                            "kind",
-                            "reason"
-                        ]
-                    },
-                    {
-                        "description": "Ended an Impersonation of the Account, explicitly or by logging out",
-                        "type": "object",
-                        "properties": {
-                            "kind": {
-                                "type": "string",
-                                "enum": [
-                                    "ImpersonationEnd"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "kind"
-                        ]
                     }
                 ]
             },
@@ -16628,46 +16290,6 @@
                 },
                 "required": [
                     "role"
-                ]
-            },
-            "AdminStartImpersonationErrors": {
-                "description": "Why an Impersonation could not be started",
-                "type": "object",
-                "properties": {
-                    "admin_account": {
-                        "description": "The Account is an Admin, which nobody impersonates",
-                        "type": "boolean"
-                    },
-                    "own_account": {
-                        "description": "The Account is the Admin's own",
-                        "type": "boolean"
-                    },
-                    "reason_missing": {
-                        "description": "No reason was given",
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "admin_account",
-                    "own_account",
-                    "reason_missing"
-                ]
-            },
-            "AdminStartImpersonationRequest": {
-                "description": "Request to start an Impersonation of an Account",
-                "type": "object",
-                "properties": {
-                    "reason": {
-                        "description": "The Impersonation reason, shown to Admins only",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/MaxStr_1024"
-                            }
-                        ]
-                    }
-                },
-                "required": [
-                    "reason"
                 ]
             },
             "AdminStatisticsResponse": {
@@ -19880,19 +19502,6 @@
                     "tournament_over"
                 ]
             },
-            "EndImpersonationErrors": {
-                "description": "Why an Impersonation could not be ended",
-                "type": "object",
-                "properties": {
-                    "not_impersonating": {
-                        "description": "The session is in no Impersonation",
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "not_impersonating"
-                ]
-            },
             "EntryFeeSchema": {
                 "description": "What playing in a Tournament costs",
                 "type": "object",
@@ -20652,32 +20261,6 @@
                     "result"
                 ]
             },
-            "FormErrorResponse_for_AdminStartImpersonationErrors": {
-                "description": "The response that is sent in a case of an error the caller should present his user",
-                "type": "object",
-                "properties": {
-                    "error": {
-                        "description": "The actual error struct",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/AdminStartImpersonationErrors"
-                            }
-                        ]
-                    },
-                    "result": {
-                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/ErrorConstant"
-                            }
-                        ]
-                    }
-                },
-                "required": [
-                    "error",
-                    "result"
-                ]
-            },
             "FormErrorResponse_for_AdminUnlockAccountErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -20869,32 +20452,6 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/DropErrors"
-                            }
-                        ]
-                    },
-                    "result": {
-                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/ErrorConstant"
-                            }
-                        ]
-                    }
-                },
-                "required": [
-                    "error",
-                    "result"
-                ]
-            },
-            "FormErrorResponse_for_EndImpersonationErrors": {
-                "description": "The response that is sent in a case of an error the caller should present his user",
-                "type": "object",
-                "properties": {
-                    "error": {
-                        "description": "The actual error struct",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/EndImpersonationErrors"
                             }
                         ]
                     },
@@ -22968,49 +22525,13 @@
                     "locked"
                 ]
             },
-            "MeImpersonation": {
-                "description": "An Admin's Impersonation of the Account `accounts/me` answers with",
-                "type": "object",
-                "properties": {
-                    "admin_username": {
-                        "description": "The impersonating Admin's username",
-                        "type": "string"
-                    },
-                    "expires_at": {
-                        "description": "When the Impersonation ends at the latest",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/SchemaDateTime"
-                            }
-                        ]
-                    },
-                    "username": {
-                        "description": "The impersonated Account's username",
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "admin_username",
-                    "expires_at",
-                    "username"
-                ]
-            },
             "MeResponse": {
                 "description": "The account the current session belongs to",
                 "type": "object",
                 "properties": {
                     "external": {
-                        "description": "Whether the account logs in through an OpenID provider (an External Account)\n\nAn External Account has no Passkeys and cannot add one. During an Impersonation it describes the impersonating Admin's login.",
+                        "description": "Whether the account logs in through an OpenID provider (an External Account)\n\nAn External Account has no Passkeys and cannot add one.",
                         "type": "boolean"
-                    },
-                    "impersonation": {
-                        "nullable": true,
-                        "description": "The Impersonation the session is in, absent outside of one",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/MeImpersonation"
-                            }
-                        ]
                     },
                     "role": {
                         "description": "What the account may do, decides whether the admin dashboard is offered",
@@ -23091,114 +22612,6 @@
                 },
                 "required": [
                     "cardbacks"
-                ]
-            },
-            "MpcFillFavoriteImage": {
-                "description": "An MPCFill image as it was found when it was starred",
-                "type": "object",
-                "properties": {
-                    "drive_id": {
-                        "description": "The Google Drive file id",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/MaxStr_128"
-                            }
-                        ]
-                    },
-                    "file_name": {
-                        "description": "The file's name in its drive",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/MaxStr_255"
-                            }
-                        ]
-                    },
-                    "source": {
-                        "description": "The drive it lies in",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/MaxStr_255"
-                            }
-                        ]
-                    }
-                },
-                "required": [
-                    "drive_id",
-                    "file_name",
-                    "source"
-                ]
-            },
-            "MpcFillFavoriteResponse": {
-                "description": "An image the account starred",
-                "type": "object",
-                "properties": {
-                    "face": {
-                        "nullable": true,
-                        "description": "The card face it was starred for, `None` for a cardback",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/MaxStr_255"
-                            }
-                        ]
-                    },
-                    "image": {
-                        "description": "The image",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/MpcFillFavoriteImage"
-                            }
-                        ]
-                    },
-                    "starred_at": {
-                        "description": "When it was starred",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/SchemaDateTime"
-                            }
-                        ]
-                    },
-                    "uuid": {
-                        "description": "Primary key",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/MpcFillFavoriteUuid"
-                            }
-                        ]
-                    }
-                },
-                "required": [
-                    "image",
-                    "starred_at",
-                    "uuid"
-                ]
-            },
-            "MpcFillFavoriteUuid": {
-                "description": "Wrapper for the primary key of [`MpcFillFavoriteModel`]",
-                "type": "string",
-                "format": "uuid"
-            },
-            "MpcFillFavoritesResponse": {
-                "description": "Everything the account starred",
-                "type": "object",
-                "properties": {
-                    "drives": {
-                        "description": "The starred drives, first one first",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/MaxStr_255"
-                        }
-                    },
-                    "images": {
-                        "description": "The starred images, newest first",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/MpcFillFavoriteResponse"
-                        }
-                    }
-                },
-                "required": [
-                    "drives",
-                    "images"
                 ]
             },
             "MpcFillImageResponse": {
@@ -24299,6 +23712,29 @@
                     "username"
                 ]
             },
+            "PutDeckProxiesRequest": {
+                "description": "Request to put Proxies into the Physical deck for a Deck entry",
+                "type": "object",
+                "properties": {
+                    "quantity": {
+                        "description": "How many Proxies to put in",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "slot": {
+                        "description": "The Deck entry whose printing and finish the Proxies stand for",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckCardUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "quantity",
+                    "slot"
+                ]
+            },
             "RarityCountsResponse": {
                 "description": "Copies per rarity in a collection",
                 "type": "object",
@@ -24784,21 +24220,36 @@
                     "label"
                 ]
             },
-            "ReplaceMpcFillFavoriteRequest": {
-                "description": "Request to move a star to the file that replaced its image",
+            "ReplaceDeckProxyRequest": {
+                "description": "Request to replace Proxies in the Physical deck with real copies out of a collection",
                 "type": "object",
                 "properties": {
-                    "image": {
-                        "description": "The file that replaced it",
+                    "entry": {
+                        "description": "The stack in a collection the real copies come from",
                         "allOf": [
                             {
-                                "$ref": "#/components/schemas/MpcFillFavoriteImage"
+                                "$ref": "#/components/schemas/CollectionEntryUuid"
                             }
                         ]
+                    },
+                    "proxy": {
+                        "description": "The Proxy stack in the Physical deck",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionEntryUuid"
+                            }
+                        ]
+                    },
+                    "quantity": {
+                        "description": "How many Proxies to replace",
+                        "type": "integer",
+                        "format": "int32"
                     }
                 },
                 "required": [
-                    "image"
+                    "entry",
+                    "proxy",
+                    "quantity"
                 ]
             },
             "ReportResultErrors": {
@@ -26170,22 +25621,6 @@
                     "shared"
                 ]
             },
-            "SetMpcFillFavoriteDrivesRequest": {
-                "description": "Request to set the starred drives",
-                "type": "object",
-                "properties": {
-                    "sources": {
-                        "description": "The drives' names, first one first",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/MaxStr_255"
-                        }
-                    }
-                },
-                "required": [
-                    "sources"
-                ]
-            },
             "SetPaidErrors": {
                 "description": "Why a Participant could not be marked paid or unpaid",
                 "type": "object",
@@ -26748,7 +26183,7 @@
                     },
                     "origin": {
                         "nullable": true,
-                        "description": "The collection they were taken out of, `None` if they were bought into it",
+                        "description": "The collection they were taken out of, `None` if they were bought into it or are Proxies",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/CollectionUuid"
@@ -26775,6 +26210,10 @@
                         "type": "string",
                         "format": "uuid"
                     },
+                    "proxy": {
+                        "description": "Whether the stack holds Proxies rather than real cards",
+                        "type": "boolean"
+                    },
                     "quantity": {
                         "description": "How many copies the stack holds",
                         "type": "integer",
@@ -26793,6 +26232,7 @@
                     "condition",
                     "finish",
                     "printing",
+                    "proxy",
                     "quantity",
                     "uuid"
                 ]
@@ -27127,32 +26567,6 @@
                 "required": [
                     "standings",
                     "tiebreakers"
-                ]
-            },
-            "StarMpcFillImageRequest": {
-                "description": "Request to star an image",
-                "type": "object",
-                "properties": {
-                    "face": {
-                        "nullable": true,
-                        "description": "The card face it is starred for, `None` for a cardback",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/MaxStr_255"
-                            }
-                        ]
-                    },
-                    "image": {
-                        "description": "The image",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/MpcFillFavoriteImage"
-                            }
-                        ]
-                    }
-                },
-                "required": [
-                    "image"
                 ]
             },
             "StartAddPasskeyResponse": {

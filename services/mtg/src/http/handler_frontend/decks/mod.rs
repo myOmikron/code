@@ -35,6 +35,8 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::get_deck_collection_drift)
                 .handler(handler::take_deck_cards)
                 .handler(handler::fill_deck_collection)
+                .handler(handler::put_deck_proxies)
+                .handler(handler::replace_deck_proxy)
                 .handler(handler::return_deck_cards)
                 .handler(handler::take_apart_physical_deck)
                 .handler(handler::list_deck_cards)

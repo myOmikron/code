@@ -284,6 +284,7 @@ mod tests {
             condition: CardCondition::NearMint,
             finish,
             origin: None,
+            proxy: false,
             origin_name: None,
             origin_color: None,
             origin_icon: None,

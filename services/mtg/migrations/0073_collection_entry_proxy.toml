@@ -1,0 +1,89 @@
+[Migration]
+Hash = "4763407539168757753"
+Initial = false
+Dependency = 72
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "collection_entry"
+
+[Migration.Operations.Field]
+Name = "proxy"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/collection/db.rs"
+Line = 182
+Column = 9
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE OR REPLACE FUNCTION collection_stock_entry() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    IF TG_OP IN ('DELETE', 'UPDATE') AND NOT OLD.proxy THEN
+        PERFORM collection_stock_add(OLD.collection, OLD.printing, OLD.finish, -OLD.quantity::bigint);
+    END IF;
+    IF TG_OP IN ('INSERT', 'UPDATE') AND NOT NEW.proxy THEN
+        PERFORM collection_stock_add(NEW.collection, NEW.printing, NEW.finish, NEW.quantity::bigint);
+    END IF;
+    RETURN NULL;
+END;
+$$;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE OR REPLACE FUNCTION collection_stock_apply_collection(
+    p_collection uuid,
+    p_owner uuid,
+    p_deck uuid,
+    p_sign bigint
+) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO collection_stock AS s (owner, printing, finish, oracle_id, lang, free, sleeved)
+    SELECT p_owner,
+           g.printing,
+           g.finish,
+           mp.oracle_id,
+           mp.lang,
+           CASE WHEN p_deck IS NULL THEN p_sign * g.copies ELSE 0 END,
+           CASE WHEN p_deck IS NULL THEN 0 ELSE p_sign * g.copies END
+    FROM (
+        SELECT e.printing, e.finish, SUM(e.quantity) AS copies
+        FROM collection_entry e
+        WHERE e.collection = p_collection AND NOT e.proxy
+        GROUP BY e.printing, e.finish
+    ) g
+    LEFT JOIN printing mp ON mp.id = g.printing
+    ON CONFLICT (owner, printing, finish) DO UPDATE
+        SET free = s.free + EXCLUDED.free,
+            sleeved = s.sleeved + EXCLUDED.sleeved,
+            oracle_id = COALESCE(EXCLUDED.oracle_id, s.oracle_id),
+            lang = COALESCE(EXCLUDED.lang, s.lang);
+END;
+$$;
+"""

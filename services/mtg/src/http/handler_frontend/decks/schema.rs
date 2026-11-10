@@ -145,8 +145,11 @@ pub struct SourcedStackResponse {
     pub condition: CardCondition,
     /// Finish of the cards
     pub finish: CardFinish,
-    /// The collection they were taken out of, `None` if they were bought into it
+    /// The collection they were taken out of, `None` if they were bought into
+    /// it or are Proxies
     pub origin: Option<CollectionUuid>,
+    /// Whether the stack holds Proxies rather than real cards
+    pub proxy: bool,
     /// What that collection is called, `None` once it is gone
     pub origin_name: Option<String>,
     /// Its marker colour
@@ -216,6 +219,27 @@ pub struct ReturnDeckCardsRequest {
     pub quantity: i32,
     /// Where to put them, `None` to use where they came from
     pub target: Option<CollectionUuid>,
+}
+
+/// Request to put Proxies into the Physical deck for a Deck entry
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PutDeckProxiesRequest {
+    /// The Deck entry whose printing and finish the Proxies stand for
+    pub slot: DeckCardUuid,
+    /// How many Proxies to put in
+    pub quantity: i32,
+}
+
+/// Request to replace Proxies in the Physical deck with real copies out of a
+/// collection
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ReplaceDeckProxyRequest {
+    /// The Proxy stack in the Physical deck
+    pub proxy: CollectionEntryUuid,
+    /// The stack in a collection the real copies come from
+    pub entry: CollectionEntryUuid,
+    /// How many Proxies to replace
+    pub quantity: i32,
 }
 
 /// Request to take the Physical deck apart
@@ -295,6 +319,7 @@ impl From<SourcedStack> for SourcedStackResponse {
             condition: stack.condition,
             finish: stack.finish,
             origin: stack.origin,
+            proxy: stack.proxy,
             origin_name: stack.origin_name,
             origin_color: stack.origin_color,
             origin_icon: stack.origin_icon,

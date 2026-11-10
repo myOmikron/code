@@ -159,6 +159,16 @@ impl Fixture {
         .await
     }
 
+    /// Puts Proxies into the Physical deck for a Deck entry
+    async fn proxy(&mut self, entry: &str, quantity: i32) -> TestResponse {
+        self.send(
+            Method::POST,
+            "sourcing/proxy",
+            json!({ "slot": entry, "quantity": quantity }),
+        )
+        .await
+    }
+
     /// How many copies of `printing` the collection holds
     async fn held(&mut self, collection: &str, printing: Uuid) -> i64 {
         self.stacks(collection)
@@ -583,5 +593,341 @@ fn an_editor_reads_the_physical_deck_but_changes_nothing_and_a_viewer_sees_nothi
         let filed = filed(&fixture.sourcing().await);
         assert_eq!(filed.len(), 1, "{filed:?}");
         assert_eq!(filed[0]["quantity"], 1);
+    });
+}
+
+#[test]
+fn putting_a_proxy_in_for_a_line_creates_the_physical_deck() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture.add(printing, 2).await;
+
+        fixture.proxy(&entry, 2).await.ok_json();
+
+        let sourcing = fixture.sourcing().await;
+        assert_ne!(sourcing["physical_deck"], Value::Null, "{sourcing}");
+        let filed = filed(&sourcing);
+        assert_eq!(filed.len(), 1, "{filed:?}");
+        assert_eq!(filed[0]["printing"], json!(printing));
+        assert_eq!(filed[0]["finish"], "Nonfoil");
+        assert_eq!(filed[0]["quantity"], 2);
+        assert_eq!(filed[0]["proxy"], true);
+        assert_eq!(filed[0]["origin"], Value::Null);
+    });
+}
+
+#[test]
+fn replacing_a_proxy_moves_the_real_copy_in_and_throws_the_proxy_away() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture.add(printing, 2).await;
+        fixture.proxy(&entry, 2).await.ok_json();
+        let binder = fixture.collection("Binder").await;
+        let stack = fixture.file(&binder, printing, 3).await;
+        let proxies = filed(&fixture.sourcing().await)[0]["uuid"].clone();
+
+        fixture
+            .send(
+                Method::POST,
+                "sourcing/replace-proxy",
+                json!({ "proxy": proxies, "entry": stack, "quantity": 1 }),
+            )
+            .await
+            .ok_json();
+
+        let filed = filed(&fixture.sourcing().await);
+        let proxy: Vec<&Value> = filed.iter().filter(|s| s["proxy"] == true).collect();
+        let real: Vec<&Value> = filed.iter().filter(|s| s["proxy"] == false).collect();
+        assert_eq!(proxy.len(), 1, "{filed:?}");
+        assert_eq!(proxy[0]["quantity"], 1);
+        assert_eq!(real.len(), 1, "{filed:?}");
+        assert_eq!(real[0]["quantity"], 1);
+        assert_eq!(real[0]["origin"], json!(binder));
+        assert_eq!(fixture.held(&binder, printing).await, 2);
+    });
+}
+
+#[test]
+fn recording_a_bought_copy_for_a_proxy_line_leaves_the_list_and_the_history_alone() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let body = fixture
+            .send(
+                Method::POST,
+                "cards",
+                json!({ "printing": printing, "quantity": 1, "zone": "Main", "proxy": true }),
+            )
+            .await
+            .ok_json();
+        let entry = body["uuid"].clone();
+        let entries = fixture.entries().await;
+        let history = fixture.history().await;
+
+        let answer = fixture
+            .send(Method::POST, "sourcing/fill", json!({ "slot": entry }))
+            .await
+            .ok_json();
+
+        assert_eq!(answer["filed"], 1);
+        assert_eq!(fixture.entries().await, entries);
+        assert_eq!(fixture.history().await, history);
+    });
+}
+
+#[test]
+fn proxies_of_a_line_count_as_held_when_recording_bought_copies() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let entry = fixture.add(Uuid::new_v4(), 2).await;
+        fixture.proxy(&entry, 1).await.ok_json();
+
+        let answer = fixture
+            .send(Method::POST, "sourcing/fill", json!({ "slot": null }))
+            .await
+            .ok_json();
+
+        assert_eq!(answer["filed"], 1);
+    });
+}
+
+#[test]
+fn returning_a_proxy_throws_it_away() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture.add(printing, 3).await;
+        fixture.proxy(&entry, 3).await.ok_json();
+        let shelf = fixture.collection("Shelf").await;
+        let proxies = filed(&fixture.sourcing().await)[0]["uuid"].clone();
+
+        fixture
+            .send(
+                Method::POST,
+                "sourcing/return",
+                json!({ "entry": proxies, "quantity": 1, "target": null }),
+            )
+            .await
+            .ok_json();
+        fixture
+            .send(
+                Method::POST,
+                "sourcing/return",
+                json!({ "entry": proxies, "quantity": 1, "target": shelf }),
+            )
+            .await
+            .ok_json();
+
+        let filed = filed(&fixture.sourcing().await);
+        assert_eq!(filed.len(), 1, "{filed:?}");
+        assert_eq!(filed[0]["quantity"], 1);
+        assert_eq!(fixture.held(&shelf, printing).await, 0);
+    });
+}
+
+#[test]
+fn taking_the_physical_deck_apart_throws_proxies_away() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let taken = Uuid::new_v4();
+        let proxied = Uuid::new_v4();
+        fixture.add(taken, 1).await;
+        let entry = fixture.add(proxied, 2).await;
+        let binder = fixture.collection("Binder").await;
+        let stack = fixture.file(&binder, taken, 1).await;
+        fixture.take(&stack, 1).await.ok_json();
+        fixture.proxy(&entry, 2).await.ok_json();
+
+        let answer = fixture
+            .send(
+                Method::POST,
+                "sourcing/take-apart",
+                json!({ "target": null }),
+            )
+            .await
+            .ok_json();
+
+        assert_eq!(answer["returned"], 1);
+        assert_eq!(fixture.held(&binder, taken).await, 1);
+        assert_eq!(fixture.held(&binder, proxied).await, 0);
+        let sourcing = fixture.sourcing().await;
+        assert_eq!(sourcing["physical_deck"], Value::Null, "{sourcing}");
+    });
+}
+
+#[test]
+fn proxies_are_not_counted_among_the_owners_copies() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = file(&unique("Mana Crypt"), Print::default()).await;
+        let entry = fixture.add(printing, 1).await;
+        fixture.proxy(&entry, 1).await.ok_json();
+        let list = fixture
+            .owner
+            .json(
+                Method::POST,
+                &api("watch-lists"),
+                &json!({ "name": "Wants", "description": "", "color": "red", "icon": "eye" }),
+            )
+            .await
+            .ok_json();
+        let list = list["uuid"].as_str().expect("list uuid").to_string();
+        fixture
+            .owner
+            .json(
+                Method::POST,
+                &api(&format!("watch-lists/{list}/entries")),
+                &json!({
+                    "printing": printing,
+                    "finish": "Nonfoil",
+                    "exact_printing": true,
+                    "match_finish": true,
+                    "wanted": 4,
+                    "note": "",
+                }),
+            )
+            .await
+            .ok_json();
+
+        let entries = fixture
+            .owner
+            .get(&api(&format!("watch-lists/{list}/entries")))
+            .await
+            .ok_json();
+        let watched = entries["entries"][0]["uuid"]
+            .as_str()
+            .expect("entry uuid")
+            .to_string();
+        let copies = fixture
+            .owner
+            .get(&api(&format!(
+                "watch-lists/{list}/entries/{watched}/copies"
+            )))
+            .await
+            .ok_json();
+
+        let stock = &entries["entries"][0]["stock"];
+        assert_eq!(stock["sleeved"], 0, "{entries}");
+        assert_eq!(stock["free"], 0, "{entries}");
+        assert_eq!(copies["copies"], json!([]), "{copies}");
+    });
+}
+
+#[test]
+fn proxies_are_never_offered_as_sourcing_candidates() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = file(&unique("Gaea's Cradle"), Print::default()).await;
+        let entry = fixture.add(printing, 1).await;
+        fixture.proxy(&entry, 1).await.ok_json();
+        let mut other = Fixture {
+            deck: String::new(),
+            ..fixture
+        };
+        let body = other
+            .owner
+            .json(
+                Method::POST,
+                &api("decks"),
+                &json!({
+                    "name": "Second",
+                    "description": null,
+                    "format": "commander",
+                    "visibility": "Private",
+                }),
+            )
+            .await
+            .ok_json();
+        other.deck = body["uuid"].as_str().expect("deck uuid").to_string();
+        other.add(printing, 1).await;
+
+        let sourcing = other.sourcing().await;
+
+        assert_eq!(sourcing["candidates"], json!([]), "{sourcing}");
+    });
+}
+
+#[test]
+fn an_editor_sees_proxies_fulfil_the_list_but_may_not_change_them() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture.add(printing, 1).await;
+        fixture.proxy(&entry, 1).await.ok_json();
+        let binder = fixture.collection("Binder").await;
+        let stack = fixture.file(&binder, printing, 1).await;
+        let proxies = filed(&fixture.sourcing().await)[0]["uuid"].clone();
+        let editor = create_account(Role::Member).await;
+        let viewer = create_account(Role::Member).await;
+        for (account, level) in [(&editor, "Editor"), (&viewer, "Viewer")] {
+            fixture
+                .send(
+                    Method::PUT,
+                    "collaborators",
+                    json!({ "username": account.username, "level": level }),
+                )
+                .await
+                .ok_json();
+        }
+        let mut editor = TestClient::logged_in(&editor).await;
+        let mut viewer = TestClient::logged_in(&viewer).await;
+        let missing = Uuid::new_v4();
+        let changes = [
+            ("sourcing/proxy", json!({ "slot": entry, "quantity": 1 })),
+            (
+                "sourcing/replace-proxy",
+                json!({ "proxy": proxies, "entry": stack, "quantity": 1 }),
+            ),
+            (
+                "sourcing/return",
+                json!({ "entry": proxies, "quantity": 1, "target": null }),
+            ),
+        ];
+
+        let drift = editor.get(&fixture.url("collection/drift")).await.ok_json();
+        assert_eq!(drift["has_physical_deck"], true, "{drift}");
+        assert_eq!(drift["pending"], json!([]), "{drift}");
+        for client in [&mut editor, &mut viewer] {
+            for (path, body) in &changes {
+                let refused = client.json(Method::POST, &fixture.url(path), body).await;
+                let gone = client
+                    .json(Method::POST, &api(&format!("decks/{missing}/{path}")), body)
+                    .await;
+                assert_eq!(refused.status, gone.status, "{path}: {refused:?}");
+                assert_eq!(refused.body, gone.body, "{path}: {refused:?}");
+            }
+        }
+
+        let filed = filed(&fixture.sourcing().await);
+        assert_eq!(filed.len(), 1, "{filed:?}");
+        assert_eq!(filed[0]["proxy"], true);
+    });
+}
+
+#[test]
+fn replacing_more_proxies_than_there_are_changes_nothing() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture.add(printing, 2).await;
+        fixture.proxy(&entry, 1).await.ok_json();
+        let binder = fixture.collection("Binder").await;
+        let stack = fixture.file(&binder, printing, 3).await;
+        let before = fixture.sourcing().await;
+        let proxies = filed(&before)[0]["uuid"].clone();
+
+        let refused = fixture
+            .send(
+                Method::POST,
+                "sourcing/replace-proxy",
+                json!({ "proxy": proxies, "entry": stack, "quantity": 2 }),
+            )
+            .await;
+
+        assert_eq!(refused.status, StatusCode::BAD_REQUEST, "{refused:?}");
+        assert_eq!(filed(&fixture.sourcing().await), filed(&before));
+        assert_eq!(fixture.held(&binder, printing).await, 3);
     });
 }

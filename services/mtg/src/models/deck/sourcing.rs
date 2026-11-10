@@ -99,8 +99,11 @@ pub struct SourcedStack {
     pub condition: CardCondition,
     /// Finish of the cards
     pub finish: CardFinish,
-    /// The collection they were taken out of, `None` if they were bought into it
+    /// The collection they were taken out of, `None` if they were bought into
+    /// it or are Proxies
     pub origin: Option<CollectionUuid>,
+    /// Whether the stack holds Proxies rather than real cards
+    pub proxy: bool,
     /// What that collection is called, `None` once it is gone
     pub origin_name: Option<String>,
     /// Its marker colour
@@ -243,7 +246,7 @@ pub(in crate::models) async fn read_filed(
     collection: CollectionUuid,
 ) -> Result<Vec<SourcedStack>, rorm::Error> {
     let statement = format!(
-        "SELECT e.uuid, e.printing, e.quantity, e.condition, e.finish, e.origin, \
+        "SELECT e.uuid, e.printing, e.quantity, e.condition, e.finish, e.origin, e.proxy, \
                 o.name AS origin_name, o.color AS origin_color, o.icon AS origin_icon, \
                 {PRINTING_COLUMNS} \
          FROM collection_entry e \
@@ -268,6 +271,7 @@ pub(in crate::models) async fn read_filed(
             condition: condition_of(row.get::<String>("condition").map_err(decode)?.as_str()),
             finish: finish_of(row.get::<String>("finish").map_err(decode)?.as_str()),
             origin: origin.map(CollectionUuid::from_uuid),
+            proxy: row.get("proxy").map_err(decode)?,
             origin_name: row.get("origin_name").map_err(decode)?,
             origin_color: row.get("origin_color").map_err(decode)?,
             origin_icon: row.get("origin_icon").map_err(decode)?,
@@ -299,7 +303,7 @@ async fn read_candidates(
          JOIN collection c ON c.uuid = e.collection \
          JOIN printing p ON p.id = e.printing \
          WHERE c.owner = $1 \
-           AND c.deck IS NULL \
+           AND c.deck IS NULL AND NOT e.proxy \
            AND c.uuid <> $2 \
            AND p.oracle_id IN ( \
                 SELECT d.oracle_id FROM deckcard s \

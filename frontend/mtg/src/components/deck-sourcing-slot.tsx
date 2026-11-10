@@ -3,6 +3,7 @@ import {
     CheckIcon,
     ChevronDownIcon,
     ChevronRightIcon,
+    DocumentDuplicateIcon,
     ShoppingCartIcon,
 } from "@heroicons/react/20/solid";
 import clsx from "clsx";
@@ -37,6 +38,8 @@ export type DeckSourcingSlotProps = {
     onTake: (slot: SourcingSlotResponse, candidate: SourcingCandidateResponse, quantity: number) => void;
     /** Files what is still missing as bought, straight into the deck */
     onBuy: (slot: SourcingSlotResponse) => void;
+    /** Puts Proxies into the deck for the copies it does not hold yet */
+    onProxy: (slot: SourcingSlotResponse, quantity: number) => void;
     /** Whether a write is in flight for this row */
     busy: boolean;
 };
@@ -61,6 +64,7 @@ export function DeckSourcingSlot({
     onToggle,
     onTake,
     onBuy,
+    onProxy,
     busy,
 }: DeckSourcingSlotProps) {
     const [t] = useTranslation("collection");
@@ -165,6 +169,24 @@ export function DeckSourcingSlot({
                             <Button outline={true} disabled={busy} onClick={() => onBuy(slot)}>
                                 <CheckIcon />
                                 {t("button.bought-it", { count: count.missing })}
+                            </Button>
+                        </div>
+                    )}
+
+                    {!done && (
+                        <div
+                            className={
+                                "flex flex-wrap items-center justify-between gap-2 rounded-(--radius-control) bg-purple-500/10 px-3 py-2"
+                            }
+                        >
+                            <Text className={"text-xs"}>{t("description.proxy-it")}</Text>
+                            <Button
+                                outline={true}
+                                disabled={busy}
+                                onClick={() => onProxy(slot, count.needed - count.filed)}
+                            >
+                                <DocumentDuplicateIcon />
+                                {t("button.put-in-proxies", { count: count.needed - count.filed })}
                             </Button>
                         </div>
                     )}

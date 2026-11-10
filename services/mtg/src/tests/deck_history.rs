@@ -504,36 +504,6 @@ fn the_migration_merges_alike_entries_and_keeps_their_tags() {
 }
 
 #[test]
-fn filling_a_proxy_entry_merges_it_into_the_real_alike_entry() {
-    run(async {
-        let mut fixture = Fixture::new().await;
-        let printing = Uuid::new_v4();
-        fixture
-            .add(json!({ "printing": printing, "quantity": 2, "zone": "Main" }))
-            .await;
-        let proxy = fixture
-            .add(json!({ "printing": printing, "quantity": 1, "zone": "Main", "proxy": true }))
-            .await;
-        let deck = fixture.deck.clone();
-
-        fixture
-            .owner
-            .json(
-                Method::POST,
-                &api(&format!("decks/{deck}/sourcing/fill")),
-                &json!({ "slot": proxy }),
-            )
-            .await
-            .ok_json();
-
-        let entries = fixture.entries().await;
-        assert_eq!(entries.len(), 1, "{entries:?}");
-        assert_eq!(entries[0]["proxy"], false);
-        assert_eq!(entries[0]["quantity"], 3);
-    });
-}
-
-#[test]
 fn a_new_deck_starts_its_deck_history_with_its_creation() {
     run(async {
         let mut fixture = Fixture::new().await;
@@ -1580,42 +1550,6 @@ impl Fixture {
             .to_string();
         (collection, stack)
     }
-}
-
-#[test]
-fn filling_a_proxy_entry_records_one_sourcing_change() {
-    run(async {
-        let mut fixture = Fixture::new().await;
-        let proxy = fixture
-            .add(
-                json!({ "printing": Uuid::new_v4(), "quantity": 2, "zone": "Main", "proxy": true }),
-            )
-            .await;
-
-        fixture
-            .send_json(Method::POST, "sourcing/fill", json!({ "slot": proxy }))
-            .await;
-
-        assert_eq!(
-            fixture.kinds().await,
-            vec!["Sourcing", "Quantity", "Created"]
-        );
-        let history = fixture.history("").await;
-        let mut flags: Vec<(bool, i64, i64)> = history["changes"][0]["entries"]
-            .as_array()
-            .expect("entry list")
-            .iter()
-            .map(|entry| {
-                (
-                    entry["proxy"].as_bool().expect("proxy"),
-                    entry["before"].as_i64().expect("before"),
-                    entry["after"].as_i64().expect("after"),
-                )
-            })
-            .collect();
-        flags.sort();
-        assert_eq!(flags, vec![(false, 0, 2), (true, 2, 0)]);
-    });
 }
 
 #[test]

@@ -375,6 +375,10 @@ export const Api = {
             // takes the cards that remember no origin. All or nothing.
             takeApart: async (deck: UUID, target: UUID | null = null) =>
                 handleError(defaultApi.takeApartPhysicalDeck({ deck, TakeApartPhysicalDeckRequest: { target } })),
+            putProxies: async (deck: UUID, slot: UUID, quantity: number) =>
+                handleError(defaultApi.putDeckProxies({ deck, PutDeckProxiesRequest: { slot, quantity } })),
+            replaceProxy: async (deck: UUID, proxy: UUID, entry: UUID, quantity: number) =>
+                handleError(defaultApi.replaceDeckProxy({ deck, ReplaceDeckProxyRequest: { proxy, entry, quantity } })),
         },
         cards: {
             // The whole deck in one answer, catalog data and tags included.

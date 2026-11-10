@@ -82,7 +82,7 @@ impl OnLoan {
              JOIN collection c ON c.uuid = e.collection \
              JOIN deck d ON d.uuid = c.deck \
              LEFT JOIN printing p ON p.id = e.printing \
-             WHERE e.origin = $1 \
+             WHERE e.origin = $1 AND NOT e.proxy \
              ORDER BY d.name ASC, p.name ASC"
             .to_string();
 
@@ -185,7 +185,7 @@ impl CollectionSummary {
              FROM collection_entry e \
              JOIN collection c ON c.uuid = e.collection \
              LEFT JOIN printing p ON p.id = e.printing \
-             WHERE c.owner = $1 \
+             WHERE c.owner = $1 AND NOT e.proxy \
              GROUP BY e.collection"
         );
 
@@ -233,7 +233,7 @@ impl CollectionSummary {
                     FROM collection_entry e \
                     JOIN collection c ON c.uuid = e.collection \
                     JOIN printing p ON p.id = e.printing \
-                    WHERE c.owner = $1 \
+                    WHERE c.owner = $1 AND NOT e.proxy \
                       AND COALESCE(p.image_normal, p.image_small) IS NOT NULL \
                  ) ranked \
                  WHERE rank <= $2 \
@@ -526,6 +526,7 @@ impl<'query> Filters<'query> {
         };
 
         filters.push("e.collection = ", Value::Uuid(collection.into_inner()));
+        filters.clauses.push("NOT e.proxy".to_string());
 
         if let Some(pattern) = pattern {
             filters.push("p.name_sort LIKE ", Value::String(pattern));

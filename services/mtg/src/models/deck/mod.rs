@@ -504,8 +504,8 @@ impl Deck {
     ///
     /// Every real card goes back to the collection it came from, or into
     /// `target` when it remembers none (it was bought into the deck, or its
-    /// collection was deleted since). Afterwards the deck has no Physical
-    /// deck. All or nothing: when a single card cannot be placed, the answer
+    /// collection was deleted since). Proxies are thrown away. Afterwards the
+    /// deck has no Physical deck. All or nothing: when a single card cannot be placed, the answer
     /// says so and the caller must not commit what was moved so far.
     #[instrument(name = "Deck::take_apart", skip(tx))]
     pub async fn take_apart(
@@ -535,7 +535,7 @@ impl Deck {
         let stacks =
             CollectionEntry::get_all_in_collection(&mut *tx, owner, collection.uuid).await?;
         let mut returned = 0;
-        for stack in stacks {
+        for stack in stacks.into_iter().filter(|stack| !stack.proxy) {
             let Some(into) = stack.origin.or(target) else {
                 return Ok(TakeApartOutcome::Unplaceable);
             };

@@ -20,9 +20,10 @@ import { CollectionMarker } from "src/components/collection-marker";
 import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
 import { DeckDriftPanel } from "src/components/deck-drift-panel";
 import { DeckInventoryRow } from "src/components/deck-inventory-row";
+import { DeckProxyRow } from "src/components/deck-proxy-row";
 import { DeckSourcingSlot } from "src/components/deck-sourcing-slot";
 import { DeckWantsDialog } from "src/components/deck-wants-dialog";
-import { countSlot, groupByOrigin } from "src/utils/deck-sourcing";
+import { countSlot, groupByOrigin, proxyReplacements } from "src/utils/deck-sourcing";
 import type { SourcingMatch } from "src/utils/deck-sourcing";
 import { formatCurrency } from "src/utils/format";
 
@@ -69,6 +70,8 @@ function RouteComponent() {
     const [unfolded, setUnfolded] = useState<string | null>(null);
 
     const shelf = collections;
+    const real = sourcing.filed.filter((stack) => !stack.proxy);
+    const proxies = proxyReplacements(sourcing.filed, sourcing.candidates);
     const wanted = new Set(
         sourcing.slots.flatMap((slot) => (slot.card?.oracle_id != null ? [slot.card.oracle_id] : [])),
     );
@@ -134,6 +137,57 @@ function RouteComponent() {
         try {
             await Api.decks.sourcing.take(deckUuid, candidate.uuid, quantity);
             notify.success(t("toast.cards-taken", { count: quantity }));
+            await refresh();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
+     * Puts Proxies into the Physical deck for a line of the list
+     *
+     * @param slot the line they stand in for
+     * @param quantity how many to put in
+     */
+    async function putProxies(slot: string, quantity: number) {
+        setBusy(true);
+        try {
+            await Api.decks.sourcing.putProxies(deckUuid, slot, quantity);
+            notify.success(t("toast.proxies-put-in", { count: quantity }));
+            await refresh();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
+     * Replaces Proxies with real copies out of a collection
+     *
+     * @param proxy the Proxy stack
+     * @param candidate the stack the real copies come out of
+     * @param quantity how many Proxies to replace
+     */
+    async function replaceProxy(proxy: SourcedStackResponse, candidate: SourcingCandidateResponse, quantity: number) {
+        setBusy(true);
+        try {
+            await Api.decks.sourcing.replaceProxy(deckUuid, proxy.uuid, candidate.uuid, quantity);
+            notify.success(t("toast.proxies-replaced", { count: quantity }));
+            await refresh();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
+     * Throws a Proxy stack away
+     *
+     * @param proxy the Proxy stack
+     */
+    async function discardProxies(proxy: SourcedStackResponse) {
+        setBusy(true);
+        try {
+            await Api.decks.sourcing.returnCards(deckUuid, proxy.uuid, proxy.quantity);
+            notify.success(t("toast.proxies-discarded", { count: proxy.quantity }));
             await refresh();
         } finally {
             setBusy(false);
@@ -246,12 +300,43 @@ function RouteComponent() {
                                 onToggle={() => setUnfolded(unfolded === slot.uuid ? null : slot.uuid)}
                                 onTake={(_, candidate, quantity) => void take(candidate, quantity)}
                                 onBuy={(bought) => void fill(bought.uuid)}
+                                onProxy={(proxied, quantity) => void putProxies(proxied.uuid, quantity)}
                                 busy={busy}
                             />
                         ))}
                     </StackedList>
                 )}
             </section>
+
+            {proxies.length > 0 && (
+                <>
+                    <Divider />
+
+                    <section className={"flex flex-col gap-4"}>
+                        <div className={"flex flex-col gap-1"}>
+                            <Subheading>{t("heading.replace-proxies")}</Subheading>
+                            <Text>{t("description.replace-proxies")}</Text>
+                        </div>
+                        <StackedList>
+                            {proxies.map((replacement) => (
+                                <DeckProxyRow
+                                    key={replacement.proxy.uuid}
+                                    replacement={replacement}
+                                    open={unfolded === replacement.proxy.uuid}
+                                    onToggle={() =>
+                                        setUnfolded(unfolded === replacement.proxy.uuid ? null : replacement.proxy.uuid)
+                                    }
+                                    onReplace={(proxy, candidate, quantity) =>
+                                        void replaceProxy(proxy, candidate, quantity)
+                                    }
+                                    onDiscard={(proxy) => void discardProxies(proxy)}
+                                    busy={busy}
+                                />
+                            ))}
+                        </StackedList>
+                    </section>
+                </>
+            )}
 
             <Divider />
 
@@ -275,10 +360,10 @@ function RouteComponent() {
                     </div>
                 </div>
 
-                {sourcing.filed.length === 0 ? (
+                {real.length === 0 ? (
                     <Text>{t("description.physical-deck-empty")}</Text>
                 ) : (
-                    groupByOrigin(sourcing.filed).map((group) => (
+                    groupByOrigin(real).map((group) => (
                         <section key={group.origin ?? "none"} className={"flex flex-col gap-2"}>
                             <div className={"flex items-center gap-2"}>
                                 <CollectionMarker
