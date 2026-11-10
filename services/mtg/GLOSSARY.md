@@ -33,7 +33,7 @@ The record of what Admins did to Accounts: Lock, unlock, Role change, Deletion, 
 _Avoid_: audit log, history
 
 **Impersonation**:
-An Admin acting as a Member Account to debug what it sees: from its start until the Admin ends it, logs out, or one hour passes, every request of the Admin's session acts fully as the Account, with its data and rights, except for Passkeys, OIDC Enrollment, the Account's own Deletion and Rename, Bug reports and push subscriptions, which stay refused. A locked Member can be impersonated; an Admin, including the Admin itself, cannot. Kept in the Admin's session only. What the Admin does is the Account's, as if it had acted; the Admin log's start and end entries tell who acted when. The Account is not told.
+An Admin acting as a Member Account to debug what it sees: from its start until the Admin ends it, logs out, or one hour passes, every request of the Admin's session acts fully as the Account, with its data and rights, except for Passkeys, the Account's own Deletion and Rename, Bug reports and push subscriptions, which stay refused. OIDC Enrollment needs no refusal: mtg offers no route to it for a logged-in Account. A locked Member can be impersonated; an Admin, including the Admin itself, cannot. Kept in the Admin's session only, and dropped once another Account logs in to that session. What the Admin does is the Account's, as if it had acted; the Admin log's start and end entries tell who acted when. The Account is not told.
 _Avoid_: view as, sudo, ghost login, user view
 
 **Impersonation reason**:
