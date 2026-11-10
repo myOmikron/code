@@ -1,22 +1,26 @@
+import i18n from "i18next";
 import { ResponseError } from "src/api/generated";
 
 /**
- * Whether a failed request was refused because the session impersonates an Account
+ * The message for a request refused because the session impersonates an Account
  *
  * Passkeys, the Account's own Deletion and Rename, Bug reports and push subscriptions
  * answer `403` with `impersonation_active` during an Impersonation.
  *
  * @param error what the request threw
- * @returns whether it is that refusal
+ * @returns the translated message for that refusal, `undefined` for any other failure
  */
-export async function isImpersonationRefusal(error: unknown): Promise<boolean> {
-    if (!(error instanceof ResponseError) || error.response.status !== 403) return false;
+export async function impersonationRefusal(error: unknown): Promise<string | undefined> {
+    if (!(error instanceof ResponseError) || error.response.status !== 403) return undefined;
     try {
         const body: unknown = await error.response.clone().json();
-        return typeof body === "object" && body !== null && "impersonation_active" in body;
+        if (typeof body === "object" && body !== null && "impersonation_active" in body) {
+            return i18n.t("error.impersonation-active");
+        }
     } catch {
-        return false;
+        return undefined;
     }
+    return undefined;
 }
 
 /**

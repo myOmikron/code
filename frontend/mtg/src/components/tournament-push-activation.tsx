@@ -5,7 +5,7 @@ import { Api } from "src/api/api";
 import type { PushSettingsResponse } from "src/api/generated";
 import { activateTournamentPushes, deviceSubscribed, pushSupported } from "src/utils/web-push";
 import { pushLanguage } from "src/utils/web-push-data";
-import { isImpersonationRefusal } from "src/utils/error";
+import { impersonationRefusal } from "src/utils/error";
 
 /** The Participant-visible state of notification activation. */
 type ActivationState = "loading" | "offer" | "enabled" | "denied" | "unavailable" | "failed" | "refused";
@@ -17,11 +17,11 @@ type ActivationState = "loading" | "offer" | "enabled" | "denied" | "unavailable
  */
 export function TournamentPushActivation() {
     const [t, i18n] = useTranslation("tournament");
-    const [tg] = useTranslation();
     const [state, setState] = useState<ActivationState>("loading");
     const [settings, setSettings] = useState<PushSettingsResponse | null>(null);
     const [subscribed, setSubscribed] = useState(false);
     const [busy, setBusy] = useState(false);
+    const [refusal, setRefusal] = useState<string>();
     const [attempt, setAttempt] = useState(0);
 
     useEffect(() => {
@@ -76,7 +76,9 @@ export function TournamentPushActivation() {
             setState(outcome === "subscribed" ? "enabled" : outcome === "denied" ? "denied" : "failed");
             if (outcome === "subscribed") setSubscribed(true);
         } catch (error) {
-            setState((await isImpersonationRefusal(error)) ? "refused" : "failed");
+            const refused = await impersonationRefusal(error);
+            setRefusal(refused);
+            setState(refused === undefined ? "failed" : "refused");
         } finally {
             setBusy(false);
         }
@@ -94,7 +96,7 @@ export function TournamentPushActivation() {
                 {state === "unavailable" && <Text>{t("description.tournament-push-unavailable")}</Text>}
                 {state === "denied" && <Text>{t("description.tournament-push-denied")}</Text>}
                 {state === "failed" && <Text>{t("error.tournament-push-activation")}</Text>}
-                {state === "refused" && <Text>{tg("error.impersonation-active")}</Text>}
+                {state === "refused" && <Text>{refusal}</Text>}
             </div>
             {(state === "offer" || (state === "failed" && settings !== null)) && (
                 <>

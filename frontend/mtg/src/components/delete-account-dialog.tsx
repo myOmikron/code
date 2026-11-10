@@ -18,7 +18,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { InlineError } from "src/components/inline-error";
-import { isFormError, isImpersonationRefusal } from "src/utils/error";
+import { impersonationRefusal, isFormError } from "src/utils/error";
 
 /**
  * The properties for {@link DeleteAccountDialog}
@@ -71,12 +71,12 @@ export function DeleteAccountDialog({ open, username, onClose, onDeleted }: Dele
         setMessage(undefined);
 
         let mismatch = false;
-        let refused = false;
+        let refusal: string | undefined;
         try {
             await notify.promise(
                 (async () => {
                     const response = await Api.accounts.delete(typed.trim(), anonymous).catch(async (error) => {
-                        refused = await isImpersonationRefusal(error);
+                        refusal = await impersonationRefusal(error);
                         throw error;
                     });
                     if (isFormError(response)) {
@@ -91,8 +91,7 @@ export function DeleteAccountDialog({ open, username, onClose, onDeleted }: Dele
                 },
             );
         } catch {
-            if (refused) setMessage(tg("error.impersonation-active"));
-            else setMessage(mismatch ? t("error.username-mismatch") : t("error.delete-failed"));
+            setMessage(refusal ?? (mismatch ? t("error.username-mismatch") : t("error.delete-failed")));
             return;
         } finally {
             setBusy(false);
