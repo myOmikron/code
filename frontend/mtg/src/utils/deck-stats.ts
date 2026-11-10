@@ -78,7 +78,7 @@ export type DeckStats = {
     averageManaValue: number;
     /** Whether an eminence discount shaped the curve and the averages */
     eminence: boolean;
-    /** What the deck is worth today, in euro */
+    /** The List value of the deck proper today, in euro: every copy at its price, Proxies or not */
     marketValue: number;
     /** Copies the catalog has a price for */
     pricedCards: number;
@@ -228,7 +228,7 @@ export function deckStats(
         add(rarities, String(card.rarity).toLowerCase(), copies);
 
         const price = card.price_eur_cents;
-        if (price != null && !slot.proxy) {
+        if (price != null) {
             marketValueCents += price * copies;
             pricedCards += copies;
             top.push({
@@ -243,7 +243,7 @@ export function deckStats(
         for (const key of parts.tags) {
             const tally = tallyOf(perTag, key);
             tally.cards += copies;
-            tally.valueCents += slot.proxy ? 0 : (price ?? 0) * copies;
+            tally.valueCents += (price ?? 0) * copies;
             add(tally.types, type, copies);
             if (isLand) {
                 tally.lands += copies;

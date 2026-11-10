@@ -35,6 +35,7 @@ use crate::models::deck::sourcing::SourcingCandidate;
 use crate::models::deck::sourcing::SourcingSlot;
 use crate::models::deck::tag::DeckTag;
 use crate::models::deck::tag::DeckTagUuid;
+use crate::models::deck::value::DeckValue;
 use crate::models::format::BracketRules;
 use crate::models::format::ComboRule;
 use crate::models::format::CommanderRule;
@@ -366,6 +367,40 @@ impl DeckSourcingResponse {
                 .into_iter()
                 .map(SourcingCandidateResponse::from)
                 .collect(),
+        }
+    }
+}
+
+/// What a deck is worth, in euro cents
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DeckValuesResponse {
+    /// The List value: every copy the main deck, command zone, companion and
+    /// sideboard ask for at its printing's price, Proxies or not
+    pub list_value_cents: i64,
+    /// What the Physical deck holds, `null` for a deck without one
+    pub physical: Option<PhysicalDeckValueResponse>,
+}
+
+/// What the Physical deck of a deck holds
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PhysicalDeckValueResponse {
+    /// The Physical value: the real cards at their own printing's price, in euro cents
+    pub physical_value_cents: i64,
+    /// What buying the printings the Proxies stand for would cost, in euro cents
+    pub proxy_replacement_cents: i64,
+    /// How many Proxies lie in it
+    pub proxies: i64,
+}
+
+impl From<DeckValue> for DeckValuesResponse {
+    fn from(value: DeckValue) -> Self {
+        Self {
+            list_value_cents: value.list,
+            physical: value.physical.map(|physical| PhysicalDeckValueResponse {
+                physical_value_cents: physical.real,
+                proxy_replacement_cents: physical.proxy_replacement,
+                proxies: physical.proxies,
+            }),
         }
     }
 }
@@ -910,8 +945,10 @@ pub struct DeckOverviewResponse {
     pub deck: DeckResponse,
     /// How many cards sit in the deck proper, the sideboard aside
     pub cards: i64,
-    /// What those cards are worth in euro cents
+    /// What those cards are worth in euro cents, Proxies or not
     pub price_eur_cents: i64,
+    /// How many Proxies lie in the deck's Physical deck, `null` for a Viewer
+    pub proxies: Option<i64>,
     /// The commanders, in the order they were put in
     pub commanders: Vec<DeckCommanderResponse>,
 }
@@ -1104,6 +1141,7 @@ impl DeckOverviewResponse {
             deck: DeckResponse::from(deck),
             cards: summary.cards,
             price_eur_cents: summary.price_eur,
+            proxies: Some(summary.proxies),
             commanders: summary
                 .commanders
                 .into_iter()

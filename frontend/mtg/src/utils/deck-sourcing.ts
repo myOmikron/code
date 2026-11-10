@@ -145,16 +145,54 @@ function samePrinting(slot: SourcingSlotLike, stack: SourcingStackLike, exact: b
     return wanted === held;
 }
 
+/** What the catalog knows about a printing's price, absent for a printing it has not caught up with */
+export type PricedCard = {
+    /** Groups every printing of the same card */
+    oracle_id?: string | null;
+    /** What a plain copy costs, in cents */
+    price_eur_cents?: number | null;
+    /** What a foil copy costs, in cents */
+    price_eur_foil_cents?: number | null;
+} | null;
+
+/**
+ * What one copy of a printing costs
+ *
+ * A foil is priced as a foil, falling back to the plain price, the way a
+ * collection's value is.
+ *
+ * @param card what the catalog knows about the printing
+ * @param foil whether the copy is a foil
+ *
+ * @returns the price in cents, `null` without one
+ */
+function unitPrice(card: PricedCard | undefined, foil: boolean): number | null {
+    const price = foil ? (card?.price_eur_foil_cents ?? card?.price_eur_cents) : card?.price_eur_cents;
+    return price ?? null;
+}
+
+/**
+ * What buying every copy still missing from the deck would cost
+ *
+ * Each line at the price of the printing and finish the list asks for; a line
+ * the catalog has no price for adds nothing.
+ *
+ * @param rows every line of the list with its count under the current match
+ *
+ * @returns the cost in cents
+ */
+export function missingCost(
+    rows: Array<{ slot: SourcingSlotLike & { card?: PricedCard }; count: Pick<SourcingCount, "missing"> }>,
+): number {
+    return rows.reduce((sum, { slot, count }) => sum + (unitPrice(slot.card, slot.foil) ?? 0) * count.missing, 0);
+}
+
 /** The least a stack in the Physical deck has to say to be offered for replacing */
 export type ProxyStackLike = SourcingStackLike & {
     /** Whether the stack holds Proxies rather than real cards */
     proxy: boolean;
     /** What the catalog knows about the printing the Proxies stand for */
-    card?: {
-        oracle_id?: string | null;
-        price_eur_cents?: number | null;
-        price_eur_foil_cents?: number | null;
-    } | null;
+    card?: PricedCard;
 };
 
 /** One Proxy stack and what could take its place */
@@ -185,9 +223,7 @@ export function proxyReplacements<P extends ProxyStackLike, C extends SourcingSt
         .map((proxy) => {
             const foil = proxy.finish === "Foil";
             const slot: SourcingSlotLike = { ...proxy, foil };
-            const price = foil
-                ? (proxy.card?.price_eur_foil_cents ?? proxy.card?.price_eur_cents)
-                : proxy.card?.price_eur_cents;
+            const price = unitPrice(proxy.card, foil);
             return {
                 proxy,
                 candidates: candidates.filter((candidate) => fills(slot, candidate, ANY_MATCH)),

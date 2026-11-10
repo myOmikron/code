@@ -44,6 +44,16 @@ impl Default for Print<'_> {
     }
 }
 
+impl<'a> Print<'a> {
+    /// The default printing at a non-foil EUR price, as Scryfall writes it
+    pub(super) fn priced(eur: &'a str) -> Self {
+        Self {
+            eur: Some(eur),
+            ..Self::default()
+        }
+    }
+}
+
 /// A card name no other test files a printing under
 pub(super) fn unique(name: &str) -> String {
     format!("{name} {}", Uuid::new_v4().simple())

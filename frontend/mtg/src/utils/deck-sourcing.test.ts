@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countSlot, fills, groupByOrigin, proxyReplacements } from "src/utils/deck-sourcing";
+import { countSlot, fills, groupByOrigin, missingCost, proxyReplacements } from "src/utils/deck-sourcing";
 import type { SourcingMatch, SourcingSlotLike, SourcingStackLike } from "src/utils/deck-sourcing";
 
 const STRICT: SourcingMatch = { exactPrinting: true, matchFinish: true };
@@ -198,5 +198,34 @@ describe("replacing Proxies", () => {
         const rows = proxyReplacements([proxy], copies);
 
         expect(rows[0].candidates).toEqual([copies[0]]);
+    });
+});
+
+describe("pricing the missing copies", () => {
+    const priced = { oracle_id: "sol-ring", price_eur_cents: 150, price_eur_foil_cents: 900 };
+
+    it("prices every copy still to buy at the price of the printing and finish the line asks for", () => {
+        const rows = [
+            { slot: slot({ card: priced }), count: { missing: 2 } },
+            { slot: slot({ foil: true, card: priced }), count: { missing: 1 } },
+        ];
+
+        expect(missingCost(rows)).toBe(1200);
+    });
+
+    it("counts nothing for a line with nothing missing or without a price", () => {
+        const rows = [
+            { slot: slot({ card: priced }), count: { missing: 0 } },
+            { slot: slot({ card: { oracle_id: "mana-crypt" } }), count: { missing: 3 } },
+        ];
+
+        expect(missingCost(rows)).toBe(0);
+    });
+
+    it("falls back to the plain price for a foil line without a foil price", () => {
+        const plain = { oracle_id: "sol-ring", price_eur_cents: 150 };
+        const rows = [{ slot: slot({ foil: true, card: plain }), count: { missing: 2 } }];
+
+        expect(missingCost(rows)).toBe(300);
     });
 });

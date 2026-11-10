@@ -167,6 +167,8 @@ Project decisions, not printed on cards, so no source.
 | combo | die Combo | das Combo |
 | proxy | Proxy, Proxies | Proxys |
 | the cardboard really in a deck | Physisches Deck | Deck-Sammlung |
+| what a deck list costs, Proxies included | Listenwert | Deckwert (alone), Preis |
+| what the real cards in a Physical deck are worth | Physischer Wert | Besitzwert, Kartonwert |
 | extra turn | Extrazug, Extrazüge | Extra-Zug |
 
 These stay as they are, in German or English: Hauptdeck, Sideboard, Mulligan, Starthand, Ramp,

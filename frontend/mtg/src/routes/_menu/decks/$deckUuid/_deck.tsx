@@ -44,6 +44,7 @@ import { DeckDialog } from "src/components/deck-dialog";
 import { DeckDeleteDialog } from "src/components/deck-delete-dialog";
 import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
 import { DeckLeaveDialog } from "src/components/deck-leave-dialog";
+import { DeckProxyMarker } from "src/components/deck-proxy-marker";
 import { DeckRuleZeroDialog } from "src/components/deck-rule-zero-dialog";
 import { ExportDeckDialog } from "src/components/export-deck-dialog";
 import { ImportDeckDialog } from "src/components/import-deck-dialog";
@@ -52,6 +53,7 @@ import { RequireAccount } from "src/components/require-account";
 import { useChromeBare } from "src/context/chrome-context";
 import { ShareDialog } from "src/components/share-dialog";
 import { folderLabel } from "src/utils/deck-folders";
+import { formatCurrency } from "src/utils/format";
 import { commanderColors, letters, ruleZeroCount } from "src/utils/deck-rules";
 import { driftCopies } from "src/utils/deck-drift";
 import { deckCardsRoute, deckRights } from "src/utils/deck-rights";
@@ -61,11 +63,12 @@ const ACTION_RING = "ring-1 ring-zinc-950/10 dark:ring-white/15";
 
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
     loader: async ({ params }) => {
-        const [deck, offered, shelves, drift] = await Promise.all([
+        const [deck, offered, shelves, drift, values] = await Promise.all([
             Api.decks.get(params.deckUuid),
             Api.decks.formats(),
             Api.folders.list(),
             Api.decks.driftIfOwner(params.deckUuid),
+            Api.decks.valuesIfShown(params.deckUuid),
         ]);
         if (deck.role == null) {
             throw redirect({ to: "/global/decks/$deckUuid/cards", params, replace: true });
@@ -87,6 +90,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
                     : [],
             folders: shelves.folders,
             drift,
+            values,
         };
     },
     component: RouteComponent,
@@ -99,7 +103,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
  */
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
-    const { deck, formats, brackets, folders, drift } = Route.useLoaderData();
+    const { deck, formats, brackets, folders, drift, values } = Route.useLoaderData();
     const bare = useChromeBare();
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
@@ -265,6 +269,28 @@ function RouteComponent() {
                                     <Badge color={"amber"}>
                                         <ExclamationTriangleIcon className={"size-3.5"} />
                                         {t("label.drift", { count: drifted })}
+                                    </Badge>
+                                )}
+                                <DeckProxyMarker count={values?.physical?.proxies} />
+                                {values != null && (
+                                    <Badge color={"zinc"}>
+                                        <span className={"tabular-nums"}>
+                                            {t("label.header-list-value", {
+                                                value: formatCurrency(values.list_value_cents / 100),
+                                            })}
+                                        </span>
+                                        {values.physical != null && (
+                                            <>
+                                                <span aria-hidden={true}>·</span>
+                                                <span className={"tabular-nums"}>
+                                                    {t("label.header-physical-value", {
+                                                        value: formatCurrency(
+                                                            values.physical.physical_value_cents / 100,
+                                                        ),
+                                                    })}
+                                                </span>
+                                            </>
+                                        )}
                                     </Badge>
                                 )}
                                 {rights.owner ? (

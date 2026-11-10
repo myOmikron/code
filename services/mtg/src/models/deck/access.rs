@@ -105,6 +105,8 @@ pub enum DeckOperation {
     ReadSourcing,
     /// Read where the list and the Physical deck disagree
     ReadDrift,
+    /// Read what the Physical deck is worth and how many Proxies it holds
+    ReadPhysicalValue,
     /// Move copies out of a collection and into the Physical deck
     TakeCards,
     /// Record copies bought straight into the Physical deck
@@ -148,7 +150,7 @@ impl DeckOperation {
 
             // An Editor sees the Physical deck, so its list edits can be
             // weighed against what the owner built; a Viewer does not.
-            Self::ReadDrift => DeckClass::Edit,
+            Self::ReadDrift | Self::ReadPhysicalValue => DeckClass::Edit,
 
             Self::SetVisibility
             | Self::RotateShareToken

@@ -2571,9 +2571,13 @@ export interface DeckOverviewResponse {
      */
     deck: DeckResponse;
     /**
-     * What those cards are worth in euro cents
+     * What those cards are worth in euro cents, Proxies or not
      */
     price_eur_cents: number;
+    /**
+     * How many Proxies lie in the deck's Physical deck, `null` for a Viewer
+     */
+    proxies?: number | null;
 }
 /**
  * The Account owning a deck
@@ -2926,6 +2930,21 @@ export interface DeckUndoResponse {
      * Whether there is a Deck change to undo
      */
     can_undo: boolean;
+}
+/**
+ * What a deck is worth, in euro cents
+ * @export
+ * @interface DeckValuesResponse
+ */
+export interface DeckValuesResponse {
+    /**
+     * The List value: every copy the main deck, command zone, companion and sideboard ask for at its printing's price, Proxies or not
+     */
+    list_value_cents: number;
+    /**
+     * What the Physical deck holds, `null` for a deck without one
+     */
+    physical?: PhysicalDeckValueResponse | null;
 }
 
 /**
@@ -5681,6 +5700,25 @@ export interface PendingOidcLogin {
      * The display name of the provider that vouched for the person
      */
     provider: string;
+}
+/**
+ * What the Physical deck of a deck holds
+ * @export
+ * @interface PhysicalDeckValueResponse
+ */
+export interface PhysicalDeckValueResponse {
+    /**
+     * The Physical value: the real cards at their own printing's price, in euro cents
+     */
+    physical_value_cents: number;
+    /**
+     * How many Proxies lie in it
+     */
+    proxies: number;
+    /**
+     * What buying the printings the Proxies stand for would cost, in euro cents
+     */
+    proxy_replacement_cents: number;
 }
 /**
  * What one card cost on one day

@@ -23,20 +23,21 @@ import { DeckInventoryRow } from "src/components/deck-inventory-row";
 import { DeckProxyRow } from "src/components/deck-proxy-row";
 import { DeckSourcingSlot } from "src/components/deck-sourcing-slot";
 import { DeckWantsDialog } from "src/components/deck-wants-dialog";
-import { countSlot, groupByOrigin, proxyReplacements } from "src/utils/deck-sourcing";
+import { countSlot, groupByOrigin, missingCost, proxyReplacements } from "src/utils/deck-sourcing";
 import type { SourcingMatch } from "src/utils/deck-sourcing";
 import { formatCurrency } from "src/utils/format";
 
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/sourcing")({
-    // All three at once: they do not depend on each other, and awaited in turn
-    // they would put three round trips between the tap and the page.
+    // All four at once: they do not depend on each other, and awaited in turn
+    // they would put four round trips between the tap and the page.
     loader: async ({ params }) => {
-        const [sourcing, collections, drift] = await Promise.all([
+        const [sourcing, collections, drift, values] = await Promise.all([
             Api.decks.sourcing.read(params.deckUuid),
             Api.collections.list(),
             Api.decks.drift(params.deckUuid),
+            Api.decks.values(params.deckUuid),
         ]);
-        return { sourcing, collections, drift };
+        return { sourcing, collections, drift, values };
     },
     component: RouteComponent,
 });
@@ -53,7 +54,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/sourcing")({
 function RouteComponent() {
     const [t] = useTranslation("collection");
     const { deckUuid } = Route.useParams();
-    const { sourcing, collections, drift } = Route.useLoaderData();
+    const { sourcing, collections, drift, values } = Route.useLoaderData();
     const { deck } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
     const router = useRouter();
     // Both on to start with: the strict reading is the one that tells the truth
@@ -94,11 +95,7 @@ function RouteComponent() {
         missing: count.missing,
         available: Math.min(count.available, Math.max(0, count.needed - count.filed)),
     }));
-    const bill = counted.reduce((sum, row) => {
-        const card = row.slot.card;
-        const price = row.slot.foil ? (card?.price_eur_foil_cents ?? card?.price_eur_cents) : card?.price_eur_cents;
-        return sum + (price ?? 0) * row.count.missing;
-    }, 0);
+    const bill = missingCost(counted);
 
     /**
      * Reloads the page after a move, so both sides of it are the server's word
@@ -245,6 +242,21 @@ function RouteComponent() {
                         <Subheading>{t("heading.sourcing")}</Subheading>
                         <Text>{t("description.sourcing")}</Text>
                         <Text className={"flex flex-wrap items-center gap-x-2 gap-y-1"}>
+                            <span className={"tabular-nums"}>
+                                {t("label.list-value", { value: formatCurrency(values.list_value_cents / 100) })}
+                            </span>
+                            {values.physical != null && (
+                                <>
+                                    <span aria-hidden={true}>·</span>
+                                    <span className={"tabular-nums"}>
+                                        {t("label.physical-value", {
+                                            value: formatCurrency(values.physical.physical_value_cents / 100),
+                                        })}
+                                    </span>
+                                </>
+                            )}
+                        </Text>
+                        <Text className={"flex flex-wrap items-center gap-x-2 gap-y-1"}>
                             <span className={"tabular-nums"}>{t("label.sourced", { filed, needed })}</span>
                             {missing > 0 && (
                                 <>
@@ -316,6 +328,13 @@ function RouteComponent() {
                         <div className={"flex flex-col gap-1"}>
                             <Subheading>{t("heading.replace-proxies")}</Subheading>
                             <Text>{t("description.replace-proxies")}</Text>
+                            {values.physical != null && values.physical.proxy_replacement_cents > 0 && (
+                                <Text className={"tabular-nums"}>
+                                    {t("label.replacement-cost", {
+                                        value: formatCurrency(values.physical.proxy_replacement_cents / 100),
+                                    })}
+                                </Text>
+                            )}
                         </div>
                         <StackedList>
                             {proxies.map((replacement) => (

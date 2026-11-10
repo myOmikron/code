@@ -26,6 +26,7 @@ use crate::http::handler_frontend::decks::schema::DeckOverviewResponse;
 use crate::http::handler_frontend::decks::schema::DeckResponse;
 use crate::http::handler_frontend::decks::schema::DeckSourcingResponse;
 use crate::http::handler_frontend::decks::schema::DeckTagResponse;
+use crate::http::handler_frontend::decks::schema::DeckValuesResponse;
 use crate::http::handler_frontend::decks::schema::FillDeckCollectionRequest;
 use crate::http::handler_frontend::decks::schema::FillDeckCollectionResponse;
 use crate::http::handler_frontend::decks::schema::FormatRulesResponse;
@@ -89,6 +90,7 @@ use crate::models::deck::sourcing::DeckSourcing;
 use crate::models::deck::tag::DeckTag;
 use crate::models::deck::tag::DeckTagInsert;
 use crate::models::deck::tag::DeckTagUuid;
+use crate::models::deck::value::DeckValue;
 use crate::models::format::BRACKETS;
 use crate::models::format::FORMAT_RULES;
 use crate::models::format::has_brackets;
@@ -182,6 +184,41 @@ pub async fn get_deck_collection_drift(
     tx.commit().await?;
 
     Ok(ApiJson(DeckDriftResponse::new(drift, collection.is_some())))
+}
+
+/// What the deck's list costs, what its Physical deck is worth and what
+/// replacing its Proxies would cost
+///
+/// An Editor reads it too, as it reads the Deviation; a Viewer sees nothing of
+/// the Physical deck.
+#[get("/{deck}/values")]
+pub async fn get_deck_values(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+) -> ApiResult<ApiJson<DeckValuesResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::ReadPhysicalValue,
+        )
+        .await?,
+    )?;
+
+    let collection = Deck::collection(&mut tx, deck_uuid).await?;
+    let value = DeckValue::read(
+        &mut tx,
+        deck_uuid,
+        collection.as_ref().map(|collection| collection.uuid),
+    )
+    .await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(DeckValuesResponse::from(value)))
 }
 
 /// Move copies out of a collection and into the Physical deck

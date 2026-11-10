@@ -90,6 +90,7 @@ All URIs are relative to *http://localhost*
 | [**getDeckHistory**](DefaultApi.md#getdeckhistory) | **GET** /api/frontend/v1/decks/{deck}/history | A deck\&#39;s Deck history, newest first |
 | [**getDeckPoint**](DefaultApi.md#getdeckpoint) | **GET** /api/frontend/v1/decks/{deck}/history/{change} | The deck as it was right after one of its Deck changes, read-only |
 | [**getDeckSourcing**](DefaultApi.md#getdecksourcing) | **GET** /api/frontend/v1/decks/{deck}/sourcing | What the deck asks for, what is in it, and where the rest could come from |
+| [**getDeckValues**](DefaultApi.md#getdeckvalues) | **GET** /api/frontend/v1/decks/{deck}/values | What the deck\&#39;s list costs, what its Physical deck is worth and what |
 | [**getDecksSharedWithMe**](DefaultApi.md#getdeckssharedwithme) | **GET** /api/frontend/v1/decks/shared-with-me | The decks other Accounts named the caller on, alphabetically by name |
 | [**getMatchLifeConflict**](DefaultApi.md#getmatchlifeconflict) | **GET** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/conflicts/{conflict} | Reads one recovered branch without applying it to the Match. |
 | [**getMatchLifeHistory**](DefaultApi.md#getmatchlifehistory) | **GET** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history | Observe uploaded history without claiming the recording device. |
@@ -6297,6 +6298,76 @@ example().catch(console.error);
 ### Return type
 
 [**DeckSourcingResponse**](DeckSourcingResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getDeckValues
+
+> DeckValuesResponse getDeckValues(deck)
+
+What the deck\&#39;s list costs, what its Physical deck is worth and what
+
+What the deck\&#39;s list costs, what its Physical deck is worth and what replacing its Proxies would cost  An Editor reads it too, as it reads the Deviation; a Viewer sees nothing of the Physical deck.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetDeckValuesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetDeckValuesRequest;
+
+  try {
+    const data = await api.getDeckValues(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**DeckValuesResponse**](DeckValuesResponse.md)
 
 ### Authorization
 

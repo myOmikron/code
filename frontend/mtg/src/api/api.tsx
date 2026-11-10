@@ -357,6 +357,11 @@ export const Api = {
         // Editors read it; a Viewer gets the missing-deck answer.
         drift: async (deck: UUID) => handleError(defaultApi.getDeckCollectionDrift({ deck })),
         driftIfOwner: async (deck: UUID) => orGone(defaultApi.getDeckCollectionDrift({ deck })),
+        // The List value, and what the Physical deck is worth and how many
+        // Proxies it holds. The owner and Editors read it; a Viewer gets the
+        // missing-deck answer, which `valuesIfShown` turns into `null`.
+        values: async (deck: UUID) => handleError(defaultApi.getDeckValues({ deck })),
+        valuesIfShown: async (deck: UUID) => orGone(defaultApi.getDeckValues({ deck })),
         sourcing: {
             // What the deck asks for, what is in it, and where the rest could
             // come from — three flat lists the client matches up itself.
