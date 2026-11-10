@@ -8954,7 +8954,7 @@
         "/api/frontend/v1/scanner-sessions/{session}/file": {
             "post": {
                 "summary": "Atomically file every staged stack and empty the session",
-                "description": "Atomically file every staged stack and empty the session",
+                "description": "Atomically file every staged stack and empty the session\n\nThe target is a collection or one of the account's own decks, whose\nPhysical deck is created if missing; cards filed into a deck have no origin.\nOnly a collection becomes the session's preferred destination.",
                 "operationId": "file_scanner_session",
                 "parameters": [
                     {
@@ -19893,7 +19893,7 @@
                 ]
             },
             "FileScannerSessionRequest": {
-                "description": "File a session's staging area into a collection",
+                "description": "File a session's staging area into a collection or a deck's Physical deck",
                 "type": "object",
                 "properties": {
                     "collection": {
@@ -19904,6 +19904,15 @@
                                 "$ref": "#/components/schemas/CollectionUuid"
                             }
                         ]
+                    },
+                    "deck": {
+                        "nullable": true,
+                        "description": "One of the account's own decks whose Physical deck takes the cards instead of a collection; excludes `collection`",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckUuid"
+                            }
+                        ]
                     }
                 }
             },
@@ -19912,7 +19921,8 @@
                 "type": "object",
                 "properties": {
                     "collection": {
-                        "description": "Destination collection",
+                        "nullable": true,
+                        "description": "Destination collection, `None` when filed into a deck",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/CollectionUuid"
@@ -19924,6 +19934,15 @@
                         "type": "integer",
                         "format": "int64"
                     },
+                    "deck": {
+                        "nullable": true,
+                        "description": "Destination deck, `None` when filed into a collection",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckUuid"
+                            }
+                        ]
+                    },
                     "stacks": {
                         "description": "Distinct stacks filed",
                         "type": "integer",
@@ -19931,7 +19950,6 @@
                     }
                 },
                 "required": [
-                    "collection",
                     "copies",
                     "stacks"
                 ]

@@ -185,6 +185,44 @@ fn filed(sourcing: &Value) -> Vec<Value> {
     sourcing["filed"].as_array().expect("filed list").clone()
 }
 
+/// A scanner session of the client's with one staged stack, answering its uuid
+async fn scanned(client: &mut TestClient, printing: Uuid, quantity: i32) -> String {
+    let body = client
+        .json(
+            Method::POST,
+            &api("scanner-sessions"),
+            &json!({ "name": "Deck box", "color": "red", "icon": "box", "collection": null }),
+        )
+        .await
+        .ok_json();
+    let session = body["uuid"].as_str().expect("session uuid").to_string();
+    client
+        .json(
+            Method::POST,
+            &api(&format!("scanner-sessions/{session}/entries")),
+            &json!({
+                "printing": printing,
+                "quantity": quantity,
+                "finish": "Nonfoil",
+                "purchase_price_cents": null,
+            }),
+        )
+        .await
+        .ok_json();
+    session
+}
+
+/// Files a scanner session into a deck's Physical deck
+async fn file_into_deck(client: &mut TestClient, session: &str, deck: &str) -> TestResponse {
+    client
+        .json(
+            Method::POST,
+            &api(&format!("scanner-sessions/{session}/file")),
+            &json!({ "collection": null, "deck": deck }),
+        )
+        .await
+}
+
 #[test]
 fn a_deck_nobody_put_a_card_into_has_no_physical_deck() {
     run(async {
@@ -929,5 +967,103 @@ fn replacing_more_proxies_than_there_are_changes_nothing() {
         assert_eq!(refused.status, StatusCode::BAD_REQUEST, "{refused:?}");
         assert_eq!(filed(&fixture.sourcing().await), filed(&before));
         assert_eq!(fixture.held(&binder, printing).await, 3);
+    });
+}
+
+#[test]
+fn filing_a_scanner_session_into_an_unbuilt_deck_creates_its_physical_deck() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        fixture.add(printing, 2).await;
+        let session = scanned(&mut fixture.owner, printing, 2).await;
+
+        let answer = file_into_deck(&mut fixture.owner, &session, &fixture.deck)
+            .await
+            .ok_json();
+
+        assert_eq!(answer["copies"], 2, "{answer}");
+        assert_eq!(answer["deck"], json!(fixture.deck), "{answer}");
+        let sourcing = fixture.sourcing().await;
+        assert_ne!(sourcing["physical_deck"], Value::Null, "{sourcing}");
+        let filed = filed(&sourcing);
+        assert_eq!(filed.len(), 1, "{filed:?}");
+        assert_eq!(filed[0]["printing"], json!(printing));
+        assert_eq!(filed[0]["quantity"], 2);
+        assert_eq!(filed[0]["origin"], Value::Null);
+    });
+}
+
+#[test]
+fn filing_a_scanner_session_into_a_built_deck_adds_to_its_physical_deck() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let taken = Uuid::new_v4();
+        let printing = Uuid::new_v4();
+        fixture.add(taken, 1).await;
+        fixture.add(printing, 3).await;
+        let binder = fixture.collection("Binder").await;
+        let stack = fixture.file(&binder, taken, 1).await;
+        fixture.take(&stack, 1).await.ok_json();
+        let physical_deck = fixture.sourcing().await["physical_deck"].clone();
+        let session = scanned(&mut fixture.owner, printing, 3).await;
+
+        file_into_deck(&mut fixture.owner, &session, &fixture.deck)
+            .await
+            .ok_json();
+
+        let sourcing = fixture.sourcing().await;
+        assert_eq!(sourcing["physical_deck"], physical_deck, "{sourcing}");
+        let filed = filed(&sourcing);
+        assert_eq!(filed.len(), 2, "{filed:?}");
+        let scanned = filed
+            .iter()
+            .find(|stack| stack["printing"] == json!(printing))
+            .expect("the scanned stack");
+        assert_eq!(scanned["quantity"], 3);
+        assert_eq!(scanned["origin"], Value::Null);
+        let session = fixture
+            .owner
+            .get(&api(&format!("scanner-sessions/{session}")))
+            .await
+            .ok_json();
+        assert!(
+            session["entries"].as_array().expect("entries").is_empty(),
+            "{session}"
+        );
+    });
+}
+
+#[test]
+fn a_scanner_session_is_not_filed_into_a_deck_the_account_only_edits() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        fixture.add(printing, 1).await;
+        let editor = create_account(Role::Member).await;
+        fixture
+            .send(
+                Method::PUT,
+                "collaborators",
+                json!({ "username": editor.username, "level": "Editor" }),
+            )
+            .await
+            .ok_json();
+        let mut editor = TestClient::logged_in(&editor).await;
+        let session = scanned(&mut editor, printing, 1).await;
+
+        let refused = file_into_deck(&mut editor, &session, &fixture.deck).await;
+        let gone = file_into_deck(&mut editor, &session, &Uuid::new_v4().to_string()).await;
+
+        assert_ne!(refused.status, StatusCode::OK, "{refused:?}");
+        assert_eq!(refused.status, gone.status, "{refused:?}");
+        assert_eq!(refused.body, gone.body, "{refused:?}");
+        let sourcing = fixture.sourcing().await;
+        assert_eq!(sourcing["physical_deck"], Value::Null, "{sourcing}");
+        let session = editor
+            .get(&api(&format!("scanner-sessions/{session}")))
+            .await
+            .ok_json();
+        assert_eq!(session["session"]["copies"], 1, "{session}");
     });
 }

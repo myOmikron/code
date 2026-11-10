@@ -9,6 +9,7 @@ Name | Type
 ------------ | -------------
 `collection` | string
 `copies` | number
+`deck` | string
 `stacks` | number
 
 

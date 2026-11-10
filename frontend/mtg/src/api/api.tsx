@@ -65,6 +65,9 @@ import {
 /** Hyphen separated uuid */
 export type UUID = string;
 
+/** Where a scanner session's cards go: a collection (`null` for the session's own choice) or a deck's Physical deck */
+export type FilingTarget = { collection: UUID | null } | { deck: UUID };
+
 const configuration = new Configuration({
     basePath: window.location.origin,
     middleware: [DIAGNOSTICS.middleware],
@@ -494,10 +497,10 @@ export const Api = {
             handleError(defaultApi.updateScannerSession({ session, UpdateScannerSessionRequest: req })),
         // Takes the staging area with it, never the cards already filed.
         delete: async (session: UUID) => handleError(defaultApi.deleteScannerSession({ session })),
-        // Files every staged stack into a collection and empties the session,
-        // both inside one transaction. `null` uses the session's own choice.
-        file: async (session: UUID, collection: UUID | null) =>
-            handleError(defaultApi.fileScannerSession({ session, FileScannerSessionRequest: { collection } })),
+        // Files every staged stack into a collection or a deck's Physical deck and
+        // empties the session, both inside one transaction.
+        file: async (session: UUID, target: FilingTarget) =>
+            handleError(defaultApi.fileScannerSession({ session, FileScannerSessionRequest: target })),
         entries: {
             add: async (session: UUID, req: AddScannerSessionEntryRequest) =>
                 handleError(defaultApi.addScannerSessionEntry({ session, AddScannerSessionEntryRequest: req })),

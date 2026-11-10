@@ -16,15 +16,18 @@
     "description": {
         "destination": "Wohin diese Session einsortiert wird. Beim Einsortieren kannst du das noch ändern.",
         "empty": "Erkannte Karten sammeln sich hier, bis du sie einsortierst.",
-        "file-into_one": "{{amount}} Karte wandert in die gewählte Sammlung, die Ablage wird geleert.",
-        "file-into_other": "{{amount}} Karten wandern in die gewählte Sammlung, die Ablage wird geleert.",
+        "file-into-deck": "Für ein Deck, das du schon gebaut hast: Die Karten kommen in sein Physisches Deck, das bei Bedarf angelegt wird. Sie stammen dann aus keiner Sammlung.",
+        "file-into_one": "{{amount}} Karte wandert in die gewählte Sammlung oder das gewählte Deck, die Ablage wird geleert.",
+        "file-into_other": "{{amount}} Karten wandern in die gewählte Sammlung oder das gewählte Deck, die Ablage wird geleert.",
         "no-collections": "Du hast noch keine Sammlung. Leg eine an, dann kannst du hier einsortieren.",
         "nothing-staged": "Noch nichts gescannt.",
         "sessions": "Eine Ablage ist eine Kiste auf dem Tisch: gescannte Karten sammeln sich darin, bis du sie in eine Sammlung einsortierst."
     },
     "heading": {
+        "collections": "Sammlungen",
+        "decks": "Decks",
         "edit-session": "Session bearbeiten",
-        "file-into": "In Sammlung einsortieren",
+        "file-into": "Karten einsortieren",
         "new-session": "Neue Session",
         "staging": "Ablage"
     },
@@ -53,6 +56,8 @@
         "unsynced_other": "{{amount}} Karten warten noch auf den Server"
     },
     "toast": {
+        "filed-deck_one": "{{amount}} Karte ins Physische Deck von „{{name}}“ einsortiert",
+        "filed-deck_other": "{{amount}} Karten ins Physische Deck von „{{name}}“ einsortiert",
         "filed_one": "{{amount}} Karte nach „{{name}}“ einsortiert",
         "filed_other": "{{amount}} Karten nach „{{name}}“ einsortiert"
     }

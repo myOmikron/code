@@ -3425,7 +3425,7 @@ export const FieldDifferenceOneOf8FieldEnum = {
 export type FieldDifferenceOneOf8FieldEnum = typeof FieldDifferenceOneOf8FieldEnum[keyof typeof FieldDifferenceOneOf8FieldEnum];
 
 /**
- * File a session's staging area into a collection
+ * File a session's staging area into a collection or a deck's Physical deck
  * @export
  * @interface FileScannerSessionRequest
  */
@@ -3434,6 +3434,10 @@ export interface FileScannerSessionRequest {
      * Destination; omitted to use the session's preferred collection
      */
     collection?: string | null;
+    /**
+     * One of the account's own decks whose Physical deck takes the cards instead of a collection; excludes `collection`
+     */
+    deck?: string | null;
 }
 /**
  * Result of filing and clearing a staging area
@@ -3442,13 +3446,17 @@ export interface FileScannerSessionRequest {
  */
 export interface FileScannerSessionResponse {
     /**
-     * Destination collection
+     * Destination collection, `None` when filed into a deck
      */
-    collection: string;
+    collection?: string | null;
     /**
      * Copies filed
      */
     copies: number;
+    /**
+     * Destination deck, `None` when filed into a collection
+     */
+    deck?: string | null;
     /**
      * Distinct stacks filed
      */

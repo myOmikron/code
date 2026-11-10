@@ -4682,7 +4682,7 @@ No authorization required
 
 Atomically file every staged stack and empty the session
 
-Atomically file every staged stack and empty the session
+Atomically file every staged stack and empty the session  The target is a collection or one of the account\&#39;s own decks, whose Physical deck is created if missing; cards filed into a deck have no origin. Only a collection becomes the session\&#39;s preferred destination.
 
 ### Example
 

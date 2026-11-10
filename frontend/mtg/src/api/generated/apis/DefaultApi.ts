@@ -5492,7 +5492,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Atomically file every staged stack and empty the session
+     * Atomically file every staged stack and empty the session  The target is a collection or one of the account\'s own decks, whose Physical deck is created if missing; cards filed into a deck have no origin. Only a collection becomes the session\'s preferred destination.
      * Atomically file every staged stack and empty the session
      */
     async fileScannerSessionRaw(requestParameters: FileScannerSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FileScannerSessionResponse>> {
@@ -5503,7 +5503,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Atomically file every staged stack and empty the session
+     * Atomically file every staged stack and empty the session  The target is a collection or one of the account\'s own decks, whose Physical deck is created if missing; cards filed into a deck have no origin. Only a collection becomes the session\'s preferred destination.
      * Atomically file every staged stack and empty the session
      */
     async fileScannerSession(requestParameters: FileScannerSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FileScannerSessionResponse> {
