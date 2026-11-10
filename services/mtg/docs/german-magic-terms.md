@@ -166,6 +166,7 @@ Project decisions, not printed on cards, so no source.
 | shock land | Shockland | Schock-Land |
 | combo | die Combo | das Combo |
 | proxy | Proxy, Proxies | Proxys |
+| the cardboard really in a deck | Physisches Deck | Deck-Sammlung |
 | extra turn | Extrazug, Extrazüge | Extra-Zug |
 
 These stay as they are, in German or English: Hauptdeck, Sideboard, Mulligan, Starthand, Ramp,

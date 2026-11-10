@@ -36,7 +36,7 @@ export type DriftSection = {
  * @returns one section per reason that applies to at least one card
  */
 export function driftSections(drift: DeckDriftResponse): Array<DriftSection> {
-    if (!drift.keeps_collection) return [];
+    if (!drift.has_physical_deck) return [];
     return DRIFT_KINDS.flatMap((kind) => {
         const rows = rowsOf(drift, kind);
         if (rows.length === 0) return [];

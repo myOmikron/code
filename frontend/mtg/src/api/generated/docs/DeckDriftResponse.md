@@ -7,7 +7,7 @@ Where the deck list and the cardboard filed under it disagree  Every list empty 
 
 Name | Type
 ------------ | -------------
-`keeps_collection` | boolean
+`has_physical_deck` | boolean
 `not_in_deck` | [Array&lt;DeckDriftRowResponse&gt;](DeckDriftRowResponse.md)
 `other_printing` | [Array&lt;DeckDriftRowResponse&gt;](DeckDriftRowResponse.md)
 `pending` | [Array&lt;DeckDriftRowResponse&gt;](DeckDriftRowResponse.md)

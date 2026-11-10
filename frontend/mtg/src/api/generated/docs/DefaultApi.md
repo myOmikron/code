@@ -33,7 +33,6 @@ All URIs are relative to *http://localhost*
 | [**arrangeTournamentRound**](DefaultApi.md#arrangetournamentround) | **PUT** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/layout | Lay out a previewed Round by hand, as an Organizer |
 | [**assignCollectionEntryTag**](DefaultApi.md#assigncollectionentrytag) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Put a card-wide tag on a stack |
 | [**assignDeckCardTag**](DefaultApi.md#assigndeckcardtag) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Put a tag on a card |
-| [**attachDeckCollection**](DefaultApi.md#attachdeckcollection) | **POST** /api/frontend/v1/decks/{deck}/collection | Start keeping the cards that are physically in this deck |
 | [**cancelTournament**](DefaultApi.md#canceltournament) | **POST** /api/frontend/v1/tournaments/{tournament}/cancel | Cancel a Tournament, as an Organizer |
 | [**captureMatchLifeConflict**](DefaultApi.md#capturematchlifeconflictoperation) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/conflicts | Preserves all recovered old-device changes as an independent authorized artifact. |
 | [**checkInTournamentParticipants**](DefaultApi.md#checkintournamentparticipants) | **POST** /api/frontend/v1/tournaments/{tournament}/participants/check-in | Check in every Participant that plays on, as an Organizer |
@@ -63,7 +62,6 @@ All URIs are relative to *http://localhost*
 | [**deleteTournament**](DefaultApi.md#deletetournament) | **DELETE** /api/frontend/v1/tournaments/{tournament} | Delete a Tournament and everything in it, as its Owner |
 | [**deleteWatchList**](DefaultApi.md#deletewatchlist) | **DELETE** /api/frontend/v1/watch-lists/{list} | Throw a watch list away, taking every entry on it with it |
 | [**deleteWatchListEntry**](DefaultApi.md#deletewatchlistentry) | **DELETE** /api/frontend/v1/watch-lists/{list}/entries/{entry} | Take a card off a watch list |
-| [**detachDeckCollection**](DefaultApi.md#detachdeckcollection) | **DELETE** /api/frontend/v1/decks/{deck}/collection | Stop keeping them |
 | [**discardTournamentRound**](DefaultApi.md#discardtournamentround) | **DELETE** /api/frontend/v1/tournaments/{tournament}/rounds/{number} | Throw a previewed Round away, as an Organizer, to pair it again |
 | [**disputeTournamentMatchResult**](DefaultApi.md#disputetournamentmatchresult) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/dispute | Dispute the Result another Participant reported for one\&#39;s own Match |
 | [**dropOutOfTournament**](DefaultApi.md#dropoutoftournament) | **POST** /api/frontend/v1/tournaments/{tournament}/drop | Drop the logged-in Account out of a Tournament it plays in |
@@ -89,7 +87,7 @@ All URIs are relative to *http://localhost*
 | [**getCollectionStatistics**](DefaultApi.md#getcollectionstatistics) | **GET** /api/frontend/v1/collections/{collection}/statistics |  |
 | [**getDeck**](DefaultApi.md#getdeck) | **GET** /api/frontend/v1/decks/{deck} | Fetch a single deck, with the caller\&#39;s role on it |
 | [**getDeckAdvisorSettings**](DefaultApi.md#getdeckadvisorsettings) | **GET** /api/frontend/v1/decks/{deck}/advisor-settings | Read this deck\&#39;s advisor settings |
-| [**getDeckCollectionDrift**](DefaultApi.md#getdeckcollectiondrift) | **GET** /api/frontend/v1/decks/{deck}/collection/drift | Where the deck list and the deck\&#39;s own collection disagree |
+| [**getDeckCollectionDrift**](DefaultApi.md#getdeckcollectiondrift) | **GET** /api/frontend/v1/decks/{deck}/collection/drift | Where the deck list and the Physical deck disagree |
 | [**getDeckFormats**](DefaultApi.md#getdeckformats) | **GET** /api/frontend/v1/decks/formats | What the offered formats ask of a deck |
 | [**getDeckHistory**](DefaultApi.md#getdeckhistory) | **GET** /api/frontend/v1/decks/{deck}/history | A deck\&#39;s Deck history, newest first |
 | [**getDeckPoint**](DefaultApi.md#getdeckpoint) | **GET** /api/frontend/v1/decks/{deck}/history/{change} | The deck as it was right after one of its Deck changes, read-only |
@@ -172,8 +170,7 @@ All URIs are relative to *http://localhost*
 | [**reportTournamentMatchResult**](DefaultApi.md#reporttournamentmatchresult) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/report | Report the Result of one\&#39;s own Match, as its Participant |
 | [**resetDeck**](DefaultApi.md#resetdeck) | **POST** /api/frontend/v1/decks/{deck}/history/{change}/reset | Bring the deck back to how it was right after one of its Deck changes |
 | [**resolvePrintings**](DefaultApi.md#resolveprintingsoperation) | **POST** /api/frontend/v1/printings/resolve | Place cards in the catalog |
-| [**returnAllDeckCards**](DefaultApi.md#returnalldeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/return-all | Sort everything in the deck back where it came from |
-| [**returnDeckCards**](DefaultApi.md#returndeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/return | Sort copies out of the deck back into a collection |
+| [**returnDeckCards**](DefaultApi.md#returndeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/return | Sort copies out of the Physical deck back into a collection |
 | [**rotateDeckShareToken**](DefaultApi.md#rotatedecksharetoken) | **POST** /api/frontend/v1/decks/{deck}/share-token | Mint a fresh secret for a deck\&#39;s share link |
 | [**rotateShareToken**](DefaultApi.md#rotatesharetoken) | **POST** /api/frontend/v1/collections/{collection}/share-token | Mint a fresh secret for a collection\&#39;s share link |
 | [**saveMatchLifeHistory**](DefaultApi.md#savematchlifehistory) | **PUT** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history | Upload history using only the active recording Account, device and private capability. |
@@ -209,8 +206,9 @@ All URIs are relative to *http://localhost*
 | [**startTournamentRound**](DefaultApi.md#starttournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/start | Start a previewed Round, as an Organizer: from now on everybody sees it |
 | [**subscribePushDevice**](DefaultApi.md#subscribepushdeviceoperation) | **POST** /api/frontend/v1/accounts/me/push/devices | Subscribe this device to the logged-in account\&#39;s pushes |
 | [**swapDeckCard**](DefaultApi.md#swapdeckcardoperation) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/swap | Give up copies of a Deck entry for another card in the same zone |
+| [**takeApartPhysicalDeck**](DefaultApi.md#takeapartphysicaldeckoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/take-apart | Take the Physical deck apart |
 | [**takeBackTournamentRound**](DefaultApi.md#takebacktournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/take-back | Take back the latest ended Round, as an Organizer: it runs again |
-| [**takeDeckCards**](DefaultApi.md#takedeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/take | Move copies out of a collection and into the deck |
+| [**takeDeckCards**](DefaultApi.md#takedeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/take | Move copies out of a collection and into the Physical deck |
 | [**takeoverMatchLifeHistory**](DefaultApi.md#takeovermatchlifehistory) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/takeover | Explicitly take over the confirmed latest saved state while online. |
 | [**unassignCollectionEntryTag**](DefaultApi.md#unassigncollectionentrytag) | **DELETE** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Take a card-wide tag off a stack, see [&#x60;assign_collection_entry_tag&#x60;] |
 | [**unassignDeckCardTag**](DefaultApi.md#unassigndeckcardtag) | **DELETE** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Take a tag off a card |
@@ -2338,76 +2336,6 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## attachDeckCollection
-
-> CollectionResponse attachDeckCollection(deck)
-
-Start keeping the cards that are physically in this deck
-
-Start keeping the cards that are physically in this deck  The deck gets a collection of its own. Idempotent, so the client can call it without first asking whether there already is one.
-
-### Example
-
-```ts
-import {
-  Configuration,
-  DefaultApi,
-} from '';
-import type { AttachDeckCollectionRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new DefaultApi();
-
-  const body = {
-    // string
-    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-  } satisfies AttachDeckCollectionRequest;
-
-  try {
-    const data = await api.attachDeckCollection(body);
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **deck** | `string` |  | [Defaults to `undefined`] |
-
-### Return type
-
-[**CollectionResponse**](CollectionResponse.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: `application/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** |  |  -  |
-| **400** |  |  -  |
-| **500** |  |  -  |
-| **401** |  |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
 ## cancelTournament
 
 > any cancelTournament(tournament)
@@ -4464,76 +4392,6 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## detachDeckCollection
-
-> any detachDeckCollection(deck)
-
-Stop keeping them
-
-Stop keeping them  Refused while cards are still filed in it: they would otherwise leave the account\&#39;s inventory without anybody saying where they went.
-
-### Example
-
-```ts
-import {
-  Configuration,
-  DefaultApi,
-} from '';
-import type { DetachDeckCollectionRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new DefaultApi();
-
-  const body = {
-    // string
-    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-  } satisfies DetachDeckCollectionRequest;
-
-  try {
-    const data = await api.detachDeckCollection(body);
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **deck** | `string` |  | [Defaults to `undefined`] |
-
-### Return type
-
-**any**
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: `application/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** |  |  -  |
-| **400** |  |  -  |
-| **500** |  |  -  |
-| **401** |  |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
 ## discardTournamentRound
 
 > FormErrorResponseForRoundErrors discardTournamentRound(tournament, number)
@@ -5037,7 +4895,7 @@ No authorization required
 
 Declare that the deck holds what its list asks for
 
-Declare that the deck holds what its list asks for  Two things at once, because they are the same thing at different sizes: the way in for a deck that arrived from somewhere else, where the list is already right and saying so one card at a time would be an afternoon\&#39;s work, and the answer to \&quot;I bought that one\&quot; for a single slot.  The slots are topped up to what they ask for, in the printing and finish they name, as near mint and without an origin: nothing was taken out of a collection, so there is nowhere to put it back. Sorting them into one later is the same return call with a target.
+Declare that the deck holds what its list asks for  Two things at once, because they are the same thing at different sizes: the way in for a deck that arrived from somewhere else, where the list is already right and saying so one card at a time would be an afternoon\&#39;s work, and the answer to \&quot;I bought that one\&quot; for a single slot.  The slots are topped up to what they ask for, in the printing and finish they name, as near mint and without an origin: nothing was taken out of a collection, so there is nowhere to put it back. Sorting them into one later is the same return call with a target. The first card creates the Physical deck.
 
 ### Example
 
@@ -6254,9 +6112,9 @@ No authorization required
 
 > DeckDriftResponse getDeckCollectionDrift(deck)
 
-Where the deck list and the deck\&#39;s own collection disagree
+Where the deck list and the Physical deck disagree
 
-Where the deck list and the deck\&#39;s own collection disagree  Read on its own rather than out of the sourcing answer: the header asks this on every tab of the deck, and it has no use for the whole account\&#39;s shelf.
+Where the deck list and the Physical deck disagree  Read on its own rather than out of the sourcing answer: the header asks this on every tab of the deck, and it has no use for the whole account\&#39;s shelf. An Editor reads it too; the sourcing answer, which shows the owner\&#39;s collections, stays the owner\&#39;s.
 
 ### Example
 
@@ -12136,86 +11994,13 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## returnAllDeckCards
-
-> ReturnAllDeckCardsResponse returnAllDeckCards(deck, ReturnAllDeckCardsRequest)
-
-Sort everything in the deck back where it came from
-
-Sort everything in the deck back where it came from  This is what taking a deck apart does. Stacks that remember no origin only move when the client says where they should go; otherwise they stay, and the answer says how many that was.
-
-### Example
-
-```ts
-import {
-  Configuration,
-  DefaultApi,
-} from '';
-import type { ReturnAllDeckCardsOperationRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new DefaultApi();
-
-  const body = {
-    // string
-    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-    // ReturnAllDeckCardsRequest (optional)
-    ReturnAllDeckCardsRequest: ...,
-  } satisfies ReturnAllDeckCardsOperationRequest;
-
-  try {
-    const data = await api.returnAllDeckCards(body);
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **deck** | `string` |  | [Defaults to `undefined`] |
-| **ReturnAllDeckCardsRequest** | [ReturnAllDeckCardsRequest](ReturnAllDeckCardsRequest.md) |  | [Optional] |
-
-### Return type
-
-[**ReturnAllDeckCardsResponse**](ReturnAllDeckCardsResponse.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: `application/json`
-- **Accept**: `application/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** |  |  -  |
-| **400** |  |  -  |
-| **500** |  |  -  |
-| **401** |  |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
 ## returnDeckCards
 
 > any returnDeckCards(deck, ReturnDeckCardsRequest)
 
-Sort copies out of the deck back into a collection
+Sort copies out of the Physical deck back into a collection
 
-Sort copies out of the deck back into a collection
+Sort copies out of the Physical deck back into a collection
 
 ### Example
 
@@ -14829,6 +14614,79 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## takeApartPhysicalDeck
+
+> TakeApartPhysicalDeckResponse takeApartPhysicalDeck(deck, TakeApartPhysicalDeckRequest)
+
+Take the Physical deck apart
+
+Take the Physical deck apart  Real cards go back to the collection they came from; those without a usable origin (none recorded, or that collection is gone) go into &#x60;target&#x60;. Refused if a single real card has nowhere to go, and then nothing moves. Afterwards the deck has no Physical deck.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { TakeApartPhysicalDeckOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // TakeApartPhysicalDeckRequest (optional)
+    TakeApartPhysicalDeckRequest: ...,
+  } satisfies TakeApartPhysicalDeckOperationRequest;
+
+  try {
+    const data = await api.takeApartPhysicalDeck(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+| **TakeApartPhysicalDeckRequest** | [TakeApartPhysicalDeckRequest](TakeApartPhysicalDeckRequest.md) |  | [Optional] |
+
+### Return type
+
+[**TakeApartPhysicalDeckResponse**](TakeApartPhysicalDeckResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## takeBackTournamentRound
 
 > EndTournamentRound200Response takeBackTournamentRound(tournament, number)
@@ -14906,9 +14764,9 @@ No authorization required
 
 > any takeDeckCards(deck, TakeDeckCardsRequest)
 
-Move copies out of a collection and into the deck
+Move copies out of a collection and into the Physical deck
 
-Move copies out of a collection and into the deck  Where they came from is written down with them, which is what makes taking the deck apart again possible.
+Move copies out of a collection and into the Physical deck  Where they came from is written down with them, which is what makes taking the deck apart again possible. The first card creates the Physical deck.  The list leads: copies of another printing or finish than a line asks for do not change the line, they are a Deviation.
 
 ### Example
 

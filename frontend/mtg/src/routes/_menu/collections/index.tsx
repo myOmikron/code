@@ -2,7 +2,6 @@ import {
     ArchiveBoxIcon,
     ArrowTopRightOnSquareIcon,
     PencilSquareIcon,
-    RectangleStackIcon,
     ShareIcon,
     TrashIcon,
 } from "@heroicons/react/20/solid";
@@ -57,16 +56,12 @@ function RouteComponent() {
     const menu = useContextMenu<CollectionOverviewResponse>();
     const shortcutHelpOpen = useShortcutHelpOpen();
 
-    // A deck's own collection is not one of the shelved ones: it stands for
-    // cards that are sleeved up right now. It still counts towards the totals,
-    // because those cards are as owned as any other.
-    const shelf = collections.filter((overview) => overview.collection.deck == null);
-    const inDecks = collections.filter((overview) => overview.collection.deck != null);
+    // Only the shelf: a deck's Physical deck is part of the deck and never
+    // listed among the collections.
     const cards = collections.reduce((total, overview) => total + overview.cards, 0);
     const value = collections.reduce((total, overview) => total + overview.price_eur_cents, 0);
 
     const marked = collections.find((overview) => overview.collection.uuid === selected) ?? null;
-    const editable = marked !== null && marked.collection.deck == null ? marked : null;
 
     useShortcuts(
         {
@@ -80,13 +75,13 @@ function RouteComponent() {
                 }
             },
             e: () => {
-                if (editable !== null) setDialog({ collection: editable });
+                if (marked !== null) setDialog({ collection: marked });
             },
             s: () => {
-                if (editable !== null) setSharing(editable);
+                if (marked !== null) setSharing(marked);
             },
             delete: () => {
-                if (editable !== null) setConfirming(editable);
+                if (marked !== null) setConfirming(marked);
             },
         },
         dialog === null && sharing === null && confirming === null && menu.open === null && !shortcutHelpOpen,
@@ -129,24 +124,6 @@ function RouteComponent() {
                     params: { collectionUuid: overview.collection.uuid },
                 }),
         };
-
-        const deckUuid = overview.collection.deck;
-        if (deckUuid !== null && deckUuid !== undefined) {
-            return [
-                {
-                    key: "collection",
-                    items: [
-                        open,
-                        {
-                            key: "deck",
-                            label: t("button.open-deck"),
-                            icon: <RectangleStackIcon />,
-                            onSelect: () => void navigate({ to: "/decks/$deckUuid/cards", params: { deckUuid } }),
-                        },
-                    ],
-                },
-            ];
-        }
 
         return [
             {
@@ -216,49 +193,17 @@ function RouteComponent() {
                         description={t("description.no-collections")}
                     />
                 ) : (
-                    <>
-                        <ul className={"grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"}>
-                            {shelf.map((overview) => (
-                                <CollectionTile
-                                    key={overview.collection.uuid}
-                                    overview={overview}
-                                    onMenu={menu.openAt}
-                                    selected={selected === overview.collection.uuid}
-                                    onActivate={() => setSelected(overview.collection.uuid)}
-                                />
-                            ))}
-                        </ul>
-
-                        {inDecks.length > 0 && (
-                            <section className={"flex flex-col gap-3"}>
-                                <div className={"flex items-center gap-3"}>
-                                    <h2 className={"text-sm/6 font-semibold text-zinc-950 dark:text-white"}>
-                                        {t("heading.deck-collections")}
-                                    </h2>
-                                    <span
-                                        className={
-                                            "rounded-(--radius-pill) bg-zinc-950/5 px-2 py-0.5 text-xs font-medium text-zinc-600 tabular-nums dark:bg-white/10 dark:text-zinc-300"
-                                        }
-                                    >
-                                        {inDecks.length}
-                                    </span>
-                                    <span className={"h-px flex-1 bg-zinc-950/5 dark:bg-white/10"} />
-                                </div>
-
-                                <ul className={"grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"}>
-                                    {inDecks.map((overview) => (
-                                        <CollectionTile
-                                            key={overview.collection.uuid}
-                                            overview={overview}
-                                            onMenu={menu.openAt}
-                                            selected={selected === overview.collection.uuid}
-                                            onActivate={() => setSelected(overview.collection.uuid)}
-                                        />
-                                    ))}
-                                </ul>
-                            </section>
-                        )}
-                    </>
+                    <ul className={"grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"}>
+                        {collections.map((overview) => (
+                            <CollectionTile
+                                key={overview.collection.uuid}
+                                overview={overview}
+                                onMenu={menu.openAt}
+                                selected={selected === overview.collection.uuid}
+                                onActivate={() => setSelected(overview.collection.uuid)}
+                            />
+                        ))}
+                    </ul>
                 )}
 
                 <ContextMenu

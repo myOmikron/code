@@ -1,7 +1,7 @@
 
 # ReturnDeckCardsRequest
 
-Request to sort copies out of the deck back into a collection
+Request to sort copies out of the Physical deck back into a collection
 
 ## Properties
 

@@ -348,24 +348,21 @@ export const Api = {
         // A filed deck keeps its cards either way.
         setFolder: async (uuid: UUID, folder: UUID | null) =>
             handleError(defaultApi.setDeckFolder({ deck: uuid, SetDeckFolderRequest: { folder } })),
-        collection: {
-            // Start keeping the cards that are physically in the deck. Idempotent.
-            attach: async (deck: UUID) => handleError(defaultApi.attachDeckCollection({ deck })),
-            // Only while nothing is filed in it.
-            detach: async (deck: UUID) => handleError(defaultApi.detachDeckCollection({ deck })),
-        },
-        // Where the deck list and the cardboard filed under it disagree. Its
-        // own request because the deck's header asks it on every tab, and the
-        // sourcing answer would drag the whole account's shelf along.
+        // Where the deck list and its Physical deck disagree. Its own request
+        // because the deck's header asks it on every tab, and the sourcing
+        // answer would drag the whole account's shelf along. The owner and
+        // Editors read it; a Viewer gets the missing-deck answer.
         drift: async (deck: UUID) => handleError(defaultApi.getDeckCollectionDrift({ deck })),
         driftIfOwner: async (deck: UUID) => orGone(defaultApi.getDeckCollectionDrift({ deck })),
         sourcing: {
             // What the deck asks for, what is in it, and where the rest could
             // come from — three flat lists the client matches up itself.
             read: async (deck: UUID) => handleError(defaultApi.getDeckSourcing({ deck })),
-            // Move copies out of a box and into the deck, remembering the box.
-            take: async (deck: UUID, entry: UUID, quantity: number, slot: UUID | null = null) =>
-                handleError(defaultApi.takeDeckCards({ deck, TakeDeckCardsRequest: { entry, quantity, slot } })),
+            // Move copies out of a box and into the Physical deck, remembering
+            // the box. The first card creates the Physical deck; the list
+            // stays as it is whatever printing arrives.
+            take: async (deck: UUID, entry: UUID, quantity: number) =>
+                handleError(defaultApi.takeDeckCards({ deck, TakeDeckCardsRequest: { entry, quantity } })),
             // The way back. `target` is only needed for cards that remember no
             // origin, which is what was bought straight into the deck.
             returnCards: async (deck: UUID, entry: UUID, quantity: number, target: UUID | null = null) =>
@@ -374,9 +371,10 @@ export const Api = {
             // deck imported from elsewhere gets its cards without a shopping trip.
             fill: async (deck: UUID, slot: UUID | null = null) =>
                 handleError(defaultApi.fillDeckCollection({ deck, FillDeckCollectionRequest: { slot } })),
-            // Taking the whole deck apart.
-            returnAll: async (deck: UUID, target: UUID | null = null) =>
-                handleError(defaultApi.returnAllDeckCards({ deck, ReturnAllDeckCardsRequest: { target } })),
+            // Taking the Physical deck apart: everything goes back, `target`
+            // takes the cards that remember no origin. All or nothing.
+            takeApart: async (deck: UUID, target: UUID | null = null) =>
+                handleError(defaultApi.takeApartPhysicalDeck({ deck, TakeApartPhysicalDeckRequest: { target } })),
         },
         cards: {
             // The whole deck in one answer, catalog data and tags included.

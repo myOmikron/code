@@ -199,7 +199,7 @@ fn a_snapshot_counts_what_the_accounts_own() {
 
         let public = create_deck(&mut tx, owner, Visibility::Public).await;
         create_deck(&mut tx, veteran, Visibility::Private).await;
-        let sleeves = Deck::attach_collection(&mut tx, owner, public.uuid)
+        let sleeves = Deck::physical_deck_or_create(&mut tx, owner, public.uuid)
             .await
             .expect("attach a collection")
             .granted()

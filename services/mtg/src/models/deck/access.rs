@@ -101,19 +101,16 @@ pub enum DeckOperation {
     RotateShareToken,
     /// File the deck into a folder
     SetFolder,
-    /// Start keeping the deck's own collection
-    AttachCollection,
-    /// Stop keeping the deck's own collection
-    DetachCollection,
     /// Read where the deck's cards could come from
     ReadSourcing,
-    /// Read where the list and the deck's own collection disagree
+    /// Read where the list and the Physical deck disagree
     ReadDrift,
-    /// Move copies out of a collection and into the deck
+    /// Move copies out of a collection and into the Physical deck
     TakeCards,
-    /// Declare that the deck holds what its list asks for
+    /// Record copies bought straight into the Physical deck
     FillCollection,
-    /// Sort copies out of the deck back into a collection
+    /// Sort copies out of the Physical deck back into a collection, or take
+    /// it apart
     ReturnCards,
     /// Delete the deck
     DeleteDeck,
@@ -147,13 +144,14 @@ impl DeckOperation {
             | Self::AssignTag
             | Self::UnassignTag => DeckClass::Edit,
 
+            // An Editor sees the Physical deck, so its list edits can be
+            // weighed against what the owner built; a Viewer does not.
+            Self::ReadDrift => DeckClass::Edit,
+
             Self::SetVisibility
             | Self::RotateShareToken
             | Self::SetFolder
-            | Self::AttachCollection
-            | Self::DetachCollection
             | Self::ReadSourcing
-            | Self::ReadDrift
             | Self::TakeCards
             | Self::FillCollection
             | Self::ReturnCards
@@ -282,10 +280,7 @@ mod tests {
             DeckOperation::SetVisibility,
             DeckOperation::RotateShareToken,
             DeckOperation::SetFolder,
-            DeckOperation::AttachCollection,
-            DeckOperation::DetachCollection,
             DeckOperation::ReadSourcing,
-            DeckOperation::ReadDrift,
             DeckOperation::TakeCards,
             DeckOperation::FillCollection,
             DeckOperation::ReturnCards,
@@ -314,6 +309,11 @@ mod tests {
         ] {
             assert_eq!(operation.class(), DeckClass::Edit, "{operation:?}");
         }
+    }
+
+    #[test]
+    fn an_editor_reads_the_physical_deck_a_viewer_does_not() {
+        assert_eq!(DeckOperation::ReadDrift.class(), DeckClass::Edit);
     }
 
     #[test]

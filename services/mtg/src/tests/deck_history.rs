@@ -515,15 +515,6 @@ fn filling_a_proxy_entry_merges_it_into_the_real_alike_entry() {
             .add(json!({ "printing": printing, "quantity": 1, "zone": "Main", "proxy": true }))
             .await;
         let deck = fixture.deck.clone();
-        fixture
-            .owner
-            .json(
-                Method::POST,
-                &api(&format!("decks/{deck}/collection")),
-                &json!(null),
-            )
-            .await
-            .ok_json();
 
         fixture
             .owner
@@ -1533,6 +1524,15 @@ impl Fixture {
         self.owner.json(method, &url, &body).await.ok_json()
     }
 
+    /// Where the stacks in the deck's Physical deck are listed
+    async fn physical_deck_entries(&mut self) -> url::Url {
+        let sourcing = self.send_json(Method::GET, "sourcing", Value::Null).await;
+        let collection = sourcing["physical_deck"]
+            .as_str()
+            .expect("the deck has a Physical deck");
+        api(&format!("collections/{collection}/entries"))
+    }
+
     /// A new collection of the owner holding one stack, answering the uuids of both
     async fn stack(&mut self, printing: Uuid, quantity: i32, finish: &str) -> (String, String) {
         let collection = self
@@ -1583,51 +1583,6 @@ impl Fixture {
 }
 
 #[test]
-fn sourcing_another_printing_for_an_entry_records_one_sourcing_change() {
-    run(async {
-        let mut fixture = Fixture::new().await;
-        let listed = Uuid::new_v4();
-        let sourced = Uuid::new_v4();
-        let entry = fixture
-            .add(json!({ "printing": listed, "quantity": 3, "zone": "Main" }))
-            .await;
-        fixture
-            .send_json(Method::POST, "collection", json!(null))
-            .await;
-        let (_, stack) = fixture.stack(sourced, 1, "Foil").await;
-
-        fixture
-            .send_json(
-                Method::POST,
-                "sourcing/take",
-                json!({ "entry": stack, "quantity": 1, "slot": entry }),
-            )
-            .await;
-
-        assert_eq!(
-            fixture.kinds().await,
-            vec!["Sourcing", "Quantity", "Created"]
-        );
-        let history = fixture.history("").await;
-        let mut split: Vec<(bool, bool, i64, i64)> = history["changes"][0]["entries"]
-            .as_array()
-            .expect("entry list")
-            .iter()
-            .map(|entry| {
-                (
-                    entry["printing"] == json!(sourced),
-                    entry["foil"].as_bool().expect("foil"),
-                    entry["before"].as_i64().expect("before"),
-                    entry["after"].as_i64().expect("after"),
-                )
-            })
-            .collect();
-        split.sort();
-        assert_eq!(split, vec![(false, false, 3, 2), (true, true, 0, 1)]);
-    });
-}
-
-#[test]
 fn filling_a_proxy_entry_records_one_sourcing_change() {
     run(async {
         let mut fixture = Fixture::new().await;
@@ -1635,9 +1590,6 @@ fn filling_a_proxy_entry_records_one_sourcing_change() {
             .add(
                 json!({ "printing": Uuid::new_v4(), "quantity": 2, "zone": "Main", "proxy": true }),
             )
-            .await;
-        fixture
-            .send_json(Method::POST, "collection", json!(null))
             .await;
 
         fixture
@@ -1667,7 +1619,7 @@ fn filling_a_proxy_entry_records_one_sourcing_change() {
 }
 
 #[test]
-fn tags_folder_visibility_sharing_advisor_settings_and_the_deck_collection_record_nothing() {
+fn tags_folder_visibility_sharing_advisor_settings_and_the_physical_deck_record_nothing() {
     run(async {
         let mut fixture = Fixture::new().await;
         let printing = Uuid::new_v4();
@@ -1717,15 +1669,12 @@ fn tags_folder_visibility_sharing_advisor_settings_and_the_deck_collection_recor
             .send_json(Method::PUT, "advisor-settings", settings)
             .await;
 
-        fixture
-            .send_json(Method::POST, "collection", json!(null))
-            .await;
         let (binder, stack) = fixture.stack(printing, 2, "Nonfoil").await;
         fixture
             .send_json(
                 Method::POST,
                 "sourcing/take",
-                json!({ "entry": stack, "quantity": 1, "slot": entry }),
+                json!({ "entry": stack, "quantity": 1 }),
             )
             .await;
         fixture
@@ -1734,12 +1683,9 @@ fn tags_folder_visibility_sharing_advisor_settings_and_the_deck_collection_recor
         fixture
             .send_json(
                 Method::POST,
-                "sourcing/return-all",
+                "sourcing/take-apart",
                 json!({ "target": binder }),
             )
-            .await;
-        fixture
-            .send_json(Method::DELETE, "collection", json!(null))
             .await;
 
         assert_eq!(fixture.kinds().await, before);
@@ -2334,29 +2280,26 @@ fn undo_restores_entries_without_tags_and_merges_keep_theirs() {
 }
 
 #[test]
-fn undoing_sourcing_leaves_the_deck_collection_alone() {
+fn undoing_leaves_the_physical_deck_alone() {
     run(async {
         let mut fixture = Fixture::new().await;
         let listed = Uuid::new_v4();
         let sourced = Uuid::new_v4();
-        let entry = fixture
+        fixture
             .add(json!({ "printing": listed, "quantity": 3, "zone": "Main" }))
             .await;
-        let collection = fixture
-            .send_json(Method::POST, "collection", json!(null))
+        fixture
+            .add(json!({ "printing": Uuid::new_v4(), "quantity": 1, "zone": "Main" }))
             .await;
-        let url = api(&format!(
-            "collections/{}/entries",
-            collection["uuid"].as_str().expect("collection uuid")
-        ));
         let (_, stack) = fixture.stack(sourced, 1, "Foil").await;
         fixture
             .send_json(
                 Method::POST,
                 "sourcing/take",
-                json!({ "entry": stack, "quantity": 1, "slot": entry }),
+                json!({ "entry": stack, "quantity": 1 }),
             )
             .await;
+        let url = fixture.physical_deck_entries().await;
         let filed = fixture.owner.get(&url).await.ok_json();
 
         fixture.undo().await.ok_json();
@@ -2693,7 +2636,7 @@ fn resetting_to_the_decks_creation_empties_it() {
 }
 
 #[test]
-fn a_reset_leaves_the_deck_collection_alone_and_restores_entries_untagged() {
+fn a_reset_leaves_the_physical_deck_alone_and_restores_entries_untagged() {
     run(async {
         let mut fixture = Fixture::new().await;
         let gone = Uuid::new_v4();
@@ -2707,13 +2650,6 @@ fn a_reset_leaves_the_deck_collection_alone_and_restores_entries_untagged() {
             .await;
         let hate = fixture.tag(&stays, "Hate").await;
         let point = fixture.newest().await;
-        let collection = fixture
-            .send_json(Method::POST, "collection", json!(null))
-            .await;
-        let url = api(&format!(
-            "collections/{}/entries",
-            collection["uuid"].as_str().expect("collection uuid")
-        ));
         let (_, stack) = fixture.stack(kept, 1, "Foil").await;
         fixture
             .send_json(
@@ -2722,6 +2658,7 @@ fn a_reset_leaves_the_deck_collection_alone_and_restores_entries_untagged() {
                 json!({ "entry": stack, "quantity": 1 }),
             )
             .await;
+        let url = fixture.physical_deck_entries().await;
         fixture.remove(&removed).await;
         let filed = fixture.owner.get(&url).await.ok_json();
 

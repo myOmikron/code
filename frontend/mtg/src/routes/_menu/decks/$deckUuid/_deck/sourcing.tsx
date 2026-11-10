@@ -1,15 +1,9 @@
-import {
-    ArchiveBoxIcon,
-    ArrowUturnLeftIcon,
-    ClipboardDocumentCheckIcon,
-    ShoppingCartIcon,
-} from "@heroicons/react/20/solid";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { ArrowUturnLeftIcon, ClipboardDocumentCheckIcon, ShoppingCartIcon } from "@heroicons/react/20/solid";
+import { createFileRoute, useLoaderData, useRouter } from "@tanstack/react-router";
 import {
     Button,
     ConfirmDialog,
     Divider,
-    EmptyState,
     Label,
     StackedList,
     Subheading,
@@ -18,11 +12,10 @@ import {
     Text,
     notify,
 } from "components";
-import { PrimaryButton } from "src/components/primary-button";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import type { SourcedStackResponse, SourcingCandidateResponse, SourcingSlotResponse } from "src/api/generated";
+import type { SourcedStackResponse, SourcingCandidateResponse } from "src/api/generated";
 import { CollectionMarker } from "src/components/collection-marker";
 import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
 import { DeckDriftPanel } from "src/components/deck-drift-panel";
@@ -60,6 +53,7 @@ function RouteComponent() {
     const [t] = useTranslation("collection");
     const { deckUuid } = Route.useParams();
     const { sourcing, collections, drift } = Route.useLoaderData();
+    const { deck } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
     const router = useRouter();
     // Both on to start with: the strict reading is the one that tells the truth
     // about the deck as it is written down, and loosening it is a deliberate
@@ -74,7 +68,7 @@ function RouteComponent() {
     const [deleting, setDeleting] = useState<SourcedStackResponse | null>(null);
     const [unfolded, setUnfolded] = useState<string | null>(null);
 
-    const shelf = collections.filter((collection) => collection.collection.deck == null);
+    const shelf = collections;
     const wanted = new Set(
         sourcing.slots.flatMap((slot) => (slot.card?.oracle_id != null ? [slot.card.oracle_id] : [])),
     );
@@ -111,20 +105,6 @@ function RouteComponent() {
     const refresh = () => router.invalidate();
 
     /**
-     * Starts keeping the cards that are physically in this deck
-     */
-    async function attach() {
-        setBusy(true);
-        try {
-            await Api.decks.collection.attach(deckUuid);
-            notify.success(t("toast.deck-collection-created"));
-            await refresh();
-        } finally {
-            setBusy(false);
-        }
-    }
-
-    /**
      * Says that the deck already holds what its list asks for
      *
      * @param slot the one card that was just bought, `null` for the whole list
@@ -141,19 +121,18 @@ function RouteComponent() {
     }
 
     /**
-     * Moves copies out of a collection and into the deck
+     * Moves copies out of a collection and into the Physical deck
      *
-     * The slot goes along: sourcing another edition than the list names is what
-     * the deck is really sleeved with, so the list follows the cardboard.
+     * The list leads: another edition than the list names stays a Deviation
+     * until somebody changes the list or swaps the card.
      *
-     * @param slot the slot they are being sourced for
      * @param candidate the stack they come out of
      * @param quantity how many to take
      */
-    async function take(slot: SourcingSlotResponse, candidate: SourcingCandidateResponse, quantity: number) {
+    async function take(candidate: SourcingCandidateResponse, quantity: number) {
         setBusy(true);
         try {
-            await Api.decks.sourcing.take(deckUuid, candidate.uuid, quantity, slot.uuid);
+            await Api.decks.sourcing.take(deckUuid, candidate.uuid, quantity);
             notify.success(t("toast.cards-taken", { count: quantity }));
             await refresh();
         } finally {
@@ -171,10 +150,10 @@ function RouteComponent() {
      * @param stack the stack to delete
      */
     async function destroy(stack: SourcedStackResponse) {
-        if (sourcing.collection == null) return;
+        if (sourcing.physical_deck == null) return;
         setBusy(true);
         try {
-            await Api.collections.entries.delete(sourcing.collection.uuid, stack.uuid);
+            await Api.collections.entries.delete(sourcing.physical_deck, stack.uuid);
             setDeleting(null);
             notify.success(t("toast.cards-deleted", { count: stack.quantity }));
             await refresh();
@@ -198,23 +177,6 @@ function RouteComponent() {
         } finally {
             setBusy(false);
         }
-    }
-
-    if (sourcing.collection == null) {
-        return (
-            <div className={"flex flex-col gap-6"}>
-                <EmptyState
-                    icon={<ArchiveBoxIcon />}
-                    title={t("heading.no-deck-collection")}
-                    description={t("description.no-deck-collection")}
-                />
-                <div className={"flex justify-center"}>
-                    <PrimaryButton disabled={busy} onClick={() => void attach()}>
-                        {t("button.keep-deck-collection")}
-                    </PrimaryButton>
-                </div>
-            </div>
-        );
     }
 
     return (
@@ -282,7 +244,7 @@ function RouteComponent() {
                                 match={match}
                                 open={unfolded === slot.uuid}
                                 onToggle={() => setUnfolded(unfolded === slot.uuid ? null : slot.uuid)}
-                                onTake={(taken, candidate, quantity) => void take(taken, candidate, quantity)}
+                                onTake={(_, candidate, quantity) => void take(candidate, quantity)}
                                 onBuy={(bought) => void fill(bought.uuid)}
                                 busy={busy}
                             />
@@ -304,7 +266,7 @@ function RouteComponent() {
                             <ClipboardDocumentCheckIcon />
                             {t("button.fill-from-list")}
                         </Button>
-                        {sourcing.filed.length > 0 && (
+                        {sourcing.physical_deck != null && (
                             <Button outline={true} disabled={busy} onClick={() => setDissolving(true)}>
                                 <ArrowUturnLeftIcon />
                                 {t("button.return-all")}
@@ -314,7 +276,7 @@ function RouteComponent() {
                 </div>
 
                 {sourcing.filed.length === 0 ? (
-                    <Text>{t("description.deck-collection-empty")}</Text>
+                    <Text>{t("description.physical-deck-empty")}</Text>
                 ) : (
                     groupByOrigin(sourcing.filed).map((group) => (
                         <section key={group.origin ?? "none"} className={"flex flex-col gap-2"}>
@@ -364,7 +326,7 @@ function RouteComponent() {
             />
 
             <DeckDissolveDialog
-                deck={dissolving ? { uuid: deckUuid, name: sourcing.collection.name } : null}
+                deck={dissolving ? { uuid: deckUuid, name: deck.name } : null}
                 onClose={() => setDissolving(false)}
                 onDissolved={refresh}
             />

@@ -2481,9 +2481,9 @@ export interface DeckCommanderResponse {
  */
 export interface DeckDriftResponse {
     /**
-     * Whether the deck keeps a collection at all; nothing drifts while it does not
+     * Whether the deck has a Physical deck; nothing deviates while it has none
      */
-    keeps_collection: boolean;
+    has_physical_deck: boolean;
     /**
      * Copies lying in the deck whose card the list does not name at all
      */
@@ -2934,13 +2934,13 @@ export interface DeckSourcingResponse {
      */
     candidates: Array<SourcingCandidateResponse>;
     /**
-     * The deck's own collection, `None` while it keeps none
-     */
-    collection?: CollectionResponse | null;
-    /**
-     * What is filed in the deck's own collection
+     * What is in the Physical deck
      */
     filed: Array<SourcedStackResponse>;
+    /**
+     * The collection the deck's Physical deck is stored as, `None` while the deck has none
+     */
+    physical_deck?: string | null;
     /**
      * What the list asks for
      */
@@ -3546,7 +3546,7 @@ export interface FileScannerSessionResponse {
     stacks: number;
 }
 /**
- * Request to declare that the deck holds what its list asks for
+ * Request to record copies bought straight into the Physical deck
  * @export
  * @interface FillDeckCollectionRequest
  */
@@ -3557,7 +3557,7 @@ export interface FillDeckCollectionRequest {
     slot?: string | null;
 }
 /**
- * What filling a deck's collection from its own list came to
+ * What recording bought copies came to
  * @export
  * @interface FillDeckCollectionResponse
  */
@@ -6802,39 +6802,13 @@ export const ResultState = {
 export type ResultState = typeof ResultState[keyof typeof ResultState];
 
 /**
- * Request to sort everything in the deck back where it came from
- * @export
- * @interface ReturnAllDeckCardsRequest
- */
-export interface ReturnAllDeckCardsRequest {
-    /**
-     * Where stacks without an origin go, `None` to leave those in the deck
-     */
-    target?: string | null;
-}
-/**
- * What sorting a deck back moved
- * @export
- * @interface ReturnAllDeckCardsResponse
- */
-export interface ReturnAllDeckCardsResponse {
-    /**
-     * How many stayed, because nobody said where they belong
-     */
-    left: number;
-    /**
-     * How many stacks were sorted back
-     */
-    returned: number;
-}
-/**
- * Request to sort copies out of the deck back into a collection
+ * Request to sort copies out of the Physical deck back into a collection
  * @export
  * @interface ReturnDeckCardsRequest
  */
 export interface ReturnDeckCardsRequest {
     /**
-     * The stack in the deck to take them from
+     * The stack in the Physical deck to take them from
      */
     entry: string;
     /**
@@ -8554,7 +8528,29 @@ export const SyncRunOutcome = {
 export type SyncRunOutcome = typeof SyncRunOutcome[keyof typeof SyncRunOutcome];
 
 /**
- * Request to move copies out of a collection and into the deck
+ * Request to take the Physical deck apart
+ * @export
+ * @interface TakeApartPhysicalDeckRequest
+ */
+export interface TakeApartPhysicalDeckRequest {
+    /**
+     * Where real cards without a usable origin go; needed only when there are such cards
+     */
+    target?: string | null;
+}
+/**
+ * What taking the Physical deck apart moved
+ * @export
+ * @interface TakeApartPhysicalDeckResponse
+ */
+export interface TakeApartPhysicalDeckResponse {
+    /**
+     * How many real cards went back into collections
+     */
+    returned: number;
+}
+/**
+ * Request to move copies out of a collection and into the Physical deck
  * @export
  * @interface TakeDeckCardsRequest
  */
@@ -8567,10 +8563,6 @@ export interface TakeDeckCardsRequest {
      * How many copies to take
      */
     quantity: number;
-    /**
-     * The slot they are being sourced for, which then follows the printing
-     */
-    slot?: string | null;
 }
 
 /**

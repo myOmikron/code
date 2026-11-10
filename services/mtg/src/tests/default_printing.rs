@@ -16,7 +16,7 @@ use crate::tests::harness::run;
 use crate::utils::catalog_sync::printing_from_json;
 
 /// One printing of a test card, as far as choosing a Default printing reads it
-struct Print<'a> {
+pub(super) struct Print<'a> {
     /// Release date, `YYYY-MM-DD`
     released: &'a str,
     /// Collector number as printed
@@ -45,12 +45,12 @@ impl Default for Print<'_> {
 }
 
 /// A card name no other test files a printing under
-fn unique(name: &str) -> String {
+pub(super) fn unique(name: &str) -> String {
     format!("{name} {}", Uuid::new_v4().simple())
 }
 
 /// Files one printing of `name` into the catalog and answers its id
-async fn file(name: &str, print: Print<'_>) -> Uuid {
+pub(super) async fn file(name: &str, print: Print<'_>) -> Uuid {
     let id = Uuid::new_v4();
     let legalities = if print.legal {
         json!({ "commander": "legal" })

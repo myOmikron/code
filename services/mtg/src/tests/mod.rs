@@ -18,6 +18,7 @@ mod login_method;
 mod mpcfill_favorites;
 mod oidc;
 mod passkeys;
+mod physical_deck;
 mod push;
 mod rename;
 mod statistics;

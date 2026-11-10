@@ -162,7 +162,11 @@ pub struct CollectionUpdate {
 }
 
 impl Collection {
-    /// Fetch every collection an account owns, alphabetically
+    /// Fetch every collection on an account's shelf, alphabetically
+    ///
+    /// A deck's Physical deck is stored as a collection too, but it is part of
+    /// the deck: it is left out here, so it shows up in no collection list and
+    /// in no choice of collections.
     ///
     /// The primary key breaks ties, so the order is total and does not shift
     /// between calls — without it Postgres is free to hand back a renamed row
@@ -173,7 +177,10 @@ impl Collection {
         account: AccountUuid,
     ) -> Result<Vec<Collection>, rorm::Error> {
         let collections = rorm::query(&mut *tx, CollectionModel)
-            .condition(CollectionModel.owner.equals(account.into_inner()))
+            .condition(rorm::and![
+                CollectionModel.owner.equals(account.into_inner()),
+                CollectionModel.deck.equals(None::<Uuid>),
+            ])
             .order_asc(CollectionModel.name)
             .order_asc(CollectionModel.uuid)
             .all()
@@ -239,6 +246,21 @@ impl Collection {
             Some(_) => CollectionAccess::Granted(()),
             None => CollectionAccess::Denied,
         })
+    }
+
+    /// Whether the collection is one on `account`'s shelf, not a deck's
+    /// Physical deck
+    #[instrument(name = "Collection::is_on_shelf", skip(tx))]
+    pub async fn is_on_shelf(
+        tx: &mut Transaction,
+        uuid: CollectionUuid,
+        account: AccountUuid,
+    ) -> Result<bool, rorm::Error> {
+        let found = rorm::query(&mut *tx, CollectionModel.uuid)
+            .condition(owned_standalone_by(uuid, account))
+            .optional()
+            .await?;
+        Ok(found.is_some())
     }
 
     /// Fetch a collection by the secret in its share link

@@ -6,12 +6,10 @@ use serde::Deserialize;
 use serde::Serialize;
 use uuid::Uuid;
 
-use crate::http::handler_frontend::collections::schema::CollectionResponse;
 use crate::http::handler_frontend::decks::history::schema::DeckUndoResponse;
 use crate::models::card_attributes::CardCondition;
 use crate::models::card_attributes::CardFinish;
 use crate::models::card_attributes::CardRarity;
-use crate::models::collection::Collection;
 use crate::models::collection::CollectionEntryUuid;
 use crate::models::collection::CollectionUuid;
 use crate::models::deck::Deck;
@@ -189,31 +187,30 @@ pub struct SourcingCandidateResponse {
 /// Everything the sourcing view is drawn from
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct DeckSourcingResponse {
-    /// The deck's own collection, `None` while it keeps none
-    pub collection: Option<CollectionResponse>,
+    /// The collection the deck's Physical deck is stored as, `None` while the
+    /// deck has none
+    pub physical_deck: Option<CollectionUuid>,
     /// What the list asks for
     pub slots: Vec<SourcingSlotResponse>,
-    /// What is filed in the deck's own collection
+    /// What is in the Physical deck
     pub filed: Vec<SourcedStackResponse>,
     /// What could still be taken from elsewhere
     pub candidates: Vec<SourcingCandidateResponse>,
 }
 
-/// Request to move copies out of a collection and into the deck
+/// Request to move copies out of a collection and into the Physical deck
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct TakeDeckCardsRequest {
     /// The stack to take them from
     pub entry: CollectionEntryUuid,
     /// How many copies to take
     pub quantity: i32,
-    /// The slot they are being sourced for, which then follows the printing
-    pub slot: Option<DeckCardUuid>,
 }
 
-/// Request to sort copies out of the deck back into a collection
+/// Request to sort copies out of the Physical deck back into a collection
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ReturnDeckCardsRequest {
-    /// The stack in the deck to take them from
+    /// The stack in the Physical deck to take them from
     pub entry: CollectionEntryUuid,
     /// How many copies to sort back
     pub quantity: i32,
@@ -221,30 +218,29 @@ pub struct ReturnDeckCardsRequest {
     pub target: Option<CollectionUuid>,
 }
 
-/// Request to sort everything in the deck back where it came from
+/// Request to take the Physical deck apart
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct ReturnAllDeckCardsRequest {
-    /// Where stacks without an origin go, `None` to leave those in the deck
+pub struct TakeApartPhysicalDeckRequest {
+    /// Where real cards without a usable origin go; needed only when there are
+    /// such cards
     pub target: Option<CollectionUuid>,
 }
 
-/// What sorting a deck back moved
+/// What taking the Physical deck apart moved
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct ReturnAllDeckCardsResponse {
-    /// How many stacks were sorted back
+pub struct TakeApartPhysicalDeckResponse {
+    /// How many real cards went back into collections
     pub returned: u32,
-    /// How many stayed, because nobody said where they belong
-    pub left: u32,
 }
 
-/// Request to declare that the deck holds what its list asks for
+/// Request to record copies bought straight into the Physical deck
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct FillDeckCollectionRequest {
     /// The one slot to fill, `None` for every slot of the deck
     pub slot: Option<DeckCardUuid>,
 }
 
-/// What filling a deck's collection from its own list came to
+/// What recording bought copies came to
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct FillDeckCollectionResponse {
     /// How many copies were filed as being in the deck
@@ -326,10 +322,10 @@ impl From<SourcingCandidate> for SourcingCandidateResponse {
 }
 
 impl DeckSourcingResponse {
-    /// Puts the three lists and the deck's own collection into one answer
-    pub fn new(sourcing: DeckSourcing, collection: Option<Collection>) -> Self {
+    /// Puts the three lists and the Physical deck into one answer
+    pub fn new(sourcing: DeckSourcing, physical_deck: Option<CollectionUuid>) -> Self {
         Self {
-            collection: collection.map(CollectionResponse::from),
+            physical_deck,
             slots: sourcing
                 .slots
                 .into_iter()
@@ -370,8 +366,8 @@ pub struct DeckDriftRowResponse {
 /// what lets the header say so without asking a second question.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct DeckDriftResponse {
-    /// Whether the deck keeps a collection at all; nothing drifts while it does not
-    pub keeps_collection: bool,
+    /// Whether the deck has a Physical deck; nothing deviates while it has none
+    pub has_physical_deck: bool,
     /// Copies the list asks for that are nowhere in the deck
     pub pending: Vec<DeckDriftRowResponse>,
     /// Copies lying in the deck in a printing or finish the list does not ask for
@@ -396,14 +392,14 @@ impl From<DriftRow> for DeckDriftRowResponse {
 
 impl DeckDriftResponse {
     /// Puts the four lists into one answer
-    pub fn new(drift: DeckDrift, keeps_collection: bool) -> Self {
+    pub fn new(drift: DeckDrift, has_physical_deck: bool) -> Self {
         let rows = |rows: Vec<DriftRow>| {
             rows.into_iter()
                 .map(DeckDriftRowResponse::from)
                 .collect::<Vec<_>>()
         };
         Self {
-            keeps_collection,
+            has_physical_deck,
             pending: rows(drift.pending),
             other_printing: rows(drift.other_printing),
             not_in_deck: rows(drift.not_in_deck),

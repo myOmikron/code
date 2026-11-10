@@ -22,7 +22,7 @@ function row(quantity: number): DeckDriftRowResponse {
  */
 function answer(drift: Partial<DeckDriftResponse>): DeckDriftResponse {
     return {
-        keeps_collection: true,
+        has_physical_deck: true,
         pending: [],
         other_printing: [],
         not_in_deck: [],
@@ -33,8 +33,8 @@ function answer(drift: Partial<DeckDriftResponse>): DeckDriftResponse {
 
 describe("driftSections", () => {
     it("says nothing about a deck that keeps no collection", () => {
-        expect(driftSections(answer({ keeps_collection: false, pending: [row(3)] }))).toEqual([]);
-        expect(driftCopies(answer({ keeps_collection: false, pending: [row(3)] }))).toBe(0);
+        expect(driftSections(answer({ has_physical_deck: false, pending: [row(3)] }))).toEqual([]);
+        expect(driftCopies(answer({ has_physical_deck: false, pending: [row(3)] }))).toBe(0);
     });
 
     it("says nothing about a deck that holds what it lists", () => {

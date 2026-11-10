@@ -27,8 +27,10 @@ use uuid::Uuid;
 
 use crate::models::account::AccountUuid;
 use crate::models::collection::Collection;
+use crate::models::collection::CollectionEntry;
 use crate::models::collection::CollectionInsert;
-use crate::models::collection::db::CollectionEntryModel;
+use crate::models::collection::CollectionUuid;
+use crate::models::collection::MoveOutcome;
 use crate::models::collection::db::CollectionModel;
 use crate::models::deck::collaborator::DeckCollaborator;
 use crate::models::deck::db::DeckCardInsertPatch;
@@ -84,25 +86,26 @@ custom_db_enum! {
     decoder: DeckZoneDecoder,
 }
 
-/// Outcome of taking a deck's collection away again
+/// Outcome of taking a deck's Physical deck apart
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DetachOutcome {
-    /// The deck keeps no collection any more
-    Detached,
-    /// Cards are still filed in it; they have to be sorted back first
-    NotEmpty,
+pub enum TakeApartOutcome {
+    /// The deck has no Physical deck any more
+    TakenApart {
+        /// How many real cards went back into collections
+        returned: u32,
+    },
+    /// A real card has nowhere to go: no usable origin and no target, or the
+    /// target is no collection on the owner's shelf
+    Unplaceable,
     /// The deck is gone, or it is not this account's to touch
     Denied,
 }
 
-/// The colour a deck's own collection is drawn in
-///
-/// One colour for all of them: on the shelf they stand apart from the collections
-/// anyway, and a deck that picked its own would only compete with them.
-const DECK_COLLECTION_COLOR: &str = "indigo";
+/// The colour stored for a Physical deck, which no list ever shows
+const PHYSICAL_DECK_COLOR: &str = "indigo";
 
-/// The pictogram a deck's own collection wears
-const DECK_COLLECTION_ICON: &str = "deckbox";
+/// The pictogram stored for a Physical deck, which no list ever shows
+const PHYSICAL_DECK_ICON: &str = "deckbox";
 
 /// A deck built for a specific format
 #[derive(Debug, Clone)]
@@ -434,7 +437,11 @@ impl Deck {
         Ok(access(affected, ()))
     }
 
-    /// The collection that stands for this deck, `None` while it keeps none
+    /// The collection the deck's Physical deck is stored as, `None` while it
+    /// has none
+    ///
+    /// ADR 0007 keeps the Physical deck stored as a collection of the deck's
+    /// own; to everybody outside this module it is part of the deck.
     #[instrument(name = "Deck::collection", skip(tx))]
     pub async fn collection(
         tx: &mut Transaction,
@@ -447,13 +454,12 @@ impl Deck {
         Ok(collection.map(Collection::from))
     }
 
-    /// Start keeping the cards that are physically in this deck
+    /// The deck's Physical deck, created if the deck has none yet
     ///
-    /// The deck gets a collection of its own, which is where cards taken out of
-    /// a collection live while they are sleeved up. Idempotent: a deck that already
-    /// keeps one gets that one back, so switching this on twice is harmless.
-    #[instrument(name = "Deck::attach_collection", skip(tx))]
-    pub async fn attach_collection(
+    /// What putting a card into a deck goes through: the Physical deck comes
+    /// into being with the first card, nobody switches it on.
+    #[instrument(name = "Deck::physical_deck_or_create", skip(tx))]
+    pub async fn physical_deck_or_create(
         tx: &mut Transaction,
         owner: AccountUuid,
         uuid: DeckUuid,
@@ -470,6 +476,8 @@ impl Deck {
             return Ok(DeckAccess::Granted(existing));
         }
 
+        // Name, colour and pictogram are never shown: a Physical deck appears
+        // in no collection list. The columns just have to hold something.
         let collection = Collection::create(
             &mut *tx,
             owner,
@@ -477,10 +485,10 @@ impl Deck {
                 name: deck.name,
                 description: MaxStr::new(String::new())
                     .unwrap_or_else(|_| unreachable!("the empty string fits everywhere")),
-                color: MaxStr::new(DECK_COLLECTION_COLOR.to_owned())
-                    .unwrap_or_else(|_| unreachable!("{DECK_COLLECTION_COLOR} is below 16")),
-                icon: MaxStr::new(DECK_COLLECTION_ICON.to_owned())
-                    .unwrap_or_else(|_| unreachable!("{DECK_COLLECTION_ICON} is below 32")),
+                color: MaxStr::new(PHYSICAL_DECK_COLOR.to_owned())
+                    .unwrap_or_else(|_| unreachable!("{PHYSICAL_DECK_COLOR} is below 16")),
+                icon: MaxStr::new(PHYSICAL_DECK_ICON.to_owned())
+                    .unwrap_or_else(|_| unreachable!("{PHYSICAL_DECK_ICON} is below 32")),
                 deck: Some(uuid),
                 // Never shared: what is shared about a deck is its list, and
                 // that has a link of its own.
@@ -492,44 +500,67 @@ impl Deck {
         Ok(DeckAccess::Granted(collection))
     }
 
-    /// Stop keeping them
+    /// Take the deck's Physical deck apart
     ///
-    /// Only while the collection is empty. Dropping it with cards still in it
-    /// would take them out of the account's inventory without anybody saying
-    /// where they went, so they have to be sorted back first.
-    #[instrument(name = "Deck::detach_collection", skip(tx))]
-    pub async fn detach_collection(
+    /// Every real card goes back to the collection it came from, or into
+    /// `target` when it remembers none (it was bought into the deck, or its
+    /// collection was deleted since). Afterwards the deck has no Physical
+    /// deck. All or nothing: when a single card cannot be placed, the answer
+    /// says so and the caller must not commit what was moved so far.
+    #[instrument(name = "Deck::take_apart", skip(tx))]
+    pub async fn take_apart(
         tx: &mut Transaction,
         owner: AccountUuid,
         uuid: DeckUuid,
-    ) -> Result<DetachOutcome, rorm::Error> {
+        target: Option<CollectionUuid>,
+    ) -> Result<TakeApartOutcome, rorm::Error> {
         let owned = rorm::query(&mut *tx, DeckModel.uuid)
             .condition(owned_by(uuid, owner))
             .optional()
             .await?;
         if owned.is_none() {
-            return Ok(DetachOutcome::Denied);
+            return Ok(TakeApartOutcome::Denied);
         }
         let Some(collection) = Self::collection(&mut *tx, uuid).await? else {
-            return Ok(DetachOutcome::Detached);
+            return Ok(TakeApartOutcome::TakenApart { returned: 0 });
         };
+        // Only a collection on the shelf takes the homeless cards: one standing
+        // for a deck, this one above all, is no place to sort cards back into.
+        if let Some(target) = target
+            && !Collection::is_on_shelf(&mut *tx, target, owner).await?
+        {
+            return Ok(TakeApartOutcome::Unplaceable);
+        }
 
-        let filed = rorm::query(&mut *tx, CollectionEntryModel.uuid)
-            .condition(
-                CollectionEntryModel
-                    .collection
-                    .equals(collection.uuid.into_inner()),
+        let stacks =
+            CollectionEntry::get_all_in_collection(&mut *tx, owner, collection.uuid).await?;
+        let mut returned = 0;
+        for stack in stacks {
+            let Some(into) = stack.origin.or(target) else {
+                return Ok(TakeApartOutcome::Unplaceable);
+            };
+            match CollectionEntry::move_copies(
+                &mut *tx,
+                owner,
+                stack.uuid,
+                stack.quantity,
+                into,
+                None,
             )
-            .optional()
-            .await?;
-        if filed.is_some() {
-            return Ok(DetachOutcome::NotEmpty);
+            .await?
+            {
+                MoveOutcome::Moved { .. } => {}
+                MoveOutcome::Denied | MoveOutcome::TooFewCopies => {
+                    return Ok(TakeApartOutcome::Unplaceable);
+                }
+            }
+            returned += u32::try_from(stack.quantity).unwrap_or(0);
         }
 
         rorm::delete(&mut *tx, CollectionModel)
             .condition(CollectionModel.uuid.equals(collection.uuid.into_inner()))
             .await?;
-        Ok(DetachOutcome::Detached)
+        Ok(TakeApartOutcome::TakenApart { returned })
     }
 
     /// File a deck into one of the account's folders, or onto no shelf at all

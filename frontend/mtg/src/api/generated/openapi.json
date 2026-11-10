@@ -5066,128 +5066,6 @@
                 }
             }
         },
-        "/api/frontend/v1/decks/{deck}/collection": {
-            "post": {
-                "summary": "Start keeping the cards that are physically in this deck",
-                "description": "Start keeping the cards that are physically in this deck\n\nThe deck gets a collection of its own. Idempotent, so the client can call it\nwithout first asking whether there already is one.",
-                "operationId": "attach_deck_collection",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "deck",
-                        "required": true,
-                        "schema": {
-                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "style": "simple"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CollectionResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "summary": "Stop keeping them",
-                "description": "Stop keeping them\n\nRefused while cards are still filed in it: they would otherwise leave the\naccount's inventory without anybody saying where they went.",
-                "operationId": "detach_deck_collection",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "deck",
-                        "required": true,
-                        "schema": {
-                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "style": "simple"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "nullable": true
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/frontend/v1/decks/{deck}/sourcing": {
             "get": {
                 "summary": "What the deck asks for, what is in it, and where the rest could come from",
@@ -5252,8 +5130,8 @@
         },
         "/api/frontend/v1/decks/{deck}/collection/drift": {
             "get": {
-                "summary": "Where the deck list and the deck's own collection disagree",
-                "description": "Where the deck list and the deck's own collection disagree\n\nRead on its own rather than out of the sourcing answer: the header asks this\non every tab of the deck, and it has no use for the whole account's shelf.",
+                "summary": "Where the deck list and the Physical deck disagree",
+                "description": "Where the deck list and the Physical deck disagree\n\nRead on its own rather than out of the sourcing answer: the header asks this\non every tab of the deck, and it has no use for the whole account's shelf.\nAn Editor reads it too; the sourcing answer, which shows the owner's\ncollections, stays the owner's.",
                 "operationId": "get_deck_collection_drift",
                 "parameters": [
                     {
@@ -5314,8 +5192,8 @@
         },
         "/api/frontend/v1/decks/{deck}/sourcing/take": {
             "post": {
-                "summary": "Move copies out of a collection and into the deck",
-                "description": "Move copies out of a collection and into the deck\n\nWhere they came from is written down with them, which is what makes taking\nthe deck apart again possible.",
+                "summary": "Move copies out of a collection and into the Physical deck",
+                "description": "Move copies out of a collection and into the Physical deck\n\nWhere they came from is written down with them, which is what makes taking\nthe deck apart again possible. The first card creates the Physical deck.\n\nThe list leads: copies of another printing or finish than a line asks for\ndo not change the line, they are a Deviation.",
                 "operationId": "take_deck_cards",
                 "parameters": [
                     {
@@ -5386,7 +5264,7 @@
         "/api/frontend/v1/decks/{deck}/sourcing/fill": {
             "post": {
                 "summary": "Declare that the deck holds what its list asks for",
-                "description": "Declare that the deck holds what its list asks for\n\nTwo things at once, because they are the same thing at different sizes: the\nway in for a deck that arrived from somewhere else, where the list is already\nright and saying so one card at a time would be an afternoon's work, and the\nanswer to \"I bought that one\" for a single slot.\n\nThe slots are topped up to what they ask for, in the printing and finish they\nname, as near mint and without an origin: nothing was taken out of a\ncollection, so there is nowhere to put it back. Sorting them into one later\nis the same return call with a target.",
+                "description": "Declare that the deck holds what its list asks for\n\nTwo things at once, because they are the same thing at different sizes: the\nway in for a deck that arrived from somewhere else, where the list is already\nright and saying so one card at a time would be an afternoon's work, and the\nanswer to \"I bought that one\" for a single slot.\n\nThe slots are topped up to what they ask for, in the printing and finish they\nname, as near mint and without an origin: nothing was taken out of a\ncollection, so there is nowhere to put it back. Sorting them into one later\nis the same return call with a target. The first card creates the Physical\ndeck.",
                 "operationId": "fill_deck_collection",
                 "parameters": [
                     {
@@ -5456,8 +5334,8 @@
         },
         "/api/frontend/v1/decks/{deck}/sourcing/return": {
             "post": {
-                "summary": "Sort copies out of the deck back into a collection",
-                "description": "Sort copies out of the deck back into a collection",
+                "summary": "Sort copies out of the Physical deck back into a collection",
+                "description": "Sort copies out of the Physical deck back into a collection",
                 "operationId": "return_deck_cards",
                 "parameters": [
                     {
@@ -5525,11 +5403,11 @@
                 }
             }
         },
-        "/api/frontend/v1/decks/{deck}/sourcing/return-all": {
+        "/api/frontend/v1/decks/{deck}/sourcing/take-apart": {
             "post": {
-                "summary": "Sort everything in the deck back where it came from",
-                "description": "Sort everything in the deck back where it came from\n\nThis is what taking a deck apart does. Stacks that remember no origin only\nmove when the client says where they should go; otherwise they stay, and the\nanswer says how many that was.",
-                "operationId": "return_all_deck_cards",
+                "summary": "Take the Physical deck apart",
+                "description": "Take the Physical deck apart\n\nReal cards go back to the collection they came from; those without a usable\norigin (none recorded, or that collection is gone) go into `target`. Refused\nif a single real card has nowhere to go, and then nothing moves. Afterwards\nthe deck has no Physical deck.",
+                "operationId": "take_apart_physical_deck",
                 "parameters": [
                     {
                         "in": "path",
@@ -5547,7 +5425,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ReturnAllDeckCardsRequest"
+                                "$ref": "#/components/schemas/TakeApartPhysicalDeckRequest"
                             }
                         }
                     }
@@ -5558,7 +5436,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ReturnAllDeckCardsResponse"
+                                    "$ref": "#/components/schemas/TakeApartPhysicalDeckResponse"
                                 }
                             }
                         }
@@ -19051,8 +18929,8 @@
                 "description": "Where the deck list and the cardboard filed under it disagree\n\nEvery list empty means the deck in the box is the deck on the list, which is what lets the header say so without asking a second question.",
                 "type": "object",
                 "properties": {
-                    "keeps_collection": {
-                        "description": "Whether the deck keeps a collection at all; nothing drifts while it does not",
+                    "has_physical_deck": {
+                        "description": "Whether the deck has a Physical deck; nothing deviates while it has none",
                         "type": "boolean"
                     },
                     "not_in_deck": {
@@ -19085,7 +18963,7 @@
                     }
                 },
                 "required": [
-                    "keeps_collection",
+                    "has_physical_deck",
                     "not_in_deck",
                     "other_printing",
                     "pending",
@@ -19701,21 +19579,21 @@
                             "$ref": "#/components/schemas/SourcingCandidateResponse"
                         }
                     },
-                    "collection": {
-                        "nullable": true,
-                        "description": "The deck's own collection, `None` while it keeps none",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/CollectionResponse"
-                            }
-                        ]
-                    },
                     "filed": {
-                        "description": "What is filed in the deck's own collection",
+                        "description": "What is in the Physical deck",
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/SourcedStackResponse"
                         }
+                    },
+                    "physical_deck": {
+                        "nullable": true,
+                        "description": "The collection the deck's Physical deck is stored as, `None` while the deck has none",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionUuid"
+                            }
+                        ]
                     },
                     "slots": {
                         "description": "What the list asks for",
@@ -20450,7 +20328,7 @@
                 ]
             },
             "FillDeckCollectionRequest": {
-                "description": "Request to declare that the deck holds what its list asks for",
+                "description": "Request to record copies bought straight into the Physical deck",
                 "type": "object",
                 "properties": {
                     "slot": {
@@ -20465,7 +20343,7 @@
                 }
             },
             "FillDeckCollectionResponse": {
-                "description": "What filling a deck's collection from its own list came to",
+                "description": "What recording bought copies came to",
                 "type": "object",
                 "properties": {
                     "filed": {
@@ -25151,49 +25029,12 @@
                     }
                 ]
             },
-            "ReturnAllDeckCardsRequest": {
-                "description": "Request to sort everything in the deck back where it came from",
-                "type": "object",
-                "properties": {
-                    "target": {
-                        "nullable": true,
-                        "description": "Where stacks without an origin go, `None` to leave those in the deck",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/CollectionUuid"
-                            }
-                        ]
-                    }
-                }
-            },
-            "ReturnAllDeckCardsResponse": {
-                "description": "What sorting a deck back moved",
-                "type": "object",
-                "properties": {
-                    "left": {
-                        "description": "How many stayed, because nobody said where they belong",
-                        "type": "integer",
-                        "minimum": 0.0,
-                        "format": "uint32"
-                    },
-                    "returned": {
-                        "description": "How many stacks were sorted back",
-                        "type": "integer",
-                        "minimum": 0.0,
-                        "format": "uint32"
-                    }
-                },
-                "required": [
-                    "left",
-                    "returned"
-                ]
-            },
             "ReturnDeckCardsRequest": {
-                "description": "Request to sort copies out of the deck back into a collection",
+                "description": "Request to sort copies out of the Physical deck back into a collection",
                 "type": "object",
                 "properties": {
                     "entry": {
-                        "description": "The stack in the deck to take them from",
+                        "description": "The stack in the Physical deck to take them from",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/CollectionEntryUuid"
@@ -27587,8 +27428,38 @@
                     }
                 ]
             },
+            "TakeApartPhysicalDeckRequest": {
+                "description": "Request to take the Physical deck apart",
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "nullable": true,
+                        "description": "Where real cards without a usable origin go; needed only when there are such cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionUuid"
+                            }
+                        ]
+                    }
+                }
+            },
+            "TakeApartPhysicalDeckResponse": {
+                "description": "What taking the Physical deck apart moved",
+                "type": "object",
+                "properties": {
+                    "returned": {
+                        "description": "How many real cards went back into collections",
+                        "type": "integer",
+                        "minimum": 0.0,
+                        "format": "uint32"
+                    }
+                },
+                "required": [
+                    "returned"
+                ]
+            },
             "TakeDeckCardsRequest": {
-                "description": "Request to move copies out of a collection and into the deck",
+                "description": "Request to move copies out of a collection and into the Physical deck",
                 "type": "object",
                 "properties": {
                     "entry": {
@@ -27603,15 +27474,6 @@
                         "description": "How many copies to take",
                         "type": "integer",
                         "format": "int32"
-                    },
-                    "slot": {
-                        "nullable": true,
-                        "description": "The slot they are being sourced for, which then follows the printing",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/DeckCardUuid"
-                            }
-                        ]
                     }
                 },
                 "required": [

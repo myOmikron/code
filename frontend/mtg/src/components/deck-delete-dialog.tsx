@@ -34,7 +34,7 @@ export type DeckDeleteDialogProps = {
 /**
  * Throwing a deck away, and deciding what happens to the cards in it.
  *
- * A deck that keeps a collection is holding real cardboard. Deleting it without
+ * A deck with a Physical deck is holding real cardboard. Deleting it without
  * asking would take those cards out of the inventory as if they had been sold,
  * so the question is put before the deed — and only when there is anything to
  * ask about.
@@ -62,11 +62,10 @@ export function DeckDeleteDialog({ deck, onClose, onDeleted }: DeckDeleteDialogP
         void (async () => {
             const [sourcing, collections] = await Promise.all([Api.decks.sourcing.read(uuid), Api.collections.list()]);
             if (dropped) return;
-            const shelf = collections.filter((collection) => collection.collection.deck == null);
             setCopies(sourcing.filed.reduce((sum, stack) => sum + stack.quantity, 0));
             setHomeless(sourcing.filed.some((stack) => stack.origin == null));
-            setBoxes(shelf);
-            setTarget(shelf[0]?.collection.uuid ?? "");
+            setBoxes(collections);
+            setTarget(collections[0]?.collection.uuid ?? "");
         })();
         return () => {
             dropped = true;
@@ -81,7 +80,7 @@ export function DeckDeleteDialog({ deck, onClose, onDeleted }: DeckDeleteDialogP
         setBusy(true);
         try {
             if (copies > 0 && giveBack) {
-                await Api.decks.sourcing.returnAll(uuid, homeless ? target : null);
+                await Api.decks.sourcing.takeApart(uuid, homeless ? target : null);
             }
             await Api.decks.delete(uuid);
             notify.success(t("toast.deck-deleted"));

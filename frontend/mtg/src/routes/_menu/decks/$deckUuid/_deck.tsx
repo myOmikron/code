@@ -257,7 +257,10 @@ function RouteComponent() {
                                         ? t("label.rule-zero")
                                         : t("label.rule-zero-count", { count: deviations })}
                                 </BadgeButton>
-                                {drifted > 0 && (
+                                {/* An Editor sees the Physical deck too, but the
+                                    sourcing view behind the badge is the owner's
+                                    shelf, so for them it only says how much. */}
+                                {drifted > 0 && rights.owner && (
                                     <BadgeButton
                                         color={"amber"}
                                         className={ACTION_RING}
@@ -271,6 +274,12 @@ function RouteComponent() {
                                         <ExclamationTriangleIcon className={"size-3.5"} />
                                         {t("label.drift", { count: drifted })}
                                     </BadgeButton>
+                                )}
+                                {drifted > 0 && !rights.owner && (
+                                    <Badge color={"amber"}>
+                                        <ExclamationTriangleIcon className={"size-3.5"} />
+                                        {t("label.drift", { count: drifted })}
+                                    </Badge>
                                 )}
                                 {rights.owner ? (
                                     <BadgeButton

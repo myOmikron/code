@@ -14,7 +14,6 @@ use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::MaxStr;
 use tracing::warn;
 
-use crate::http::handler_frontend::collections::schema::CollectionResponse;
 use crate::http::handler_frontend::decks::history::schema::DeckUndoResponse;
 use crate::http::handler_frontend::decks::schema::AddDeckCardRequest;
 use crate::http::handler_frontend::decks::schema::AdvisorSettingsResponse;
@@ -38,8 +37,6 @@ use crate::http::handler_frontend::decks::schema::ListFormatsResponse;
 use crate::http::handler_frontend::decks::schema::ReadDeckCardResponse;
 use crate::http::handler_frontend::decks::schema::ReadDeckUrlRequest;
 use crate::http::handler_frontend::decks::schema::ReadDeckUrlResponse;
-use crate::http::handler_frontend::decks::schema::ReturnAllDeckCardsRequest;
-use crate::http::handler_frontend::decks::schema::ReturnAllDeckCardsResponse;
 use crate::http::handler_frontend::decks::schema::ReturnDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::RoleBansResponse;
 use crate::http::handler_frontend::decks::schema::RotateDeckShareTokenResponse;
@@ -50,6 +47,8 @@ use crate::http::handler_frontend::decks::schema::SetDeckFolderRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckRuleZeroRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckVisibilityRequest;
 use crate::http::handler_frontend::decks::schema::SwapDeckCardRequest;
+use crate::http::handler_frontend::decks::schema::TakeApartPhysicalDeckRequest;
+use crate::http::handler_frontend::decks::schema::TakeApartPhysicalDeckResponse;
 use crate::http::handler_frontend::decks::schema::TakeDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckCardRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckRequest;
@@ -70,7 +69,7 @@ use crate::models::deck::DeckCardPatch;
 use crate::models::deck::DeckCardUuid;
 use crate::models::deck::DeckInsert;
 use crate::models::deck::DeckUuid;
-use crate::models::deck::DetachOutcome;
+use crate::models::deck::TakeApartOutcome;
 use crate::models::deck::access::DeckGrant;
 use crate::models::deck::access::DeckOperation;
 use crate::models::deck::access::DeckRole;
@@ -119,71 +118,6 @@ pub async fn get_all_decks(account: Account) -> ApiResult<ApiJson<Vec<DeckOvervi
     Ok(ApiJson(overviews))
 }
 
-/// Start keeping the cards that are physically in this deck
-///
-/// The deck gets a collection of its own. Idempotent, so the client can call it
-/// without first asking whether there already is one.
-#[post("/{deck}/collection")]
-pub async fn attach_deck_collection(
-    account: Account,
-    Path(deck_uuid): Path<DeckUuid>,
-) -> ApiResult<ApiJson<CollectionResponse>> {
-    let mut tx = Database::global().start_transaction().await?;
-
-    let grant = granted(
-        Deck::authorize(
-            &mut tx,
-            deck_uuid,
-            account.uuid,
-            DeckOperation::AttachCollection,
-        )
-        .await?,
-    )?;
-
-    let collection = match Deck::attach_collection(&mut tx, grant.owner(), deck_uuid).await? {
-        DeckAccess::Granted(collection) => collection,
-        DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
-    };
-
-    tx.commit().await?;
-
-    Ok(ApiJson(CollectionResponse::from(collection)))
-}
-
-/// Stop keeping them
-///
-/// Refused while cards are still filed in it: they would otherwise leave the
-/// account's inventory without anybody saying where they went.
-#[delete("/{deck}/collection")]
-pub async fn detach_deck_collection(
-    account: Account,
-    Path(deck_uuid): Path<DeckUuid>,
-) -> ApiResult<ApiJson<()>> {
-    let mut tx = Database::global().start_transaction().await?;
-
-    let grant = granted(
-        Deck::authorize(
-            &mut tx,
-            deck_uuid,
-            account.uuid,
-            DeckOperation::DetachCollection,
-        )
-        .await?,
-    )?;
-
-    match Deck::detach_collection(&mut tx, grant.owner(), deck_uuid).await? {
-        DetachOutcome::Detached => {}
-        DetachOutcome::NotEmpty => {
-            return Err(ApiError::bad_request("Sort the cards back first"));
-        }
-        DetachOutcome::Denied => return Err(ApiError::bad_request("Request was denied")),
-    }
-
-    tx.commit().await?;
-
-    Ok(ApiJson(()))
-}
-
 /// What the deck asks for, what is in it, and where the rest could come from
 #[get("/{deck}/sourcing")]
 pub async fn get_deck_sourcing(
@@ -213,13 +147,18 @@ pub async fn get_deck_sourcing(
 
     tx.commit().await?;
 
-    Ok(ApiJson(DeckSourcingResponse::new(sourcing, collection)))
+    Ok(ApiJson(DeckSourcingResponse::new(
+        sourcing,
+        collection.map(|collection| collection.uuid),
+    )))
 }
 
-/// Where the deck list and the deck's own collection disagree
+/// Where the deck list and the Physical deck disagree
 ///
 /// Read on its own rather than out of the sourcing answer: the header asks this
 /// on every tab of the deck, and it has no use for the whole account's shelf.
+/// An Editor reads it too; the sourcing answer, which shows the owner's
+/// collections, stays the owner's.
 #[get("/{deck}/collection/drift")]
 pub async fn get_deck_collection_drift(
     account: Account,
@@ -242,38 +181,38 @@ pub async fn get_deck_collection_drift(
     Ok(ApiJson(DeckDriftResponse::new(drift, collection.is_some())))
 }
 
-/// Move copies out of a collection and into the deck
+/// Move copies out of a collection and into the Physical deck
 ///
 /// Where they came from is written down with them, which is what makes taking
-/// the deck apart again possible.
+/// the deck apart again possible. The first card creates the Physical deck.
+///
+/// The list leads: copies of another printing or finish than a line asks for
+/// do not change the line, they are a Deviation.
 #[post("/{deck}/sourcing/take")]
 pub async fn take_deck_cards(
     account: Account,
     Path(deck_uuid): Path<DeckUuid>,
-    ApiJson(TakeDeckCardsRequest {
-        entry,
-        quantity,
-        slot,
-    }): ApiJson<TakeDeckCardsRequest>,
+    ApiJson(TakeDeckCardsRequest { entry, quantity }): ApiJson<TakeDeckCardsRequest>,
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
     let grant = granted(
         Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::TakeCards).await?,
     )?;
-    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
-    let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
-        return Err(ApiError::bad_request("This deck keeps no collection"));
-    };
 
     let source = CollectionEntry::collection_of(&mut tx, grant.owner(), entry)
         .await?
-        .ok_or_else(|| ApiError::bad_request("Request was denied"))?;
-    if source == collection.uuid {
+        .ok_or_else(denied)?;
+    if Deck::collection(&mut tx, deck_uuid)
+        .await?
+        .is_some_and(|collection| collection.uuid == source)
+    {
         return Err(ApiError::bad_request("Those cards are already in the deck"));
     }
+    let collection =
+        granted(Deck::physical_deck_or_create(&mut tx, grant.owner(), deck_uuid).await?)?;
 
-    let filed = match CollectionEntry::move_copies(
+    match CollectionEntry::move_copies(
         &mut tx,
         grant.owner(),
         entry,
@@ -283,22 +222,11 @@ pub async fn take_deck_cards(
     )
     .await?
     {
-        MoveOutcome::Moved { filed, .. } => filed,
+        MoveOutcome::Moved { .. } => {}
         MoveOutcome::TooFewCopies => {
             return Err(ApiError::bad_request("The stack does not hold that many"));
         }
-        MoveOutcome::Denied => return Err(ApiError::bad_request("Request was denied")),
-    };
-
-    // The list follows the cardboard: a slot somebody sourced another edition
-    // for now says so, and is split when only part of it was covered.
-    if let Some(slot) = slot {
-        let foil = filed.finish != CardFinish::Nonfoil;
-        let difference = granted(
-            DeckCard::point_at(&mut tx, deck_uuid, slot, filed.printing, foil, quantity).await?,
-        )?;
-        edit.record(&mut tx, DeckChangeKind::Sourcing, difference)
-            .await?;
+        MoveOutcome::Denied => return Err(denied().into()),
     }
 
     tx.commit().await?;
@@ -316,7 +244,8 @@ pub async fn take_deck_cards(
 /// The slots are topped up to what they ask for, in the printing and finish they
 /// name, as near mint and without an origin: nothing was taken out of a
 /// collection, so there is nowhere to put it back. Sorting them into one later
-/// is the same return call with a target.
+/// is the same return call with a target. The first card creates the Physical
+/// deck.
 #[post("/{deck}/sourcing/fill")]
 pub async fn fill_deck_collection(
     account: Account,
@@ -335,9 +264,8 @@ pub async fn fill_deck_collection(
         .await?,
     )?;
     let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
-    let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
-        return Err(ApiError::bad_request("This deck keeps no collection"));
-    };
+    let collection =
+        granted(Deck::physical_deck_or_create(&mut tx, grant.owner(), deck_uuid).await?)?;
 
     let sourcing =
         DeckSourcing::read(&mut tx, grant.owner(), deck_uuid, Some(collection.uuid)).await?;
@@ -423,7 +351,7 @@ pub async fn fill_deck_collection(
     Ok(ApiJson(FillDeckCollectionResponse { filed }))
 }
 
-/// Sort copies out of the deck back into a collection
+/// Sort copies out of the Physical deck back into a collection
 #[post("/{deck}/sourcing/return")]
 pub async fn return_deck_cards(
     account: Account,
@@ -440,7 +368,7 @@ pub async fn return_deck_cards(
         Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::ReturnCards).await?,
     )?;
     let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
-        return Err(ApiError::bad_request("This deck keeps no collection"));
+        return Err(ApiError::bad_request("This deck has no Physical deck"));
     };
 
     let stack = CollectionEntry::get(&mut tx, collection.uuid, entry)
@@ -465,56 +393,39 @@ pub async fn return_deck_cards(
     Ok(ApiJson(()))
 }
 
-/// Sort everything in the deck back where it came from
+/// Take the Physical deck apart
 ///
-/// This is what taking a deck apart does. Stacks that remember no origin only
-/// move when the client says where they should go; otherwise they stay, and the
-/// answer says how many that was.
-#[post("/{deck}/sourcing/return-all")]
-pub async fn return_all_deck_cards(
+/// Real cards go back to the collection they came from; those without a usable
+/// origin (none recorded, or that collection is gone) go into `target`. Refused
+/// if a single real card has nowhere to go, and then nothing moves. Afterwards
+/// the deck has no Physical deck.
+#[post("/{deck}/sourcing/take-apart")]
+pub async fn take_apart_physical_deck(
     account: Account,
     Path(deck_uuid): Path<DeckUuid>,
-    ApiJson(ReturnAllDeckCardsRequest { target }): ApiJson<ReturnAllDeckCardsRequest>,
-) -> ApiResult<ApiJson<ReturnAllDeckCardsResponse>> {
+    ApiJson(TakeApartPhysicalDeckRequest { target }): ApiJson<TakeApartPhysicalDeckRequest>,
+) -> ApiResult<ApiJson<TakeApartPhysicalDeckResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
     let grant = granted(
         Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::ReturnCards).await?,
     )?;
-    let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
-        return Err(ApiError::bad_request("This deck keeps no collection"));
-    };
 
-    let stacks =
-        CollectionEntry::get_all_in_collection(&mut tx, grant.owner(), collection.uuid).await?;
-
-    let mut returned = 0;
-    let mut left = 0;
-    for stack in stacks {
-        let Some(into) = stack.origin.or(target) else {
-            left += 1;
-            continue;
-        };
-        match CollectionEntry::move_copies(
-            &mut tx,
-            grant.owner(),
-            stack.uuid,
-            stack.quantity,
-            into,
-            None,
-        )
-        .await?
-        {
-            MoveOutcome::Moved { .. } => returned += 1,
-            // The collection a stack remembers can be gone by now; that is not a
-            // reason to abandon the rest of the deck.
-            MoveOutcome::Denied | MoveOutcome::TooFewCopies => left += 1,
+    // Returning early drops the transaction, which rolls back whatever was
+    // already sorted back: a deck is taken apart whole or not at all.
+    let returned = match Deck::take_apart(&mut tx, grant.owner(), deck_uuid, target).await? {
+        TakeApartOutcome::TakenApart { returned } => returned,
+        TakeApartOutcome::Unplaceable => {
+            return Err(ApiError::bad_request(
+                "Say which collection the cards without an origin go into",
+            ));
         }
-    }
+        TakeApartOutcome::Denied => return Err(denied().into()),
+    };
 
     tx.commit().await?;
 
-    Ok(ApiJson(ReturnAllDeckCardsResponse { returned, left }))
+    Ok(ApiJson(TakeApartPhysicalDeckResponse { returned }))
 }
 
 /// File a deck into one of the account's folders

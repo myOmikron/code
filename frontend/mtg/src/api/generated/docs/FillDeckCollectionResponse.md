@@ -1,7 +1,7 @@
 
 # FillDeckCollectionResponse
 
-What filling a deck\'s collection from its own list came to
+What recording bought copies came to
 
 ## Properties
 

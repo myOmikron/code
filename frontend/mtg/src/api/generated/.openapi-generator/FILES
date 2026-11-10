@@ -319,8 +319,6 @@ docs/ResolvePrintingsResponse.md
 docs/ResolvedPrintingResponse.md
 docs/ResultResponse.md
 docs/ResultState.md
-docs/ReturnAllDeckCardsRequest.md
-docs/ReturnAllDeckCardsResponse.md
 docs/ReturnDeckCardsRequest.md
 docs/Role.md
 docs/RoleBansResponse.md
@@ -409,6 +407,8 @@ docs/SubscribePushDeviceErrors.md
 docs/SubscribePushDeviceRequest.md
 docs/SwapDeckCardRequest.md
 docs/SyncRunOutcome.md
+docs/TakeApartPhysicalDeckRequest.md
+docs/TakeApartPhysicalDeckResponse.md
 docs/TakeDeckCardsRequest.md
 docs/ThemeLevel.md
 docs/ThemePrefs.md

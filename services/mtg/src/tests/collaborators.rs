@@ -374,14 +374,11 @@ fn owner_operations(friend: &TestAccount) -> Vec<Operation> {
         Operation::new(Method::POST, "", json!({ "visibility": "Public" })),
         Operation::new(Method::POST, "share-token", json!({})),
         Operation::new(Method::POST, "folder", json!({ "folder": null })),
-        Operation::new(Method::POST, "collection", json!({})),
-        Operation::new(Method::DELETE, "collection", json!({})),
         Operation::new(Method::GET, "sourcing", Value::Null),
-        Operation::new(Method::GET, "collection/drift", Value::Null),
         Operation::new(
             Method::POST,
             "sourcing/take",
-            json!({ "entry": entry, "quantity": 1, "slot": null }),
+            json!({ "entry": entry, "quantity": 1 }),
         ),
         Operation::new(Method::POST, "sourcing/fill", json!({ "slot": null })),
         Operation::new(
@@ -391,7 +388,7 @@ fn owner_operations(friend: &TestAccount) -> Vec<Operation> {
         ),
         Operation::new(
             Method::POST,
-            "sourcing/return-all",
+            "sourcing/take-apart",
             json!({ "target": null }),
         ),
         Operation::new(Method::GET, "history", Value::Null),
