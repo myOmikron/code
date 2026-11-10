@@ -55,7 +55,7 @@ pub struct ActiveImpersonation {
     /// The impersonating Admin, the session's own Account
     pub admin: Account,
     /// The Impersonation as the session stores it
-    pub state: Impersonation,
+    pub stored: Impersonation,
 }
 
 impl Caller {
@@ -105,9 +105,9 @@ impl Caller {
         }
 
         match (impersonation, impersonated) {
-            (Some(state), Some(account)) => Ok(Self {
+            (Some(stored), Some(account)) => Ok(Self {
                 account,
-                impersonation: Some(ActiveImpersonation { admin: own, state }),
+                impersonation: Some(ActiveImpersonation { admin: own, stored }),
             }),
             (Some(_), None) => {
                 Impersonation::remove_from(session).await?;
