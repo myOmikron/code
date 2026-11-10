@@ -21,7 +21,7 @@ use crate::http::handler_frontend::decks::schema::BracketRulesResponse;
 use crate::http::handler_frontend::decks::schema::CreateDeckRequest;
 use crate::http::handler_frontend::decks::schema::CreateDeckTagRequest;
 use crate::http::handler_frontend::decks::schema::DeckCardResponse;
-use crate::http::handler_frontend::decks::schema::DeckDriftResponse;
+use crate::http::handler_frontend::decks::schema::DeckDeviationResponse;
 use crate::http::handler_frontend::decks::schema::DeckOverviewResponse;
 use crate::http::handler_frontend::decks::schema::DeckResponse;
 use crate::http::handler_frontend::decks::schema::DeckSourcingResponse;
@@ -78,7 +78,7 @@ use crate::models::deck::access::DeckGrant;
 use crate::models::deck::access::DeckOperation;
 use crate::models::deck::access::DeckRole;
 use crate::models::deck::advisor::AdvisorSettings;
-use crate::models::deck::drift::DeckDrift;
+use crate::models::deck::deviation::DeckDeviation;
 use crate::models::deck::history::DeckChangeKind;
 use crate::models::deck::history::DeckDifference;
 use crate::models::deck::history::DeckEdit;
@@ -158,23 +158,31 @@ pub async fn get_deck_sourcing(
     )))
 }
 
-/// Where the deck list and the Physical deck disagree
+/// The Deviation between the deck list and the Physical deck
 ///
-/// Read on its own rather than out of the sourcing answer: the header asks this
-/// on every tab of the deck, and it has no use for the whole account's shelf.
-/// An Editor reads it too; the sourcing answer, which shows the owner's
-/// collections, stays the owner's.
-#[get("/{deck}/collection/drift")]
-pub async fn get_deck_collection_drift(
+/// Read on its own rather than out of the sourcing answer: the header and the
+/// card list ask this on every tab of the deck, and they have no use for the
+/// whole account's shelf. An Editor reads it too; the sourcing answer, which
+/// shows the owner's collections, stays the owner's.
+#[get("/{deck}/deviation")]
+pub async fn get_deck_deviation(
     account: Account,
     Path(deck_uuid): Path<DeckUuid>,
-) -> ApiResult<ApiJson<DeckDriftResponse>> {
+) -> ApiResult<ApiJson<DeckDeviationResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::ReadDrift).await?)?;
+    granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::ReadDeviation,
+        )
+        .await?,
+    )?;
 
     let collection = Deck::collection(&mut tx, deck_uuid).await?;
-    let drift = DeckDrift::read(
+    let deviation = DeckDeviation::read(
         &mut tx,
         deck_uuid,
         collection.as_ref().map(|collection| collection.uuid),
@@ -183,7 +191,7 @@ pub async fn get_deck_collection_drift(
 
     tx.commit().await?;
 
-    Ok(ApiJson(DeckDriftResponse::new(drift, collection.is_some())))
+    Ok(ApiJson(DeckDeviationResponse::from(deviation)))
 }
 
 /// What the deck's list costs, what its Physical deck is worth and what

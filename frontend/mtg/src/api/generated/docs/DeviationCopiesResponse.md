@@ -1,7 +1,7 @@
 
-# DeckDriftRowResponse
+# DeviationCopiesResponse
 
-One card the deck list and the deck\'s own collection disagree about
+Copies of one printing and finish lying in the Physical deck
 
 ## Properties
 
@@ -10,8 +10,8 @@ Name | Type
 `card` | [SourcedPrintingResponse](SourcedPrintingResponse.md)
 `foil` | boolean
 `printing` | string
+`proxy` | boolean
 `quantity` | number
-`wanted` | [SourcedPrintingResponse](SourcedPrintingResponse.md)
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

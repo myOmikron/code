@@ -181,7 +181,8 @@
         "thin-support": "Cards whose colors are likely missing by the turn their mana value asks for.",
         "visibility-private": "Only you can see the deck.",
         "visibility-public": "Stands in your public profile.",
-        "visibility-unlisted": "Anyone with the link can see it, nobody else."
+        "visibility-unlisted": "Anyone with the link can see it, nobody else.",
+        "not-on-list": "These cards are in the Physical deck, but no card of the main deck, Commander, Companion or sideboard names them. Sort them back into a collection or put them on the list."
     },
     "error": {
         "collaborator-is-owner": "That is you.",
@@ -239,7 +240,8 @@
         "tags": "Tags",
         "thin-support": "Short on colors",
         "types": "Card types",
-        "unfiled-decks": "No folder"
+        "unfiled-decks": "No folder",
+        "not-on-list": "In the deck, not on the list"
     },
     "label": {
         "add-to": "File into {{zone}}",
@@ -300,8 +302,16 @@
         "header-list-value": "List value {{value}}",
         "header-physical-value": "Physical value {{value}}",
         "description": "Description",
-        "drift_one": "1 card out of step",
-        "drift_other": "{{count}} cards out of step",
+        "deviation_one": "1 deviation",
+        "deviation_other": "{{count}} deviations",
+        "deviation-short": "{{held}}/{{wanted}} in the deck",
+        "deviation-other-printing_one": "1 in another print",
+        "deviation-other-printing_other": "{{count}} in another print",
+        "deviation-surplus_one": "1 too many",
+        "deviation-surplus_other": "{{count}} too many",
+        "deviation-proxies_one": "1 Proxy",
+        "deviation-proxies_other": "{{count}} Proxies",
+        "deviation-other-printing-title": "In the deck instead: {{printings}}",
         "export-with-printing": "Name the printing",
         "extra-turns-chains": "chains",
         "filter-printings": "Search printings, e.g. art:squirrel",

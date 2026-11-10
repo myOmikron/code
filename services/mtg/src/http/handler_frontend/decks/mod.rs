@@ -32,7 +32,7 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::delete_deck)
                 .handler(handler::set_deck_folder)
                 .handler(handler::get_deck_sourcing)
-                .handler(handler::get_deck_collection_drift)
+                .handler(handler::get_deck_deviation)
                 .handler(handler::get_deck_values)
                 .handler(handler::take_deck_cards)
                 .handler(handler::fill_deck_collection)

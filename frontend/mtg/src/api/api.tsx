@@ -351,12 +351,7 @@ export const Api = {
         // A filed deck keeps its cards either way.
         setFolder: async (uuid: UUID, folder: UUID | null) =>
             handleError(defaultApi.setDeckFolder({ deck: uuid, SetDeckFolderRequest: { folder } })),
-        // Where the deck list and its Physical deck disagree. Its own request
-        // because the deck's header asks it on every tab, and the sourcing
-        // answer would drag the whole account's shelf along. The owner and
-        // Editors read it; a Viewer gets the missing-deck answer.
-        drift: async (deck: UUID) => handleError(defaultApi.getDeckCollectionDrift({ deck })),
-        driftIfOwner: async (deck: UUID) => orGone(defaultApi.getDeckCollectionDrift({ deck })),
+        deviation: async (deck: UUID) => orGone(defaultApi.getDeckDeviation({ deck })),
         // The List value, and what the Physical deck is worth and how many
         // Proxies it holds. The owner and Editors read it; a Viewer gets the
         // missing-deck answer, which `valuesIfShown` turns into `null`.

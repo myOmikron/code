@@ -64,7 +64,7 @@ import type {
     CreateTournament200Response,
     CreateWatchListRequest,
     DeckCardResponse,
-    DeckDriftResponse,
+    DeckDeviationResponse,
     DeckFolderResponse,
     DeckHistoryResponse,
     DeckOverviewResponse,
@@ -937,7 +937,7 @@ export interface GetDeckAdvisorSettingsRequest {
     deck: string;
 }
 
-export interface GetDeckCollectionDriftRequest {
+export interface GetDeckDeviationRequest {
     /**
      * 
      */
@@ -6296,13 +6296,13 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Creates request options for getDeckCollectionDrift without sending the request
+     * Creates request options for getDeckDeviation without sending the request
      */
-    async getDeckCollectionDriftRequestOpts(requestParameters: GetDeckCollectionDriftRequest): Promise<runtime.RequestOpts> {
+    async getDeckDeviationRequestOpts(requestParameters: GetDeckDeviationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['deck'] == null) {
             throw new runtime.RequiredError(
                 'deck',
-                'Required parameter "deck" was null or undefined when calling getDeckCollectionDrift().'
+                'Required parameter "deck" was null or undefined when calling getDeckDeviation().'
             );
         }
 
@@ -6311,7 +6311,7 @@ export class DefaultApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/api/frontend/v1/decks/{deck}/collection/drift`;
+        let urlPath = `/api/frontend/v1/decks/{deck}/deviation`;
         urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
 
         return {
@@ -6323,22 +6323,22 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Where the deck list and the Physical deck disagree  Read on its own rather than out of the sourcing answer: the header asks this on every tab of the deck, and it has no use for the whole account\'s shelf. An Editor reads it too; the sourcing answer, which shows the owner\'s collections, stays the owner\'s.
-     * Where the deck list and the Physical deck disagree
+     * The Deviation between the deck list and the Physical deck  Read on its own rather than out of the sourcing answer: the header and the card list ask this on every tab of the deck, and they have no use for the whole account\'s shelf. An Editor reads it too; the sourcing answer, which shows the owner\'s collections, stays the owner\'s.
+     * The Deviation between the deck list and the Physical deck
      */
-    async getDeckCollectionDriftRaw(requestParameters: GetDeckCollectionDriftRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckDriftResponse>> {
-        const requestOptions = await this.getDeckCollectionDriftRequestOpts(requestParameters);
+    async getDeckDeviationRaw(requestParameters: GetDeckDeviationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckDeviationResponse>> {
+        const requestOptions = await this.getDeckDeviationRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response);
     }
 
     /**
-     * Where the deck list and the Physical deck disagree  Read on its own rather than out of the sourcing answer: the header asks this on every tab of the deck, and it has no use for the whole account\'s shelf. An Editor reads it too; the sourcing answer, which shows the owner\'s collections, stays the owner\'s.
-     * Where the deck list and the Physical deck disagree
+     * The Deviation between the deck list and the Physical deck  Read on its own rather than out of the sourcing answer: the header and the card list ask this on every tab of the deck, and they have no use for the whole account\'s shelf. An Editor reads it too; the sourcing answer, which shows the owner\'s collections, stays the owner\'s.
+     * The Deviation between the deck list and the Physical deck
      */
-    async getDeckCollectionDrift(requestParameters: GetDeckCollectionDriftRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckDriftResponse> {
-        const response = await this.getDeckCollectionDriftRaw(requestParameters, initOverrides);
+    async getDeckDeviation(requestParameters: GetDeckDeviationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckDeviationResponse> {
+        const response = await this.getDeckDeviationRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

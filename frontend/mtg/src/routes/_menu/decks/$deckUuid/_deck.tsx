@@ -55,7 +55,7 @@ import { ShareDialog } from "src/components/share-dialog";
 import { folderLabel } from "src/utils/deck-folders";
 import { formatCurrency } from "src/utils/format";
 import { commanderColors, letters, ruleZeroCount } from "src/utils/deck-rules";
-import { driftCopies } from "src/utils/deck-drift";
+import { deviationCount } from "src/utils/deck-deviation";
 import { deckCardsRoute, deckRights } from "src/utils/deck-rights";
 
 /** How the mini buttons above the tabs are framed */
@@ -63,11 +63,11 @@ const ACTION_RING = "ring-1 ring-zinc-950/10 dark:ring-white/15";
 
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
     loader: async ({ params }) => {
-        const [deck, offered, shelves, drift, values] = await Promise.all([
+        const [deck, offered, shelves, deviation, values] = await Promise.all([
             Api.decks.get(params.deckUuid),
             Api.decks.formats(),
             Api.folders.list(),
-            Api.decks.driftIfOwner(params.deckUuid),
+            Api.decks.deviation(params.deckUuid),
             Api.decks.valuesIfShown(params.deckUuid),
         ]);
         if (deck.role == null) {
@@ -89,7 +89,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
                     ? offered.brackets
                     : [],
             folders: shelves.folders,
-            drift,
+            deviation,
             values,
         };
     },
@@ -103,7 +103,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
  */
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
-    const { deck, formats, brackets, folders, drift, values } = Route.useLoaderData();
+    const { deck, formats, brackets, folders, deviation, values } = Route.useLoaderData();
     const bare = useChromeBare();
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
@@ -122,13 +122,10 @@ function RouteComponent() {
 
     const rights = deckRights(deck.role);
     const deviations = ruleZeroCount(deck);
-    // What the list and the Physical deck disagree about. Said in the header
-    // rather than on the sourcing tab alone: somebody swapping a printing
-    // while building is exactly the person who will not open that tab.
-    const drifted = drift === null ? 0 : driftCopies(drift);
+    const deviated = deviation === null ? 0 : deviationCount(deviation);
     // Whether the export dropdown offers to proxy only what the Physical deck
     // lacks, beside the whole deck.
-    const lacking = drift !== null && drift.has_physical_deck && drift.pending.length > 0;
+    const lacking = deviation !== null && deviation.entries.some((line) => line.missing > 0);
     const rules = formats.find((format) => format.slug === deck.format);
 
     // This layout never loads the card list, but the Rule 0 picker should
@@ -247,29 +244,20 @@ function RouteComponent() {
                                         ? t("label.rule-zero")
                                         : t("label.rule-zero-count", { count: deviations })}
                                 </BadgeButton>
-                                {/* An Editor sees the Physical deck too, but the
-                                    sourcing view behind the badge is the owner's
-                                    shelf, so for them it only says how much. */}
-                                {drifted > 0 && rights.owner && (
+                                {deviated > 0 && (
                                     <BadgeButton
                                         color={"amber"}
                                         className={ACTION_RING}
                                         onClick={() =>
                                             void navigate({
-                                                to: "/decks/$deckUuid/sourcing",
+                                                to: "/decks/$deckUuid/cards",
                                                 params: { deckUuid },
                                             })
                                         }
                                     >
                                         <ExclamationTriangleIcon className={"size-3.5"} />
-                                        {t("label.drift", { count: drifted })}
+                                        {t("label.deviation", { count: deviated })}
                                     </BadgeButton>
-                                )}
-                                {drifted > 0 && !rights.owner && (
-                                    <Badge color={"amber"}>
-                                        <ExclamationTriangleIcon className={"size-3.5"} />
-                                        {t("label.drift", { count: drifted })}
-                                    </Badge>
                                 )}
                                 <DeckProxyMarker count={values?.physical?.proxies} />
                                 {values != null && (

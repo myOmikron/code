@@ -2393,60 +2393,25 @@ export interface DeckCommanderResponse {
     name: string;
 }
 /**
- * Where the deck list and the cardboard filed under it disagree
+ * The Deviation between the deck list and its Physical deck
  * 
- * Every list empty means the deck in the box is the deck on the list, which is what lets the header say so without asking a second question.
+ * One line per Deck entry of the main deck, Commander, Companion and sideboard; the maybe board never counts. A deck without a Physical deck has no Deviation: no lines and nothing off the list.
  * @export
- * @interface DeckDriftResponse
+ * @interface DeckDeviationResponse
  */
-export interface DeckDriftResponse {
+export interface DeckDeviationResponse {
     /**
-     * Whether the deck has a Physical deck; nothing deviates while it has none
+     * What the Physical deck holds for each counted Deck entry
+     */
+    entries: Array<LineDeviationResponse>;
+    /**
+     * Whether the deck has a Physical deck
      */
     has_physical_deck: boolean;
     /**
-     * Copies lying in the deck whose card the list does not name at all
+     * Copies in the deck whose card no counted Deck entry names
      */
-    not_in_deck: Array<DeckDriftRowResponse>;
-    /**
-     * Copies lying in the deck in a printing or finish the list does not ask for
-     */
-    other_printing: Array<DeckDriftRowResponse>;
-    /**
-     * Copies the list asks for that are nowhere in the deck
-     */
-    pending: Array<DeckDriftRowResponse>;
-    /**
-     * Copies of a card the list wants, beyond the count it asks for
-     */
-    surplus: Array<DeckDriftRowResponse>;
-}
-/**
- * One card the deck list and the deck's own collection disagree about
- * @export
- * @interface DeckDriftRowResponse
- */
-export interface DeckDriftRowResponse {
-    /**
-     * What the catalog knows about the printing
-     */
-    card?: SourcedPrintingResponse | null;
-    /**
-     * Whether those copies are the foil ones
-     */
-    foil: boolean;
-    /**
-     * Scryfall's id of the printing the row is about
-     */
-    printing: string;
-    /**
-     * How many copies the disagreement is about
-     */
-    quantity: number;
-    /**
-     * The printing the list asks for instead, only on `other_printing` rows
-     */
-    wanted?: SourcedPrintingResponse | null;
+    not_on_list: Array<DeviationCopiesResponse>;
 }
 /**
  * How many copies one Deck entry held before and after a Deck change
@@ -3035,6 +3000,33 @@ export const DeletionMode = {
 } as const;
 export type DeletionMode = typeof DeletionMode[keyof typeof DeletionMode];
 
+/**
+ * Copies of one printing and finish lying in the Physical deck
+ * @export
+ * @interface DeviationCopiesResponse
+ */
+export interface DeviationCopiesResponse {
+    /**
+     * What the catalog knows about the printing
+     */
+    card?: SourcedPrintingResponse | null;
+    /**
+     * Whether they are the foil ones
+     */
+    foil: boolean;
+    /**
+     * Scryfall's id of the printing
+     */
+    printing: string;
+    /**
+     * Whether they are Proxies
+     */
+    proxy: boolean;
+    /**
+     * How many copies
+     */
+    quantity: number;
+}
 /**
  * Why a Participant's dispute was refused
  * @export
@@ -4337,6 +4329,39 @@ Gives every slot a new id, so anything hanging off those ids is lost. That is ri
 } as const;
 export type ImportMode = typeof ImportMode[keyof typeof ImportMode];
 
+/**
+ * What the Physical deck holds for one Deck entry
+ * 
+ * The entry lacks `missing` copies, holds `in_deck` of its own printing and finish (`proxies` of them Proxies) and stands in for the rest with `other_printing`; `surplus` copies of its card are one too many.
+ * @export
+ * @interface LineDeviationResponse
+ */
+export interface LineDeviationResponse {
+    /**
+     * The Deck entry
+     */
+    entry: string;
+    /**
+     * Copies of the listed printing and finish in the deck, up to the count the entry asks for, Proxies included
+     */
+    in_deck: number;
+    /**
+     * Copies the entry asks for that nothing in the deck stands in for
+     */
+    missing: number;
+    /**
+     * Copies of the same card in another printing or finish, standing in for copies the entry still lacks
+     */
+    other_printing: Array<DeviationCopiesResponse>;
+    /**
+     * How many of `in_deck` are Proxies
+     */
+    proxies: number;
+    /**
+     * Copies of the entry's card beyond what the list asks for
+     */
+    surplus: number;
+}
 /**
  * One page of a collection
  * @export
