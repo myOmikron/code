@@ -66,6 +66,9 @@ pub struct AdminLogEntryModel {
 
     /// The username a Rename gave the Account
     pub new_username: Option<MaxStr<32>>,
+
+    /// The expiry an Impersonation start gave its Impersonation
+    pub expires_at: Option<OffsetDateTime>,
 }
 
 /// Insert patch for [`AdminLogEntryModel`]
@@ -92,4 +95,6 @@ pub struct AdminLogEntryInsertPatch {
     pub deletion: Option<DeletionMode>,
     /// The username a Rename gave the Account
     pub new_username: Option<MaxStr<32>>,
+    /// When an Impersonation ends at the latest
+    pub expires_at: Option<OffsetDateTime>,
 }

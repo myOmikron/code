@@ -1,0 +1,19 @@
+[Migration]
+Hash = "10529617192020977005"
+Initial = false
+Dependency = 72
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "admin_log_entry"
+
+[Migration.Operations.Field]
+Name = "expires_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/admin_log/db.rs"
+Line = 71
+Column = 9
