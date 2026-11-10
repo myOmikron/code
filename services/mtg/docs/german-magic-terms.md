@@ -167,6 +167,7 @@ Project decisions, not printed on cards, so no source.
 | combo | die Combo | das Combo |
 | proxy | Proxy, Proxies | Proxys |
 | the cardboard really in a deck | Physisches Deck | Deck-Sammlung |
+| where a deck list and its Physical deck disagree | Abweichung | Drift, Unterschied |
 | extra turn | Extrazug, Extrazüge | Extra-Zug |
 
 These stay as they are, in German or English: Hauptdeck, Sideboard, Mulligan, Starthand, Ramp,

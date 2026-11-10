@@ -21,8 +21,9 @@ use crate::models::deck::advisor::AdvisorSettings;
 use crate::models::deck::advisor::DeckTargets;
 use crate::models::deck::advisor::MarkedCard;
 use crate::models::deck::advisor::ThemePrefs;
-use crate::models::deck::drift::DeckDrift;
-use crate::models::deck::drift::DriftRow;
+use crate::models::deck::deviation::DeckDeviation;
+use crate::models::deck::deviation::DeviationCopies;
+use crate::models::deck::deviation::LineDeviation;
 use crate::models::deck::folder::DeckFolderUuid;
 use crate::models::deck::listing::DeckCommander;
 use crate::models::deck::listing::DeckSummary;
@@ -370,65 +371,104 @@ impl DeckSourcingResponse {
     }
 }
 
-/// One card the deck list and the deck's own collection disagree about
+/// Copies of one printing and finish lying in the Physical deck
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct DeckDriftRowResponse {
-    /// Scryfall's id of the printing the row is about
+pub struct DeviationCopiesResponse {
+    /// Scryfall's id of the printing
     pub printing: Uuid,
-    /// How many copies the disagreement is about
+    /// How many copies
     pub quantity: i32,
-    /// Whether those copies are the foil ones
+    /// Whether they are the foil ones
     pub foil: bool,
+    /// Whether they are Proxies
+    pub proxy: bool,
     /// What the catalog knows about the printing
     pub card: Option<SourcedPrintingResponse>,
-    /// The printing the list asks for instead, only on `other_printing` rows
-    pub wanted: Option<SourcedPrintingResponse>,
 }
 
-/// Where the deck list and the cardboard filed under it disagree
+/// What the Physical deck holds for one Deck entry
 ///
-/// Every list empty means the deck in the box is the deck on the list, which is
-/// what lets the header say so without asking a second question.
+/// The entry lacks `missing` copies, holds `in_deck` of its own printing and
+/// finish (`proxies` of them Proxies) and stands in for the rest with
+/// `other_printing`; `surplus` copies of its card are one too many.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct DeckDriftResponse {
-    /// Whether the deck has a Physical deck; nothing deviates while it has none
-    pub has_physical_deck: bool,
-    /// Copies the list asks for that are nowhere in the deck
-    pub pending: Vec<DeckDriftRowResponse>,
-    /// Copies lying in the deck in a printing or finish the list does not ask for
-    pub other_printing: Vec<DeckDriftRowResponse>,
-    /// Copies lying in the deck whose card the list does not name at all
-    pub not_in_deck: Vec<DeckDriftRowResponse>,
-    /// Copies of a card the list wants, beyond the count it asks for
-    pub surplus: Vec<DeckDriftRowResponse>,
+pub struct LineDeviationResponse {
+    /// The Deck entry
+    pub entry: DeckCardUuid,
+    /// Copies of the listed printing and finish in the deck, up to the count
+    /// the entry asks for, Proxies included
+    pub in_deck: i32,
+    /// How many of `in_deck` are Proxies
+    pub proxies: i32,
+    /// Copies of the same card in another printing or finish, standing in for
+    /// copies the entry still lacks
+    pub other_printing: Vec<DeviationCopiesResponse>,
+    /// Copies the entry asks for that nothing in the deck stands in for
+    pub missing: i32,
+    /// Copies of the entry's card beyond what the list asks for
+    pub surplus: i32,
 }
 
-impl From<DriftRow> for DeckDriftRowResponse {
-    fn from(row: DriftRow) -> Self {
+/// The Deviation between the deck list and its Physical deck
+///
+/// One line per Deck entry of the main deck, Commander, Companion and
+/// sideboard; the maybe board never counts. A deck without a Physical deck has
+/// no Deviation: no lines and nothing off the list.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DeckDeviationResponse {
+    /// Whether the deck has a Physical deck
+    pub has_physical_deck: bool,
+    /// What the Physical deck holds for each counted Deck entry
+    pub entries: Vec<LineDeviationResponse>,
+    /// Copies in the deck whose card no counted Deck entry names
+    pub not_on_list: Vec<DeviationCopiesResponse>,
+}
+
+impl From<DeviationCopies> for DeviationCopiesResponse {
+    fn from(copies: DeviationCopies) -> Self {
         Self {
-            printing: row.printing,
-            quantity: row.quantity,
-            foil: row.foil,
-            card: row.card.map(SourcedPrintingResponse::from),
-            wanted: row.wanted.map(SourcedPrintingResponse::from),
+            printing: copies.printing,
+            quantity: copies.quantity,
+            foil: copies.foil,
+            proxy: copies.proxy,
+            card: copies.card.map(SourcedPrintingResponse::from),
         }
     }
 }
 
-impl DeckDriftResponse {
-    /// Puts the four lists into one answer
-    pub fn new(drift: DeckDrift, has_physical_deck: bool) -> Self {
-        let rows = |rows: Vec<DriftRow>| {
-            rows.into_iter()
-                .map(DeckDriftRowResponse::from)
-                .collect::<Vec<_>>()
-        };
+impl From<LineDeviation> for LineDeviationResponse {
+    fn from(line: LineDeviation) -> Self {
+        Self {
+            entry: line.entry,
+            in_deck: line.in_deck,
+            proxies: line.proxies,
+            other_printing: line
+                .other_printing
+                .into_iter()
+                .map(DeviationCopiesResponse::from)
+                .collect(),
+            missing: line.missing,
+            surplus: line.surplus,
+        }
+    }
+}
+
+impl From<Option<DeckDeviation>> for DeckDeviationResponse {
+    fn from(deviation: Option<DeckDeviation>) -> Self {
+        let has_physical_deck = deviation.is_some();
+        let deviation = deviation.unwrap_or_default();
         Self {
             has_physical_deck,
-            pending: rows(drift.pending),
-            other_printing: rows(drift.other_printing),
-            not_in_deck: rows(drift.not_in_deck),
-            surplus: rows(drift.surplus),
+            entries: deviation
+                .lines
+                .into_iter()
+                .map(LineDeviationResponse::from)
+                .collect(),
+            not_on_list: deviation
+                .not_on_list
+                .into_iter()
+                .map(DeviationCopiesResponse::from)
+                .collect(),
         }
     }
 }

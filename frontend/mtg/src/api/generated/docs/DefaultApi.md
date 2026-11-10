@@ -85,7 +85,7 @@ All URIs are relative to *http://localhost*
 | [**getCollectionStatistics**](DefaultApi.md#getcollectionstatistics) | **GET** /api/frontend/v1/collections/{collection}/statistics |  |
 | [**getDeck**](DefaultApi.md#getdeck) | **GET** /api/frontend/v1/decks/{deck} | Fetch a single deck, with the caller\&#39;s role on it |
 | [**getDeckAdvisorSettings**](DefaultApi.md#getdeckadvisorsettings) | **GET** /api/frontend/v1/decks/{deck}/advisor-settings | Read this deck\&#39;s advisor settings |
-| [**getDeckCollectionDrift**](DefaultApi.md#getdeckcollectiondrift) | **GET** /api/frontend/v1/decks/{deck}/collection/drift | Where the deck list and the Physical deck disagree |
+| [**getDeckDeviation**](DefaultApi.md#getdeckdeviation) | **GET** /api/frontend/v1/decks/{deck}/deviation | The Deviation between the deck list and the Physical deck |
 | [**getDeckFormats**](DefaultApi.md#getdeckformats) | **GET** /api/frontend/v1/decks/formats | What the offered formats ask of a deck |
 | [**getDeckHistory**](DefaultApi.md#getdeckhistory) | **GET** /api/frontend/v1/decks/{deck}/history | A deck\&#39;s Deck history, newest first |
 | [**getDeckPoint**](DefaultApi.md#getdeckpoint) | **GET** /api/frontend/v1/decks/{deck}/history/{change} | The deck as it was right after one of its Deck changes, read-only |
@@ -5968,13 +5968,13 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## getDeckCollectionDrift
+## getDeckDeviation
 
-> DeckDriftResponse getDeckCollectionDrift(deck)
+> DeckDeviationResponse getDeckDeviation(deck)
 
-Where the deck list and the Physical deck disagree
+The Deviation between the deck list and the Physical deck
 
-Where the deck list and the Physical deck disagree  Read on its own rather than out of the sourcing answer: the header asks this on every tab of the deck, and it has no use for the whole account\&#39;s shelf. An Editor reads it too; the sourcing answer, which shows the owner\&#39;s collections, stays the owner\&#39;s.
+The Deviation between the deck list and the Physical deck  Read on its own rather than out of the sourcing answer: the header and the card list ask this on every tab of the deck, and they have no use for the whole account\&#39;s shelf. An Editor reads it too; the sourcing answer, which shows the owner\&#39;s collections, stays the owner\&#39;s.
 
 ### Example
 
@@ -5983,7 +5983,7 @@ import {
   Configuration,
   DefaultApi,
 } from '';
-import type { GetDeckCollectionDriftRequest } from '';
+import type { GetDeckDeviationRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
@@ -5992,10 +5992,10 @@ async function example() {
   const body = {
     // string
     deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-  } satisfies GetDeckCollectionDriftRequest;
+  } satisfies GetDeckDeviationRequest;
 
   try {
-    const data = await api.getDeckCollectionDrift(body);
+    const data = await api.getDeckDeviation(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -6015,7 +6015,7 @@ example().catch(console.error);
 
 ### Return type
 
-[**DeckDriftResponse**](DeckDriftResponse.md)
+[**DeckDeviationResponse**](DeckDeviationResponse.md)
 
 ### Authorization
 

@@ -51,6 +51,21 @@ pub(super) fn unique(name: &str) -> String {
 
 /// Files one printing of `name` into the catalog and answers its id
 pub(super) async fn file(name: &str, print: Print<'_>) -> Uuid {
+    file_of(name, print, Uuid::new_v4()).await
+}
+
+/// Files `count` printings of one card named `name` and answers their ids
+pub(super) async fn file_printings(name: &str, count: usize) -> Vec<Uuid> {
+    let oracle = Uuid::new_v4();
+    let mut printings = Vec::with_capacity(count);
+    for _ in 0..count {
+        printings.push(file_of(name, Print::default(), oracle).await);
+    }
+    printings
+}
+
+/// Files one printing of the card `oracle` and answers its id
+async fn file_of(name: &str, print: Print<'_>, oracle: Uuid) -> Uuid {
     let id = Uuid::new_v4();
     let legalities = if print.legal {
         json!({ "commander": "legal" })
@@ -60,7 +75,7 @@ pub(super) async fn file(name: &str, print: Print<'_>) -> Uuid {
     let printing = printing_from_json(
         &json!({
             "id": id,
-            "oracle_id": Uuid::new_v4(),
+            "oracle_id": oracle,
             "name": name,
             "set": "tdp",
             "set_name": "Test Default Printing",

@@ -10,7 +10,7 @@ import {
     proxySheets,
 } from "src/utils/proxy-print";
 import type { ProxyCard } from "src/utils/proxy-print";
-import type { DeckCardResponse, DeckDriftResponse, DeckDriftRowResponse, DeckZone } from "src/api/generated";
+import type { DeckCardResponse, DeckDeviationResponse, DeckZone, LineDeviationResponse } from "src/api/generated";
 
 /**
  * A card to print
@@ -191,32 +191,31 @@ describe("deckProxyCards", () => {
 /**
  * A Deviation answer for a deck with a Physical deck
  *
- * @param pending the copies the list asks for that the Physical deck does not hold
+ * @param entries what the Physical deck holds for each Deck entry
  *
  * @returns the answer as the service would send it
  */
-function deviation(pending: Array<DeckDriftRowResponse>): DeckDriftResponse {
-    return { has_physical_deck: true, pending, other_printing: [], not_in_deck: [], surplus: [] };
+function deviation(entries: Array<LineDeviationResponse>): DeckDeviationResponse {
+    return { has_physical_deck: true, entries, not_on_list: [] };
 }
 
 /**
- * Copies of one card the Physical deck lacks
+ * A Deck entry the Physical deck lacks copies of
  *
- * @param name the card's name, as {@link slot} names its printing
- * @param quantity how many copies are missing
- * @param foil whether the missing copies are foils
+ * @param entry the Deck entry, as {@link slot} names it
+ * @param missing how many copies are missing
  *
- * @returns the row
+ * @returns the line
  */
-function lacking(name: string, quantity: number, foil = false): DeckDriftRowResponse {
-    return { printing: `printing-${name}`, quantity, foil };
+function lacking(entry: string, missing: number): LineDeviationResponse {
+    return { entry, in_deck: 0, proxies: 0, other_printing: [], missing, surplus: 0 };
 }
 
 describe("missingProxyCards", () => {
     it("offers only the copies the Physical deck does not hold", () => {
         const cards = [slot("Sol Ring", "Main"), slot("Swamp", "Main", 10)];
 
-        const missing = missingProxyCards(cards, deviation([lacking("Swamp", 4)]));
+        const missing = missingProxyCards(cards, deviation([lacking("Main-Swamp-plain", 4)]));
 
         expect(missing?.map((card) => [card.name, card.copies])).toStrictEqual([["Swamp", 4]]);
     });
@@ -227,29 +226,21 @@ describe("missingProxyCards", () => {
         expect(missingProxyCards([slot("Sol Ring", "Main")], none)).toBeNull();
     });
 
-    it("tells the foil copies from the plain ones", () => {
+    it("reads each Deck entry's own missing copies", () => {
         const cards = [slot("Sol Ring", "Main", 1, true), slot("Sol Ring", "Commander", 1)];
 
-        const missing = missingProxyCards(cards, deviation([lacking("Sol Ring", 1)]));
+        const missing = missingProxyCards(
+            cards,
+            deviation([lacking("Main-Sol Ring-foil", 0), lacking("Commander-Sol Ring-plain", 1)]),
+        );
 
         expect(missing?.map((card) => card.key)).toStrictEqual(["Commander-Sol Ring-plain"]);
-    });
-
-    it("hands copies of one printing out to its lines in the deck's order", () => {
-        const cards = [slot("Swamp", "Commander", 2), slot("Swamp", "Main", 3)];
-
-        const missing = missingProxyCards(cards, deviation([lacking("Swamp", 4)]));
-
-        expect(missing?.map((card) => [card.key, card.copies])).toStrictEqual([
-            ["Commander-Swamp-plain", 2],
-            ["Main-Swamp-plain", 2],
-        ]);
     });
 
     it("leaves out the sideboard and the maybe board, as the whole deck does", () => {
         const cards = [slot("Duress", "Side"), slot("Ponder", "Maybe")];
 
-        const missing = missingProxyCards(cards, deviation([lacking("Duress", 1), lacking("Ponder", 1)]));
+        const missing = missingProxyCards(cards, deviation([lacking("Side-Duress-plain", 1)]));
 
         expect(missing).toStrictEqual([]);
     });

@@ -108,7 +108,7 @@ export function useProxyPicks({ deck: opened, missing, needsImage }: ProxyPickOp
         try {
             const [{ cards }, deviation] = await Promise.all([
                 Api.decks.cards.list(uuid),
-                onlyLacking ? Api.decks.driftIfOwner(uuid) : null,
+                onlyLacking ? Api.decks.deviation(uuid) : null,
             ]);
             if (!reading.current.delete(uuid)) return;
 

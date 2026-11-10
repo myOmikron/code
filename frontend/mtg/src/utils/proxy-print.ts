@@ -11,7 +11,7 @@
  * both come out as, and the ordering list in `mpcfill.ts` reads the same rows.
  */
 
-import type { DeckCardResponse, DeckDriftResponse } from "src/api/generated";
+import type { DeckCardResponse, DeckDeviationResponse } from "src/api/generated";
 
 /** A sheet of A4, in millimetres */
 export const SHEET = { width: 210, height: 297 };
@@ -179,11 +179,9 @@ export function deckProxyCards(cards: Array<DeckCardResponse>): Array<ProxyCard>
 /**
  * The copies of a deck its Physical deck does not hold, to be proxied
  *
- * Read off the Deviation's missing copies rather than worked out again here, so
- * the tools and the deck page never disagree about what is missing. Those are
- * counted per printing and finish, so they are handed out to the deck's lines
- * of that printing and finish in the order the deck lists them. The same lines
- * as {@link deckProxyCards} take part.
+ * Read off each Deck entry's missing copies in the Deviation rather than worked
+ * out again here, so the tools and the deck page never disagree about what is
+ * missing. The same lines as {@link deckProxyCards} take part.
  *
  * @param cards the deck's lines
  * @param deviation where the deck list and the Physical deck disagree
@@ -193,22 +191,14 @@ export function deckProxyCards(cards: Array<DeckCardResponse>): Array<ProxyCard>
  */
 export function missingProxyCards(
     cards: Array<DeckCardResponse>,
-    deviation: DeckDriftResponse,
+    deviation: DeckDeviationResponse,
 ): Array<ProxyCard> | null {
     if (!deviation.has_physical_deck) return null;
 
-    const open = new Map<string, number>();
-    for (const row of deviation.pending) {
-        const key = missingKey(row.printing, row.foil);
-        open.set(key, (open.get(key) ?? 0) + row.quantity);
-    }
-
+    const missing = new Map(deviation.entries.map((line) => [line.entry, line.missing]));
     return cards.filter(isPrinted).flatMap((slot) => {
-        const key = missingKey(slot.printing, slot.foil);
-        const copies = Math.min(slot.quantity, open.get(key) ?? 0);
-        if (copies === 0) return [];
-        open.set(key, (open.get(key) ?? 0) - copies);
-        return [proxyCardOf(slot, copies)];
+        const copies = Math.min(slot.quantity, missing.get(slot.uuid) ?? 0);
+        return copies === 0 ? [] : [proxyCardOf(slot, copies)];
     });
 }
 
@@ -242,16 +232,4 @@ function proxyCardOf(slot: DeckCardResponse, copies: number): ProxyCard {
         copies: Math.min(MAX_COPIES, copies),
         basic: isBasicLand(slot.card?.type_line),
     };
-}
-
-/**
- * What a missing copy is counted under
- *
- * @param printing Scryfall's id of the printing
- * @param foil whether the copies are foils
- *
- * @returns the key
- */
-function missingKey(printing: string, foil: boolean): string {
-    return `${printing}|${foil ? "foil" : "plain"}`;
 }

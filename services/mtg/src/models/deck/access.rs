@@ -103,8 +103,8 @@ pub enum DeckOperation {
     SetFolder,
     /// Read where the deck's cards could come from
     ReadSourcing,
-    /// Read where the list and the Physical deck disagree
-    ReadDrift,
+    /// Read the Deviation between the list and the Physical deck
+    ReadDeviation,
     /// Move copies out of a collection and into the Physical deck
     TakeCards,
     /// Record copies bought straight into the Physical deck
@@ -148,7 +148,7 @@ impl DeckOperation {
 
             // An Editor sees the Physical deck, so its list edits can be
             // weighed against what the owner built; a Viewer does not.
-            Self::ReadDrift => DeckClass::Edit,
+            Self::ReadDeviation => DeckClass::Edit,
 
             Self::SetVisibility
             | Self::RotateShareToken
@@ -317,7 +317,7 @@ mod tests {
 
     #[test]
     fn an_editor_reads_the_physical_deck_a_viewer_does_not() {
-        assert_eq!(DeckOperation::ReadDrift.class(), DeckClass::Edit);
+        assert_eq!(DeckOperation::ReadDeviation.class(), DeckClass::Edit);
     }
 
     #[test]

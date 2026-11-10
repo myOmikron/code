@@ -4994,11 +4994,11 @@
                 }
             }
         },
-        "/api/frontend/v1/decks/{deck}/collection/drift": {
+        "/api/frontend/v1/decks/{deck}/deviation": {
             "get": {
-                "summary": "Where the deck list and the Physical deck disagree",
-                "description": "Where the deck list and the Physical deck disagree\n\nRead on its own rather than out of the sourcing answer: the header asks this\non every tab of the deck, and it has no use for the whole account's shelf.\nAn Editor reads it too; the sourcing answer, which shows the owner's\ncollections, stays the owner's.",
-                "operationId": "get_deck_collection_drift",
+                "summary": "The Deviation between the deck list and the Physical deck",
+                "description": "The Deviation between the deck list and the Physical deck\n\nRead on its own rather than out of the sourcing answer: the header and the\ncard list ask this on every tab of the deck, and they have no use for the\nwhole account's shelf. An Editor reads it too; the sourcing answer, which\nshows the owner's collections, stays the owner's.",
+                "operationId": "get_deck_deviation",
                 "parameters": [
                     {
                         "in": "path",
@@ -5018,7 +5018,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/DeckDriftResponse"
+                                    "$ref": "#/components/schemas/DeckDeviationResponse"
                                 }
                             }
                         }
@@ -18547,92 +18547,33 @@
                     "name"
                 ]
             },
-            "DeckDriftResponse": {
-                "description": "Where the deck list and the cardboard filed under it disagree\n\nEvery list empty means the deck in the box is the deck on the list, which is what lets the header say so without asking a second question.",
+            "DeckDeviationResponse": {
+                "description": "The Deviation between the deck list and its Physical deck\n\nOne line per Deck entry of the main deck, Commander, Companion and sideboard; the maybe board never counts. A deck without a Physical deck has no Deviation: no lines and nothing off the list.",
                 "type": "object",
                 "properties": {
+                    "entries": {
+                        "description": "What the Physical deck holds for each counted Deck entry",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LineDeviationResponse"
+                        }
+                    },
                     "has_physical_deck": {
-                        "description": "Whether the deck has a Physical deck; nothing deviates while it has none",
+                        "description": "Whether the deck has a Physical deck",
                         "type": "boolean"
                     },
-                    "not_in_deck": {
-                        "description": "Copies lying in the deck whose card the list does not name at all",
+                    "not_on_list": {
+                        "description": "Copies in the deck whose card no counted Deck entry names",
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/DeckDriftRowResponse"
-                        }
-                    },
-                    "other_printing": {
-                        "description": "Copies lying in the deck in a printing or finish the list does not ask for",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/DeckDriftRowResponse"
-                        }
-                    },
-                    "pending": {
-                        "description": "Copies the list asks for that are nowhere in the deck",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/DeckDriftRowResponse"
-                        }
-                    },
-                    "surplus": {
-                        "description": "Copies of a card the list wants, beyond the count it asks for",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/DeckDriftRowResponse"
+                            "$ref": "#/components/schemas/DeviationCopiesResponse"
                         }
                     }
                 },
                 "required": [
+                    "entries",
                     "has_physical_deck",
-                    "not_in_deck",
-                    "other_printing",
-                    "pending",
-                    "surplus"
-                ]
-            },
-            "DeckDriftRowResponse": {
-                "description": "One card the deck list and the deck's own collection disagree about",
-                "type": "object",
-                "properties": {
-                    "card": {
-                        "nullable": true,
-                        "description": "What the catalog knows about the printing",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/SourcedPrintingResponse"
-                            }
-                        ]
-                    },
-                    "foil": {
-                        "description": "Whether those copies are the foil ones",
-                        "type": "boolean"
-                    },
-                    "printing": {
-                        "description": "Scryfall's id of the printing the row is about",
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "quantity": {
-                        "description": "How many copies the disagreement is about",
-                        "type": "integer",
-                        "format": "int32"
-                    },
-                    "wanted": {
-                        "nullable": true,
-                        "description": "The printing the list asks for instead, only on `other_printing` rows",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/SourcedPrintingResponse"
-                            }
-                        ]
-                    }
-                },
-                "required": [
-                    "foil",
-                    "printing",
-                    "quantity"
+                    "not_on_list"
                 ]
             },
             "DeckEntryChangeResponse": {
@@ -19449,6 +19390,45 @@
                             "Full"
                         ]
                     }
+                ]
+            },
+            "DeviationCopiesResponse": {
+                "description": "Copies of one printing and finish lying in the Physical deck",
+                "type": "object",
+                "properties": {
+                    "card": {
+                        "nullable": true,
+                        "description": "What the catalog knows about the printing",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SourcedPrintingResponse"
+                            }
+                        ]
+                    },
+                    "foil": {
+                        "description": "Whether they are the foil ones",
+                        "type": "boolean"
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "proxy": {
+                        "description": "Whether they are Proxies",
+                        "type": "boolean"
+                    },
+                    "quantity": {
+                        "description": "How many copies",
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "foil",
+                    "printing",
+                    "proxy",
+                    "quantity"
                 ]
             },
             "DisputeResultErrors": {
@@ -21228,6 +21208,55 @@
                             "Fill"
                         ]
                     }
+                ]
+            },
+            "LineDeviationResponse": {
+                "description": "What the Physical deck holds for one Deck entry\n\nThe entry lacks `missing` copies, holds `in_deck` of its own printing and finish (`proxies` of them Proxies) and stands in for the rest with `other_printing`; `surplus` copies of its card are one too many.",
+                "type": "object",
+                "properties": {
+                    "entry": {
+                        "description": "The Deck entry",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckCardUuid"
+                            }
+                        ]
+                    },
+                    "in_deck": {
+                        "description": "Copies of the listed printing and finish in the deck, up to the count the entry asks for, Proxies included",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "missing": {
+                        "description": "Copies the entry asks for that nothing in the deck stands in for",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "other_printing": {
+                        "description": "Copies of the same card in another printing or finish, standing in for copies the entry still lacks",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeviationCopiesResponse"
+                        }
+                    },
+                    "proxies": {
+                        "description": "How many of `in_deck` are Proxies",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "surplus": {
+                        "description": "Copies of the entry's card beyond what the list asks for",
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "entry",
+                    "in_deck",
+                    "missing",
+                    "other_printing",
+                    "proxies",
+                    "surplus"
                 ]
             },
             "ListCardsResponse": {

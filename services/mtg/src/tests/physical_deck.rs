@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::models::account::Role;
 use crate::tests::default_printing::Print;
 use crate::tests::default_printing::file;
+use crate::tests::default_printing::file_printings;
 use crate::tests::default_printing::unique;
 use crate::tests::harness::TestClient;
 use crate::tests::harness::TestResponse;
@@ -233,11 +234,13 @@ fn a_deck_nobody_put_a_card_into_has_no_physical_deck() {
 
         assert_eq!(sourcing["physical_deck"], Value::Null, "{sourcing}");
         assert!(filed(&sourcing).is_empty());
-        let drift = fixture
-            .send(Method::GET, "collection/drift", Value::Null)
+        let deviation = fixture
+            .send(Method::GET, "deviation", Value::Null)
             .await
             .ok_json();
-        assert_eq!(drift["has_physical_deck"], false, "{drift}");
+        assert_eq!(deviation["has_physical_deck"], false, "{deviation}");
+        assert_eq!(deviation["entries"], json!([]), "{deviation}");
+        assert_eq!(deviation["not_on_list"], json!([]), "{deviation}");
     });
 }
 
@@ -301,11 +304,11 @@ fn taking_another_printing_onto_a_line_leaves_the_list_and_the_history_alone() {
 
         assert_eq!(fixture.entries().await, entries);
         assert_eq!(fixture.history().await, history);
-        let drift = fixture
-            .send(Method::GET, "collection/drift", Value::Null)
+        let deviation = fixture
+            .send(Method::GET, "deviation", Value::Null)
             .await
             .ok_json();
-        assert_eq!(drift["has_physical_deck"], true, "{drift}");
+        assert_eq!(deviation["has_physical_deck"], true, "{deviation}");
     });
 }
 
@@ -609,8 +612,8 @@ fn an_editor_reads_the_physical_deck_but_changes_nothing_and_a_viewer_sees_nothi
             ("sourcing/take-apart", json!({ "target": binder })),
         ];
 
-        let drift = editor.get(&fixture.url("collection/drift")).await.ok_json();
-        assert_eq!(drift["has_physical_deck"], true, "{drift}");
+        let deviation = editor.get(&fixture.url("deviation")).await.ok_json();
+        assert_eq!(deviation["has_physical_deck"], true, "{deviation}");
         for client in [&mut editor, &mut viewer] {
             for (path, body) in &changes {
                 let refused = client.json(Method::POST, &fixture.url(path), body).await;
@@ -621,7 +624,7 @@ fn an_editor_reads_the_physical_deck_but_changes_nothing_and_a_viewer_sees_nothi
                 assert_eq!(refused.body, gone.body, "{path}: {refused:?}");
             }
         }
-        for path in ["collection/drift", "sourcing"] {
+        for path in ["deviation", "sourcing"] {
             let refused = viewer.get(&fixture.url(path)).await;
             let gone = viewer.get(&api(&format!("decks/{missing}/{path}"))).await;
             assert_eq!(refused.status, gone.status, "{path}: {refused:?}");
@@ -924,9 +927,11 @@ fn an_editor_sees_proxies_fulfil_the_list_but_may_not_change_them() {
             ),
         ];
 
-        let drift = editor.get(&fixture.url("collection/drift")).await.ok_json();
-        assert_eq!(drift["has_physical_deck"], true, "{drift}");
-        assert_eq!(drift["pending"], json!([]), "{drift}");
+        let deviation = editor.get(&fixture.url("deviation")).await.ok_json();
+        assert_eq!(deviation["has_physical_deck"], true, "{deviation}");
+        let fulfilled = line(&deviation, &entry);
+        assert_eq!(fulfilled["missing"], 0, "{deviation}");
+        assert_eq!(fulfilled["proxies"], 1, "{deviation}");
         for client in [&mut editor, &mut viewer] {
             for (path, body) in &changes {
                 let refused = client.json(Method::POST, &fixture.url(path), body).await;
@@ -1065,5 +1070,320 @@ fn a_scanner_session_is_not_filed_into_a_deck_the_account_only_edits() {
             .await
             .ok_json();
         assert_eq!(session["session"]["copies"], 1, "{session}");
+    });
+}
+
+impl Fixture {
+    /// The Deviation as the owner reads it
+    async fn deviation(&mut self) -> Value {
+        let url = self.url("deviation");
+        self.owner.get(&url).await.ok_json()
+    }
+
+    /// Adds a Deck entry as described by `body`, returning its uuid
+    async fn add_entry(&mut self, body: Value) -> String {
+        let body = self.send(Method::POST, "cards", body).await.ok_json();
+        body["uuid"].as_str().expect("entry uuid").to_string()
+    }
+
+    /// Changes some fields of a Deck entry
+    async fn patch(&mut self, entry: &str, body: Value) {
+        self.send(Method::PATCH, &format!("cards/{entry}"), body)
+            .await
+            .ok_json();
+    }
+
+    /// Takes copies of a printing out of a fresh binder into the deck
+    async fn take_fresh(&mut self, printing: Uuid, quantity: i32) {
+        let binder = self.collection("Binder").await;
+        let stack = self.file(&binder, printing, quantity).await;
+        self.take(&stack, quantity).await.ok_json();
+    }
+}
+
+/// The copies the Deviation lists, as (printing, quantity, foil, proxy)
+fn copies(list: &Value) -> Vec<(Value, Value, Value, Value)> {
+    list.as_array()
+        .expect("copies list")
+        .iter()
+        .map(|copies| {
+            (
+                copies["printing"].clone(),
+                copies["quantity"].clone(),
+                copies["foil"].clone(),
+                copies["proxy"].clone(),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn another_printing_in_the_deck_stands_in_for_a_line_as_a_deviation() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printings = file_printings(&unique("Sol Ring"), 2).await;
+        let entry = fixture.add(printings[0], 1).await;
+        fixture.take_fresh(printings[1], 1).await;
+
+        let deviation = fixture.deviation().await;
+
+        let line = line(&deviation, &entry);
+        assert_eq!(line["in_deck"], 0, "{line}");
+        assert_eq!(line["missing"], 0, "{line}");
+        assert_eq!(
+            copies(&line["other_printing"]),
+            vec![(json!(printings[1]), json!(1), json!(false), json!(false))],
+        );
+        assert_eq!(deviation["not_on_list"], json!([]), "{deviation}");
+    });
+}
+
+#[test]
+fn another_finish_of_the_listed_printing_is_a_deviation() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture
+            .add_entry(json!({ "printing": printing, "quantity": 1, "zone": "Main", "foil": true }))
+            .await;
+        fixture.take_fresh(printing, 1).await;
+
+        let line = line(&fixture.deviation().await, &entry);
+
+        assert_eq!(line["in_deck"], 0, "{line}");
+        assert_eq!(
+            copies(&line["other_printing"]),
+            vec![(json!(printing), json!(1), json!(false), json!(false))],
+        );
+    });
+}
+
+#[test]
+fn copies_beyond_what_the_line_asks_for_are_surplus() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture.add(printing, 1).await;
+        fixture.take_fresh(printing, 3).await;
+
+        let line = line(&fixture.deviation().await, &entry);
+
+        assert_eq!(line["in_deck"], 1, "{line}");
+        assert_eq!(line["missing"], 0, "{line}");
+        assert_eq!(line["surplus"], 2, "{line}");
+    });
+}
+
+#[test]
+fn a_card_the_list_does_not_name_is_not_on_the_list() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let listed = Uuid::new_v4();
+        let stray = Uuid::new_v4();
+        let entry = fixture.add(listed, 1).await;
+        fixture.take_fresh(stray, 2).await;
+
+        let deviation = fixture.deviation().await;
+
+        assert_eq!(line(&deviation, &entry)["missing"], 1, "{deviation}");
+        assert_eq!(
+            copies(&deviation["not_on_list"]),
+            vec![(json!(stray), json!(2), json!(false), json!(false))],
+        );
+    });
+}
+
+#[test]
+fn the_maybe_board_never_counts_and_its_cards_in_the_deck_are_not_on_the_list() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let maybe = Uuid::new_v4();
+        let idea = Uuid::new_v4();
+        let entry = fixture
+            .add_entry(json!({ "printing": maybe, "quantity": 1, "zone": "Maybe" }))
+            .await;
+        fixture
+            .add_entry(json!({ "printing": idea, "quantity": 1, "zone": "Maybe" }))
+            .await;
+        fixture.take_fresh(maybe, 1).await;
+
+        let deviation = fixture.deviation().await;
+
+        let lines = deviation["entries"].as_array().expect("entry list");
+        assert!(
+            lines.iter().all(|line| line["entry"] != json!(entry)),
+            "{deviation}"
+        );
+        assert!(lines.is_empty(), "{deviation}");
+        assert_eq!(
+            copies(&deviation["not_on_list"]),
+            vec![(json!(maybe), json!(1), json!(false), json!(false))],
+        );
+    });
+}
+
+#[test]
+fn proxies_of_the_lines_printing_fulfil_it() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture.add(printing, 2).await;
+        fixture.proxy(&entry, 2).await.ok_json();
+
+        let deviation = fixture.deviation().await;
+
+        let line = line(&deviation, &entry);
+        assert_eq!(line["in_deck"], 2, "{line}");
+        assert_eq!(line["proxies"], 2, "{line}");
+        assert_eq!(line["missing"], 0, "{line}");
+        assert_eq!(line["surplus"], 0, "{line}");
+        assert_eq!(line["other_printing"], json!([]), "{line}");
+    });
+}
+
+#[test]
+fn a_proxy_of_another_printing_is_a_deviation_like_a_real_card() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printings = file_printings(&unique("Sol Ring"), 2).await;
+        let entry = fixture.add(printings[0], 1).await;
+        fixture.proxy(&entry, 1).await.ok_json();
+        let filed_before = filed(&fixture.sourcing().await);
+
+        fixture
+            .patch(&entry, json!({ "printing": printings[1] }))
+            .await;
+
+        let line = line(&fixture.deviation().await, &entry);
+        assert_eq!(line["in_deck"], 0, "{line}");
+        assert_eq!(line["proxies"], 0, "{line}");
+        assert_eq!(
+            copies(&line["other_printing"]),
+            vec![(json!(printings[0]), json!(1), json!(false), json!(true))],
+        );
+        assert_eq!(filed(&fixture.sourcing().await), filed_before);
+    });
+}
+
+#[test]
+fn an_editors_list_change_shows_as_deviation_and_leaves_the_physical_deck_alone() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture.add(printing, 2).await;
+        fixture.take_fresh(printing, 2).await;
+        let filed_before = filed(&fixture.sourcing().await);
+        let editor = create_account(Role::Member).await;
+        fixture
+            .send(
+                Method::PUT,
+                "collaborators",
+                json!({ "username": editor.username, "level": "Editor" }),
+            )
+            .await
+            .ok_json();
+        let mut editor = TestClient::logged_in(&editor).await;
+
+        editor
+            .json(
+                Method::PATCH,
+                &fixture.url(&format!("cards/{entry}")),
+                &json!({ "quantity": 3 }),
+            )
+            .await
+            .ok_json();
+
+        let deviation = editor.get(&fixture.url("deviation")).await.ok_json();
+        assert_eq!(line(&deviation, &entry)["missing"], 1, "{deviation}");
+        assert_eq!(filed(&fixture.sourcing().await), filed_before);
+    });
+}
+
+#[test]
+fn undoing_a_list_change_leaves_the_physical_deck_alone_and_shows_as_deviation() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        fixture.add(printing, 2).await;
+        fixture.take_fresh(printing, 2).await;
+        let filed_before = filed(&fixture.sourcing().await);
+
+        fixture
+            .send(Method::POST, "history/undo", Value::Null)
+            .await
+            .ok_json();
+
+        assert!(fixture.entries().await.is_empty());
+        assert_eq!(filed(&fixture.sourcing().await), filed_before);
+        let deviation = fixture.deviation().await;
+        assert_eq!(
+            copies(&deviation["not_on_list"]),
+            vec![(json!(printing), json!(2), json!(false), json!(false))],
+        );
+    });
+}
+
+#[test]
+fn resetting_the_list_leaves_the_physical_deck_alone_and_shows_as_deviation() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let kept = Uuid::new_v4();
+        let dropped = Uuid::new_v4();
+        let entry = fixture.add(kept, 1).await;
+        let point = fixture.history().await[0]["uuid"]
+            .as_str()
+            .expect("change uuid")
+            .to_string();
+        fixture.add(dropped, 1).await;
+        fixture.take_fresh(kept, 1).await;
+        fixture.take_fresh(dropped, 1).await;
+        let filed_before = filed(&fixture.sourcing().await);
+
+        fixture
+            .send(Method::POST, &format!("history/{point}/reset"), Value::Null)
+            .await
+            .ok_json();
+
+        assert_eq!(filed(&fixture.sourcing().await), filed_before);
+        let deviation = fixture.deviation().await;
+        assert_eq!(line(&deviation, &entry)["missing"], 0, "{deviation}");
+        assert_eq!(
+            copies(&deviation["not_on_list"]),
+            vec![(json!(dropped), json!(1), json!(false), json!(false))],
+        );
+    });
+}
+
+/// What the Deviation says about one Deck entry
+fn line(deviation: &Value, entry: &str) -> Value {
+    deviation["entries"]
+        .as_array()
+        .expect("entry list")
+        .iter()
+        .find(|line| line["entry"] == json!(entry))
+        .cloned()
+        .unwrap_or_else(|| panic!("no line for {entry}: {deviation}"))
+}
+
+#[test]
+fn a_line_says_how_many_of_its_copies_are_missing() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture.add(printing, 3).await;
+        let binder = fixture.collection("Binder").await;
+        let stack = fixture.file(&binder, printing, 1).await;
+        fixture.take(&stack, 1).await.ok_json();
+
+        let deviation = fixture.deviation().await;
+
+        assert_eq!(deviation["has_physical_deck"], true, "{deviation}");
+        let line = line(&deviation, &entry);
+        assert_eq!(line["in_deck"], 1, "{line}");
+        assert_eq!(line["proxies"], 0, "{line}");
+        assert_eq!(line["missing"], 2, "{line}");
+        assert_eq!(line["surplus"], 0, "{line}");
+        assert_eq!(line["other_printing"], json!([]), "{line}");
+        assert_eq!(deviation["not_on_list"], json!([]), "{deviation}");
     });
 }

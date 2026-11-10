@@ -1,0 +1,3 @@
+kind: improved
+de: "Jede Karte der Deckliste zeigt jetzt ihre Abweichung vom Physischen Deck: wie viele Kopien im Deck liegen, wie viele davon Proxies sind, ob ein anderes Printing drinliegt und ob es zu viele sind. Karten im Deck, die nicht auf der Liste stehen, stehen in einem eigenen Block darunter; der Kopf des Decks zeigt die Zahl der Abweichungen."
+en: "Every card of the decklist now shows its deviation from the Physical deck: how many copies are in the deck, how many of them are Proxies, whether another printing is in there and whether there are too many. Cards in the deck that are not on the list get a block of their own below it; the deck's header shows the number of deviations."

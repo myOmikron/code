@@ -181,7 +181,8 @@
         "thin-support": "Karten, deren Farben in dem Zug, der ihrem Manabetrag entspricht, wahrscheinlich noch fehlen.",
         "visibility-private": "Nur du siehst das Deck.",
         "visibility-public": "Steht in deinem öffentlichen Profil.",
-        "visibility-unlisted": "Wer den Link hat, sieht es, sonst niemand."
+        "visibility-unlisted": "Wer den Link hat, sieht es, sonst niemand.",
+        "not-on-list": "Diese Karten liegen im Physischen Deck, aber keine Karte im Hauptdeck, Commander, Companion oder Sideboard nennt sie. Sortiere sie zurück in eine Sammlung oder nimm sie auf die Liste."
     },
     "error": {
         "collaborator-is-owner": "Das bist du selbst.",
@@ -239,7 +240,8 @@
         "tags": "Tags",
         "thin-support": "Farblich knapp",
         "types": "Kartentypen",
-        "unfiled-decks": "Ohne Ordner"
+        "unfiled-decks": "Ohne Ordner",
+        "not-on-list": "Im Deck, nicht auf der Liste"
     },
     "label": {
         "add-to": "Ablegen in {{zone}}",
@@ -298,8 +300,16 @@
         "deck-size": "{{cards}} Karten",
         "deck-value": "Deckwert",
         "description": "Beschreibung",
-        "drift_one": "1 Karte weicht ab",
-        "drift_other": "{{count}} Karten weichen ab",
+        "deviation_one": "1 Abweichung",
+        "deviation_other": "{{count}} Abweichungen",
+        "deviation-short": "{{held}}/{{wanted}} im Deck",
+        "deviation-other-printing_one": "1 in anderem Printing",
+        "deviation-other-printing_other": "{{count}} in anderem Printing",
+        "deviation-surplus_one": "1 zu viel",
+        "deviation-surplus_other": "{{count}} zu viel",
+        "deviation-proxies_one": "1 Proxy",
+        "deviation-proxies_other": "{{count}} Proxies",
+        "deviation-other-printing-title": "Stattdessen im Deck: {{printings}}",
         "export-with-printing": "Printing mitgeben",
         "extra-turns-chains": "Kette",
         "filter-printings": "Printings durchsuchen, z. B. art:squirrel",
