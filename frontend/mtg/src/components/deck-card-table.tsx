@@ -18,6 +18,7 @@ import { isMaybeGroup } from "src/utils/deck-grouping";
 import type { DeckGroup, DeckGrouping } from "src/utils/deck-grouping";
 import type { SlotViolation } from "src/utils/deck-rules";
 import { FoilMark, ProxyMark } from "src/components/card-attribute-badge";
+import { DeckLineDeviation } from "src/components/deck-line-deviation";
 import { finishOf, priceOf } from "src/utils/deck-foil";
 import { formatCurrency } from "src/utils/format";
 import { pointerCard } from "src/utils/use-pointer-card";
@@ -251,16 +252,19 @@ export function DeckCardTable({
                                                     {/* The title sits on the span and not on the
                                                         icon: an svg element carries no tooltip, so
                                                         the reason was unreachable from here. */}
-                                                    {remarks.length > 0 && (
-                                                        <span title={violationLabel(t, remarks[0], card.zone)}>
-                                                            <ExclamationTriangleIcon
-                                                                className={"size-5 text-amber-500"}
-                                                            />
-                                                            <span className={"sr-only"}>
-                                                                {violationLabel(t, remarks[0], card.zone)}
+                                                    <span className={"flex flex-wrap items-center gap-1"}>
+                                                        {remarks.length > 0 && (
+                                                            <span title={violationLabel(t, remarks[0], card.zone)}>
+                                                                <ExclamationTriangleIcon
+                                                                    className={"size-5 text-amber-500"}
+                                                                />
+                                                                <span className={"sr-only"}>
+                                                                    {violationLabel(t, remarks[0], card.zone)}
+                                                                </span>
                                                             </span>
-                                                        </span>
-                                                    )}
+                                                        )}
+                                                        <DeckLineDeviation entry={card.uuid} />
+                                                    </span>
                                                 </TableCell>
                                                 <TableCell>
                                                     <span className={"flex items-center gap-1"}>

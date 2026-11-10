@@ -102,8 +102,7 @@ docs/DeckChangeKind.md
 docs/DeckChangeResponse.md
 docs/DeckCollaboratorResponse.md
 docs/DeckCommanderResponse.md
-docs/DeckDriftResponse.md
-docs/DeckDriftRowResponse.md
+docs/DeckDeviationResponse.md
 docs/DeckEntryChangeResponse.md
 docs/DeckFolderKind.md
 docs/DeckFolderResponse.md
@@ -128,6 +127,7 @@ docs/DeleteAccountErrors.md
 docs/DeleteAccountRequest.md
 docs/DeletePasskeyErrors.md
 docs/DeletionMode.md
+docs/DeviationCopiesResponse.md
 docs/DisputeResultErrors.md
 docs/DropErrors.md
 docs/EndTournamentRound200Response.md
@@ -197,6 +197,7 @@ docs/GetPendingOidcLoginResponse.md
 docs/ImportDeckCardsRequest.md
 docs/ImportDeckCardsResponse.md
 docs/ImportMode.md
+docs/LineDeviationResponse.md
 docs/ListCardsResponse.md
 docs/ListCollectionEntriesResponse.md
 docs/ListDeckCardsResponse.md

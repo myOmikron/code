@@ -9,6 +9,7 @@ import { CardmarketLink } from "src/components/cardmarket-link";
 import { FoilMark, ProxyBadge, finishLabel } from "src/components/card-attribute-badge";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { useDeckLabels } from "src/components/deck-labels";
+import { DeckLineDeviation } from "src/components/deck-line-deviation";
 import { DeckTagBadge, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
 import { GameChangerMarker } from "src/components/game-changer-marker";
@@ -168,6 +169,7 @@ export function DeckCardRow({
                             {violationLabel(t, violations[0], card.zone)}
                         </Badge>
                     )}
+                    <DeckLineDeviation entry={card.uuid} />
                     <CardmarketLink card={printing ?? null} finish={"Nonfoil"} />
                 </div>
             </div>
