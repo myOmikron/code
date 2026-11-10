@@ -195,7 +195,7 @@ export function missingProxyCards(
     cards: Array<DeckCardResponse>,
     deviation: DeckDriftResponse,
 ): Array<ProxyCard> | null {
-    if (!deviation.keeps_collection) return null;
+    if (!deviation.has_physical_deck) return null;
 
     const open = new Map<string, number>();
     for (const row of deviation.pending) {

@@ -118,13 +118,13 @@ function RouteComponent() {
 
     const rights = deckRights(deck.role);
     const deviations = ruleZeroCount(deck);
-    // What the list and the deck's own collection disagree about. Said in the
-    // header rather than on the sourcing tab alone: somebody swapping a
-    // printing while building is exactly the person who will not open that tab.
+    // What the list and the Physical deck disagree about. Said in the header
+    // rather than on the sourcing tab alone: somebody swapping a printing
+    // while building is exactly the person who will not open that tab.
     const drifted = drift === null ? 0 : driftCopies(drift);
     // Whether the export dropdown offers to proxy only what the Physical deck
     // lacks, beside the whole deck.
-    const lacking = drift !== null && drift.keeps_collection && drift.pending.length > 0;
+    const lacking = drift !== null && drift.has_physical_deck && drift.pending.length > 0;
     const rules = formats.find((format) => format.slug === deck.format);
 
     // This layout never loads the card list, but the Rule 0 picker should

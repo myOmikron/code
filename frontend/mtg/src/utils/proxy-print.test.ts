@@ -196,7 +196,7 @@ describe("deckProxyCards", () => {
  * @returns the answer as the service would send it
  */
 function deviation(pending: Array<DeckDriftRowResponse>): DeckDriftResponse {
-    return { keeps_collection: true, pending, other_printing: [], not_in_deck: [], surplus: [] };
+    return { has_physical_deck: true, pending, other_printing: [], not_in_deck: [], surplus: [] };
 }
 
 /**
@@ -222,7 +222,7 @@ describe("missingProxyCards", () => {
     });
 
     it("has nothing to tell for a deck without a Physical deck", () => {
-        const none = { ...deviation([]), keeps_collection: false };
+        const none = { ...deviation([]), has_physical_deck: false };
 
         expect(missingProxyCards([slot("Sol Ring", "Main")], none)).toBeNull();
     });
