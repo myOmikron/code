@@ -7,11 +7,14 @@ import {
     mpcCards,
     mpcCount,
     mpcFillList,
+    loadMpcArtScope,
+    mpcChoose,
+    mpcGroupsWith,
     mpcNeedsArt,
     mpcPick,
-    mpcPickKey,
     mpcQuery,
     mpcTiles,
+    saveMpcArtScope,
     saveMpcSort,
 } from "src/utils/mpcfill";
 import type { ProxyGroup } from "src/utils/proxy-list";
@@ -100,19 +103,47 @@ describe("art picks", () => {
     });
     const first = image("1");
     const second = image("2");
+    const third = image("3");
+    const found = [first, second, third];
+    const atraxa: ProxyGroup = { deck: { uuid: "a", name: "Atraxa" }, cards: [card("Sol Ring", 1)] };
+    const hand: ProxyGroup = { deck: null, cards: [card("Sol Ring", 1)] };
 
     it("takes the top hit until another is picked", () => {
-        expect(mpcPick([first, second], undefined)).toBe(first);
-        expect(mpcPick([first, second], "2")).toBe(second);
-        expect(mpcPick([first, second], "gone")).toBe(first);
-        expect(mpcPick([], undefined)).toBeNull();
+        expect(mpcPick({}, found, hand, "Sol Ring")).toBe(first);
+        expect(mpcPick(mpcChoose({}, hand, "Sol Ring", "2", false), found, hand, "Sol Ring")).toBe(second);
+        expect(mpcPick(mpcChoose({}, hand, "Sol Ring", "gone", false), found, hand, "Sol Ring")).toBe(first);
+        expect(mpcPick({}, [], hand, "Sol Ring")).toBeNull();
     });
 
-    it("files a pick per deck", () => {
-        const atraxa: ProxyGroup = { deck: { uuid: "a", name: "Atraxa" }, cards: [] };
-        const hand: ProxyGroup = { deck: null, cards: [] };
+    it("keeps a pick to its own deck", () => {
+        const picks = mpcChoose({}, atraxa, "Sol Ring", "2", false);
 
-        expect(mpcPickKey(atraxa, "Sol Ring")).not.toBe(mpcPickKey(hand, "Sol Ring"));
+        expect(mpcPick(picks, found, atraxa, "Sol Ring")).toBe(second);
+        expect(mpcPick(picks, found, hand, "Sol Ring")).toBe(first);
+    });
+
+    it("hands a pick to every deck, picked apart before or not", () => {
+        const apart = mpcChoose({}, atraxa, "Sol Ring", "2", false);
+        const picks = mpcChoose(apart, hand, "Sol Ring", "3", true);
+
+        expect(mpcPick(picks, found, atraxa, "Sol Ring")).toBe(third);
+        expect(mpcPick(picks, found, hand, "Sol Ring")).toBe(third);
+    });
+
+    it("lets a deck pick apart from the rest again", () => {
+        const picks = mpcChoose(mpcChoose({}, hand, "Sol Ring", "3", true), atraxa, "Sol Ring", "2", false);
+
+        expect(mpcPick(picks, found, atraxa, "Sol Ring")).toBe(second);
+        expect(mpcPick(picks, found, hand, "Sol Ring")).toBe(third);
+    });
+
+    it("counts the groups holding a face, either side of a card", () => {
+        const delver = { ...card("Delver of Secrets // Insectile Aberration", 1), back: "back.jpg" };
+        const groups = [atraxa, hand, { deck: { uuid: "b", name: "Breya" }, cards: [delver] }];
+
+        expect(mpcGroupsWith(groups, "Sol Ring")).toBe(2);
+        expect(mpcGroupsWith(groups, "Insectile Aberration")).toBe(1);
+        expect(mpcGroupsWith(groups, "Arcane Signet")).toBe(0);
     });
 
     it("misses art when either side has none", () => {
@@ -137,6 +168,18 @@ describe("mpc sort memory", () => {
         expect(loadMpcSort()).toBe("added");
         saveMpcSort("name");
         expect(loadMpcSort()).toBe("name");
+    });
+
+    it("asks about every deck until told otherwise", () => {
+        const values = new Map<string, string>();
+        vi.stubGlobal("localStorage", {
+            getItem: (key: string) => values.get(key) ?? null,
+            setItem: (key: string, value: string) => values.set(key, value),
+        });
+
+        expect(loadMpcArtScope()).toBe("ask");
+        saveMpcArtScope("all");
+        expect(loadMpcArtScope()).toBe("all");
     });
 
     it("falls back on a value it does not know", () => {

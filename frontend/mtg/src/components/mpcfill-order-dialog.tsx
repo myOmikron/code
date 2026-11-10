@@ -17,7 +17,8 @@ import {
 } from "components";
 import { useTranslation } from "react-i18next";
 import { ExternalLinkRow } from "src/components/external-link-row";
-import { MPC_FILL_URL } from "src/utils/mpcfill";
+import { MPC_ART_SCOPES, MPC_FILL_URL } from "src/utils/mpcfill";
+import type { MpcArtScope } from "src/utils/mpcfill";
 import { MPC_STOCKS, mpcFoilable } from "src/utils/mpcfill-xml";
 import type { MpcStock } from "src/utils/mpcfill-xml";
 
@@ -43,6 +44,10 @@ export type MpcFillOrderDialogProps = {
     onDownload: () => void;
     /** Puts the text list on the clipboard */
     onCopyList: () => void;
+    /** Whether new art for a card is taken for every deck holding it */
+    artScope: MpcArtScope;
+    /** Changes that */
+    onArtScope: (scope: MpcArtScope) => void;
     /** Closes the dialog */
     onClose: () => void;
 };
@@ -70,6 +75,8 @@ export function MpcFillOrderDialog({
     ready,
     onDownload,
     onCopyList,
+    artScope,
+    onArtScope,
     onClose,
 }: MpcFillOrderDialogProps) {
     const [t] = useTranslation("game-utils");
@@ -104,6 +111,17 @@ export function MpcFillOrderDialog({
                             disabled={!mpcFoilable(stock)}
                         />
                     </SwitchField>
+
+                    <Field>
+                        <Label>{t("label.art-scope")}</Label>
+                        <Select value={artScope} onChange={(event) => onArtScope(event.target.value as MpcArtScope)}>
+                            {MPC_ART_SCOPES.map((entry) => (
+                                <option key={entry} value={entry}>
+                                    {t(`label.art-scope-${entry}`)}
+                                </option>
+                            ))}
+                        </Select>
+                    </Field>
 
                     <Field>
                         <Label>{t("label.card-list")}</Label>

@@ -19,7 +19,7 @@
     },
     "button": {
         "back-to-list": "Zurück zur Liste",
-        "add-cards": "Karten hinzufügen",
+        "add-cards": "Karten / Decks hinzufügen",
         "back-to-life": "Zurück zum Lebenszähler",
         "back-to-tools": "Zurück zu den Game-Tools",
         "change-commander-damage": "Commander-Schaden von {{opponent}} an {{player}} um {{amount}} ändern",
@@ -50,7 +50,9 @@
         "new-game": "Neues Spiel",
         "keep-playing": "Weiterspielen",
         "won": "Gewonnen",
-        "pick-again": "Zurück"
+        "pick-again": "Zurück",
+        "art-this-deck": "Nein, nur hier",
+        "art-every-deck": "Ja, überall"
     },
     "description": {
         "no-matching-card": "Keine passende Karte.",
@@ -76,10 +78,12 @@
         "pick-art_one": "1 Bild in den Drives.",
         "pick-art_other": "{{count}} Bilder in den Drives. Das gewählte steht in der Bestelldatei.",
         "print-scale": "Neun Karten in Originalgröße je DIN-A4-Blatt. Im Druckdialog die Skalierung auf 100 % stellen.",
-        "proxy-printer": "Karten in Originalgröße auf DIN A4, zum Ausschneiden."
+        "proxy-printer": "Karten in Originalgröße auf DIN A4, zum Ausschneiden.",
+        "art-everywhere_one": "{{name}} steht noch in einem weiteren Deck dieser Bestellung.",
+        "art-everywhere_other": "{{name}} steht noch in {{count}} weiteren Decks dieser Bestellung."
     },
     "heading": {
-        "add-cards": "Karten hinzufügen",
+        "add-cards": "Karten / Decks hinzufügen",
         "cardback": "Rückseite",
         "commander-damage": "Commander-Schaden",
         "life-counter": "Lifecounter",
@@ -92,7 +96,8 @@
         "print-list": "Druckliste",
         "proxy-printer": "Proxy-Drucker",
         "settings": "Lifetracker einstellen",
-        "life-game": "Spiel {{number}}"
+        "life-game": "Spiel {{number}}",
+        "art-everywhere": "Auch in den anderen Decks ändern?"
     },
     "label": {
         "find-card": "Karte finden",
@@ -153,7 +158,12 @@
         "your-opponent": "Dein Gegenüber",
         "commander-damage-to-you": "Commander-Schaden an dich",
         "victory": "Sieg",
-        "defeat": "Niederlage"
+        "defeat": "Niederlage",
+        "dont-ask-again": "Nicht mehr fragen",
+        "art-scope": "Gleiche Karte in mehreren Decks",
+        "art-scope-ask": "Jedes Mal fragen",
+        "art-scope-all": "Bild überall ändern",
+        "art-scope-deck": "Nur in einem Deck ändern"
     },
     "toast": {
         "art-not-searched": "MPCFill hat nicht geantwortet",
