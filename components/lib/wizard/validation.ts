@@ -47,11 +47,22 @@ type WizardDefinitionCheck = (
     environment: WizardDefinitionEnvironment,
 ) => Array<WizardDefinitionError>;
 
-/** A Wizard without Wizard Steps, which has nothing to render */
+/**
+ * A Wizard without Wizard Steps, which has nothing to render
+ *
+ * @param definition The Wizard definition
+ * @returns The problems found
+ */
 const noSteps: WizardDefinitionCheck = (definition) =>
     definition.steps.length === 0 ? [{ check: "no-steps", message: "The Wizard has no Wizard Steps" }] : [];
 
-/** Fields whose Wizard Field Type is not in the registry */
+/**
+ * Fields whose Wizard Field Type is not in the registry
+ *
+ * @param definition The Wizard definition
+ * @param environment What it is validated against
+ * @returns The problems found
+ */
 const unknownFieldTypes: WizardDefinitionCheck = (definition, environment) =>
     wizardFields(definition)
         .filter((field) => !Object.hasOwn(environment.fieldTypes, field.type))
@@ -72,7 +83,12 @@ function duplicates(ids: ReadonlyArray<string>): Array<[string, number]> {
     return [...counts].filter(([, count]) => count > 1);
 }
 
-/** IDs used more than once among steps and sections, which share one ID space */
+/**
+ * IDs used more than once among steps and sections, which share one ID space
+ *
+ * @param definition The Wizard definition
+ * @returns The problems found
+ */
 const duplicateStepOrSectionIds: WizardDefinitionCheck = (definition) =>
     duplicates(definition.steps.flatMap((step) => [step.id, ...step.sections.map((section) => section.id)])).map(
         ([id, count]) => ({
@@ -84,6 +100,9 @@ const duplicateStepOrSectionIds: WizardDefinitionCheck = (definition) =>
 /**
  * Steps and sections using the Review Step's reserved ID, which would collide with the Review Step;
  * reported even when the Wizard opts out of the Review Step, as the ID stays reserved
+ *
+ * @param definition The Wizard definition
+ * @returns The problems found
  */
 const reservedReviewStepIds: WizardDefinitionCheck = (definition) =>
     definition.steps
@@ -97,7 +116,12 @@ const reservedReviewStepIds: WizardDefinitionCheck = (definition) =>
             message: `${what} "${id}" uses the reserved Review Step ID`,
         }));
 
-/** Field IDs used more than once anywhere in the Wizard */
+/**
+ * Field IDs used more than once anywhere in the Wizard
+ *
+ * @param definition The Wizard definition
+ * @returns The problems found
+ */
 const duplicateFieldIds: WizardDefinitionCheck = (definition) =>
     duplicates(wizardFields(definition).map((field) => field.id)).map(([id, count]) => ({
         check: "duplicate-field-id",
@@ -130,7 +154,13 @@ function fieldPattern(field: WizardFieldDefinition): WizardPatternRule | undefin
     return (field as WizardFieldRules).pattern;
 }
 
-/** i18n keys of steps, sections, fields, options and pattern messages that are missing from the Wizard's namespace */
+/**
+ * i18n keys of steps, sections, fields, options and pattern messages that are missing from the Wizard's namespace
+ *
+ * @param definition The Wizard definition
+ * @param environment What it is validated against
+ * @returns The problems found
+ */
 const missingTranslations: WizardDefinitionCheck = (definition, environment) => {
     const errors: Array<WizardDefinitionError> = [];
     /**
@@ -163,7 +193,12 @@ const missingTranslations: WizardDefinitionCheck = (definition, environment) => 
     return errors;
 };
 
-/** Patterns whose regex doesn't compile with the `u` flag, as it is compiled at runtime */
+/**
+ * Patterns whose regex doesn't compile with the `u` flag, as it is compiled at runtime
+ *
+ * @param definition The Wizard definition
+ * @returns The problems found
+ */
 const invalidPatterns: WizardDefinitionCheck = (definition) =>
     wizardFields(definition).flatMap((field): Array<WizardDefinitionError> => {
         const pattern = fieldPattern(field);
@@ -181,7 +216,12 @@ const invalidPatterns: WizardDefinitionCheck = (definition) =>
         }
     });
 
-/** Options with the value `""`, which is the empty choice and counts as empty for `required` */
+/**
+ * Options with the value `""`, which is the empty choice and counts as empty for `required`
+ *
+ * @param definition The Wizard definition
+ * @returns The problems found
+ */
 const emptyOptionValues: WizardDefinitionCheck = (definition) =>
     wizardFields(definition)
         .filter((field) => fieldOptions(field).some((option) => option.value === ""))
@@ -190,7 +230,13 @@ const emptyOptionValues: WizardDefinitionCheck = (definition) =>
             message: `Wizard Field "${field.id}" has an option with the value "", which means "nothing chosen"`,
         }));
 
-/** Options naming an icon the app hasn't registered */
+/**
+ * Options naming an icon the app hasn't registered
+ *
+ * @param definition The Wizard definition
+ * @param environment What it is validated against
+ * @returns The problems found
+ */
 const unknownIcons: WizardDefinitionCheck = (definition, environment) =>
     wizardFields(definition).flatMap((field) =>
         fieldOptions(field)
@@ -201,7 +247,12 @@ const unknownIcons: WizardDefinitionCheck = (definition, environment) =>
             })),
     );
 
-/** `visibleWhen` conditions that reference unknown, later or their own fields (ADR-0003) */
+/**
+ * `visibleWhen` conditions that reference unknown, later or their own fields (ADR-0003)
+ *
+ * @param definition The Wizard definition
+ * @returns The problems found
+ */
 const visibleWhenReferences: WizardDefinitionCheck = (definition) => {
     const errors: Array<WizardDefinitionError> = [];
     const known = new Set(wizardFields(definition).map((field) => field.id));

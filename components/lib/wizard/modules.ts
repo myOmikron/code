@@ -60,6 +60,12 @@ export function validateWizardModules(input: WizardModules): Array<WizardModuleE
                 const messages = validateWizardDefinition(definition, {
                     fieldTypes: input.fieldTypes,
                     icons: input.icons,
+                    /**
+                     * Whether a key exists in the namespace; a missing namespace is reported once below instead
+                     *
+                     * @param key The i18n key
+                     * @returns `true` if the namespace is missing or holds a string under the key
+                     */
                     hasTranslation: (key) => resources === undefined || typeof lookup(resources, key) === "string",
                 }).map((error) => error.message);
                 if (resources === undefined) messages.push(`The i18n namespace "${i18nNamespace}" is missing`);

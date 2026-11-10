@@ -21,6 +21,12 @@ export function visibleSteps(
     values: Readonly<Record<string, unknown>>,
 ): Array<WizardStepDefinition> {
     const visible = new Set<string>();
+    /**
+     * Whether a node's `visibleWhen` holds
+     *
+     * @param condition The node's condition, if any
+     * @returns `true` without a condition or when it references a visible field whose value matches
+     */
     const holds = (condition: WizardCondition | undefined) =>
         condition === undefined || (visible.has(condition.field) && matches(values[condition.field], condition));
 

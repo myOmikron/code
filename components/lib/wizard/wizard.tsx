@@ -182,6 +182,12 @@ export function Wizard<D extends WizardDefinition>(props: WizardProps<D>) {
     const errors = validateWizardDefinition(definition, {
         fieldTypes,
         icons,
+        /**
+         * Whether a key exists in the Wizard's namespace
+         *
+         * @param key The i18n key
+         * @returns Whether i18next has it
+         */
         hasTranslation: (key) => i18n.exists(key, { ns: i18nNamespace }),
     });
     const [source] = useState(() =>
@@ -403,7 +409,15 @@ function WizardRun<D extends WizardDefinition>(props: WizardRunProps<D>) {
      * @param run.currentStep The step the user continues on, i.e. the navigation's target
      * @returns The store's promise
      */
-    const save = ({ completedSteps, currentStep }: { completedSteps: ReadonlyArray<string>; currentStep: string }) =>
+    const save = ({
+        completedSteps,
+        currentStep,
+    }: {
+        /** The completed steps */
+        completedSteps: ReadonlyArray<string>;
+        /** The step the user continues on */
+        currentStep: string;
+    }) =>
         store.save(wizardRunKey(definition), {
             values: mapFields(definition, (f) => toStoredValue(lookup(registry, f), form.state.values[f.id])),
             completedSteps: [...completedSteps],
@@ -598,6 +612,13 @@ function WizardRun<D extends WizardDefinition>(props: WizardRunProps<D>) {
                                         name={field.id}
                                         validators={{
                                             onChangeAsyncDebounceMs: VALIDATION_DEBOUNCE_MS,
+                                            /**
+                                             * Validate the field, unless its Field Type defers that until the user tried to leave the step
+                                             *
+                                             * @param root0 The change
+                                             * @param root0.value The field's new value
+                                             * @returns The field's errors; `undefined` when it is valid
+                                             */
                                             onChangeAsync: async ({ value }) => {
                                                 if (fieldType.deferValidation && !attempted.current.has(stepId)) {
                                                     return undefined;
