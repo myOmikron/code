@@ -19,11 +19,9 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { AdminAccount } from "src/api/generated";
+import { ADMIN_REASON_MAX_LENGTH } from "src/utils/admin-reason";
 import { handleFormError, isFormError, type ValidationErrors } from "src/utils/error";
 import { USERNAME_MAX_LEN, usernameErrorMessage, validateUsername } from "src/utils/username-rules";
-
-/** The longest reason the backend accepts */
-const REASON_MAX_LENGTH = 1024;
 
 /**
  * The properties for {@link AdminRenameDialog}
@@ -121,7 +119,7 @@ export function AdminRenameDialog({ open, account, onClose, onDone }: AdminRenam
                                     <Textarea
                                         rows={3}
                                         required={true}
-                                        maxLength={REASON_MAX_LENGTH}
+                                        maxLength={ADMIN_REASON_MAX_LENGTH}
                                         invalid={fieldApi.state.meta.errors.length > 0}
                                         value={fieldApi.state.value}
                                         onChange={(event) => fieldApi.handleChange(event.target.value)}

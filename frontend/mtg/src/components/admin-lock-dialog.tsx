@@ -19,10 +19,8 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { AdminAccount } from "src/api/generated";
+import { ADMIN_REASON_MAX_LENGTH } from "src/utils/admin-reason";
 import { isFormError } from "src/utils/error";
-
-/** The longest reason the backend accepts */
-const REASON_MAX_LENGTH = 1024;
 
 /**
  * The properties for {@link AdminLockDialog}
@@ -100,7 +98,7 @@ export function AdminLockDialog({ open, account, onClose, onDone }: AdminLockDia
                                         autoFocus={true}
                                         rows={3}
                                         required={!unlocking}
-                                        maxLength={REASON_MAX_LENGTH}
+                                        maxLength={ADMIN_REASON_MAX_LENGTH}
                                         invalid={fieldApi.state.meta.errors.length > 0}
                                         value={fieldApi.state.value}
                                         onChange={(event) => fieldApi.handleChange(event.target.value)}
