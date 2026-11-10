@@ -56,6 +56,10 @@ export function AdminLogTable({ entries, showAccount }: AdminLogTableProps) {
                 return (
                     <Badge color={"amber"}>{t("label.action-rename", { username: String(action.new_username) })}</Badge>
                 );
+            case "ImpersonationStart":
+                return <Badge color={"purple"}>{t("label.action-impersonation-start")}</Badge>;
+            case "ImpersonationEnd":
+                return <Badge color={"purple"}>{t("label.action-impersonation-end")}</Badge>;
         }
     }
 
@@ -66,9 +70,23 @@ export function AdminLogTable({ entries, showAccount }: AdminLogTableProps) {
      * @returns the reason, empty when there is none
      */
     function reason(action: AdminLogAction) {
-        return action.kind === "Lock" || action.kind === "Unlock" || action.kind === "Rename"
+        return action.kind === "Lock" ||
+            action.kind === "Unlock" ||
+            action.kind === "Rename" ||
+            action.kind === "ImpersonationStart"
             ? (action.reason ?? "")
             : "";
+    }
+
+    /**
+     * When an Impersonation an entry started ends at the latest
+     *
+     * @param action the entry's action
+     * @returns the expiry note, `null` for any other action
+     */
+    function expiry(action: AdminLogAction) {
+        if (action.kind !== "ImpersonationStart") return null;
+        return <Text>{t("label.impersonation-expires", { time: formatDateTime(action.expires_at) })}</Text>;
     }
 
     return (
@@ -107,6 +125,7 @@ export function AdminLogTable({ entries, showAccount }: AdminLogTableProps) {
                         <TableCell className={"max-sm:hidden"}>{entry.admin_username}</TableCell>
                         <TableCell className={"whitespace-normal"}>
                             <Text>{reason(entry.action)}</Text>
+                            {expiry(entry.action)}
                         </TableCell>
                     </TableRow>
                 ))}
