@@ -4,6 +4,9 @@ import { Text } from "./text";
 import { ZxcvbnFactory, type ZxcvbnResult } from "@zxcvbn-ts/core";
 import { useTranslation } from "react-i18next";
 
+/** The estimator factory once {@link loadZxcvbn} started building it */
+let zxcvbnPromise: Promise<ZxcvbnFactory> | undefined;
+
 /**
  * Lazily loads zxcvbn's (multi-megabyte) language dictionaries and builds the
  * estimator from them, exactly once.
@@ -13,8 +16,9 @@ import { useTranslation } from "react-i18next";
  * even apps that never render this component. Loading them via dynamic
  * `import()` lets bundlers split them into a separate chunk fetched only when a
  * password is actually evaluated.
+ *
+ * @returns The estimator factory
  */
-let zxcvbnPromise: Promise<ZxcvbnFactory> | undefined;
 function loadZxcvbn(): Promise<ZxcvbnFactory> {
     if (zxcvbnPromise === undefined) {
         zxcvbnPromise = Promise.all([
