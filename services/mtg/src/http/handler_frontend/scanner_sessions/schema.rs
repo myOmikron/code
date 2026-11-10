@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::http::handler_frontend::collections::schema::double_option;
 use crate::models::card_attributes::CardFinish;
 use crate::models::collection::CollectionUuid;
+use crate::models::deck::DeckUuid;
 use crate::models::scanner_session::ScannerSession;
 use crate::models::scanner_session::ScannerSessionEntry;
 use crate::models::scanner_session::ScannerSessionEntryUuid;
@@ -164,18 +165,24 @@ pub struct UpdateScannerSessionEntryRequest {
     pub purchase_price_cents: Option<Option<i64>>,
 }
 
-/// File a session's staging area into a collection
+/// File a session's staging area into a collection or a deck's Physical deck
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct FileScannerSessionRequest {
     /// Destination; omitted to use the session's preferred collection
     pub collection: Option<CollectionUuid>,
+    /// One of the account's own decks whose Physical deck takes the cards
+    /// instead of a collection; excludes `collection`
+    #[serde(default)]
+    pub deck: Option<DeckUuid>,
 }
 
 /// Result of filing and clearing a staging area
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct FileScannerSessionResponse {
-    /// Destination collection
-    pub collection: CollectionUuid,
+    /// Destination collection, `None` when filed into a deck
+    pub collection: Option<CollectionUuid>,
+    /// Destination deck, `None` when filed into a collection
+    pub deck: Option<DeckUuid>,
     /// Distinct stacks filed
     pub stacks: i64,
     /// Copies filed
