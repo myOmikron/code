@@ -137,6 +137,7 @@ import type {
     Me200Response,
     MergeCollectionEntriesRequest,
     MpcFillCardbacksResponse,
+    MpcFillFavoriteResponse,
     MpcFillFavoritesResponse,
     MpcFillSearchRequest,
     MpcFillSearchResponse,
@@ -1646,7 +1647,7 @@ export interface ReplaceMpcfillFavoriteRequest {
     /**
      * 
      */
-    drive_id: string;
+    favorite: string;
     /**
      * 
      */
@@ -2164,7 +2165,7 @@ export interface UnstarMpcfillImageRequest {
     /**
      * 
      */
-    drive_id: string;
+    favorite: string;
 }
 
 export interface UnsubscribePushDeviceRequest {
@@ -10308,10 +10309,10 @@ export class DefaultApi extends runtime.BaseAPI {
      * Creates request options for replaceMpcfillFavorite without sending the request
      */
     async replaceMpcfillFavoriteRequestOpts(requestParameters: ReplaceMpcfillFavoriteRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['drive_id'] == null) {
+        if (requestParameters['favorite'] == null) {
             throw new runtime.RequiredError(
-                'drive_id',
-                'Required parameter "drive_id" was null or undefined when calling replaceMpcfillFavorite().'
+                'favorite',
+                'Required parameter "favorite" was null or undefined when calling replaceMpcfillFavorite().'
             );
         }
 
@@ -10322,8 +10323,8 @@ export class DefaultApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
 
-        let urlPath = `/api/frontend/v1/mpcfill/favorites/images/{drive_id}/replacement`;
-        urlPath = urlPath.replace('{drive_id}', encodeURIComponent(String(requestParameters['drive_id'])));
+        let urlPath = `/api/frontend/v1/mpcfill/favorites/images/{favorite}/replacement`;
+        urlPath = urlPath.replace('{favorite}', encodeURIComponent(String(requestParameters['favorite'])));
 
         return {
             path: urlPath,
@@ -10335,8 +10336,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Move a star to the file that replaced the starred one
-     * Move a star to the file that replaced the starred one
+     * Move a star to the file that replaced its image
+     * Move a star to the file that replaced its image
      */
     async replaceMpcfillFavoriteRaw(requestParameters: ReplaceMpcfillFavoriteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
         const requestOptions = await this.replaceMpcfillFavoriteRequestOpts(requestParameters);
@@ -10350,8 +10351,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Move a star to the file that replaced the starred one
-     * Move a star to the file that replaced the starred one
+     * Move a star to the file that replaced its image
+     * Move a star to the file that replaced its image
      */
     async replaceMpcfillFavorite(requestParameters: ReplaceMpcfillFavoriteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.replaceMpcfillFavoriteRaw(requestParameters, initOverrides);
@@ -12088,25 +12089,21 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Star an image, or star it again as the newest
-     * Star an image, or star it again as the newest
+     * Star an image for a face, or star it again as the newest
+     * Star an image for a face, or star it again as the newest
      */
-    async starMpcfillImageRaw(requestParameters: StarMpcfillImageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+    async starMpcfillImageRaw(requestParameters: StarMpcfillImageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MpcFillFavoriteResponse>> {
         const requestOptions = await this.starMpcfillImageRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        if (this.isJsonMime(response.headers.get('content-type'))) {
-            return new runtime.JSONApiResponse<any>(response);
-        } else {
-            return new runtime.TextApiResponse(response) as any;
-        }
+        return new runtime.JSONApiResponse(response);
     }
 
     /**
-     * Star an image, or star it again as the newest
-     * Star an image, or star it again as the newest
+     * Star an image for a face, or star it again as the newest
+     * Star an image for a face, or star it again as the newest
      */
-    async starMpcfillImage(requestParameters: StarMpcfillImageRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+    async starMpcfillImage(requestParameters: StarMpcfillImageRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MpcFillFavoriteResponse> {
         const response = await this.starMpcfillImageRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -12783,10 +12780,10 @@ export class DefaultApi extends runtime.BaseAPI {
      * Creates request options for unstarMpcfillImage without sending the request
      */
     async unstarMpcfillImageRequestOpts(requestParameters: UnstarMpcfillImageRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['drive_id'] == null) {
+        if (requestParameters['favorite'] == null) {
             throw new runtime.RequiredError(
-                'drive_id',
-                'Required parameter "drive_id" was null or undefined when calling unstarMpcfillImage().'
+                'favorite',
+                'Required parameter "favorite" was null or undefined when calling unstarMpcfillImage().'
             );
         }
 
@@ -12795,8 +12792,8 @@ export class DefaultApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/api/frontend/v1/mpcfill/favorites/images/{drive_id}`;
-        urlPath = urlPath.replace('{drive_id}', encodeURIComponent(String(requestParameters['drive_id'])));
+        let urlPath = `/api/frontend/v1/mpcfill/favorites/images/{favorite}`;
+        urlPath = urlPath.replace('{favorite}', encodeURIComponent(String(requestParameters['favorite'])));
 
         return {
             path: urlPath,

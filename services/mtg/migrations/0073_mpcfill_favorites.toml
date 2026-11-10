@@ -1,5 +1,5 @@
 [Migration]
-Hash = "16712679617832715105"
+Hash = "11597396598802880512"
 Initial = false
 Dependency = 72
 Replaces = []
@@ -82,30 +82,6 @@ Line = 34
 Column = 9
 
 [[Migration.Operations.Fields]]
-Name = "dpi"
-Type = "int64"
-
-[[Migration.Operations.Fields.Annotations]]
-Type = "not_null"
-
-[Migration.Operations.Fields.SourceDefinedAt]
-File = "services/mtg/src/models/mpcfill/db.rs"
-Line = 37
-Column = 9
-
-[[Migration.Operations.Fields]]
-Name = "size"
-Type = "int64"
-
-[[Migration.Operations.Fields.Annotations]]
-Type = "not_null"
-
-[Migration.Operations.Fields.SourceDefinedAt]
-File = "services/mtg/src/models/mpcfill/db.rs"
-Line = 40
-Column = 9
-
-[[Migration.Operations.Fields]]
 Name = "starred_at"
 Type = "datetime"
 
@@ -117,7 +93,7 @@ Type = "not_null"
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/mpcfill/db.rs"
-Line = 44
+Line = 38
 Column = 9
 
 [[Migration.Operations]]
@@ -133,7 +109,7 @@ Type = "primary_key"
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/mpcfill/db.rs"
-Line = 75
+Line = 65
 Column = 9
 
 [[Migration.Operations.Fields]]
@@ -149,7 +125,7 @@ Type = "not_null"
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/mpcfill/db.rs"
-Line = 82
+Line = 72
 Column = 9
 
 [[Migration.Operations.Fields]]
@@ -161,32 +137,7 @@ Type = "not_null"
 
 [Migration.Operations.Fields.SourceDefinedAt]
 File = "services/mtg/src/models/mpcfill/db.rs"
-Line = 85
-Column = 9
-
-[[Migration.Operations]]
-Type = "CreateField"
-Model = "mpcfill_favorite_drive"
-
-[Migration.Operations.Field]
-Name = "owner"
-Type = "uuid"
-
-[[Migration.Operations.Field.Annotations]]
-Type = "foreign_key"
-
-[Migration.Operations.Field.Annotations.Value]
-TableName = "account"
-ColumnName = "uuid"
-OnDelete = "Cascade"
-OnUpdate = "Cascade"
-
-[[Migration.Operations.Field.Annotations]]
-Type = "not_null"
-
-[Migration.Operations.Field.SourceDefinedAt]
-File = "services/mtg/src/models/mpcfill/db.rs"
-Line = 79
+Line = 75
 Column = 9
 
 [[Migration.Operations]]
@@ -215,6 +166,31 @@ Line = 22
 Column = 9
 
 [[Migration.Operations]]
+Type = "CreateField"
+Model = "mpcfill_favorite_drive"
+
+[Migration.Operations.Field]
+Name = "owner"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/mpcfill/db.rs"
+Line = 69
+Column = 9
+
+[[Migration.Operations]]
 Type = "CreateIndex"
 Model = "mpcfill_favorite"
 
@@ -227,3 +203,29 @@ Model = "mpcfill_favorite_drive"
 
 [Migration.Operations.Index]
 Columns = ["owner"]
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE UNIQUE INDEX mpcfill_favorite_entry ON mpcfill_favorite (owner, face, drive_id) NULLS NOT DISTINCT;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE UNIQUE INDEX mpcfill_favorite_drive_entry ON mpcfill_favorite_drive (owner, source);
+"""

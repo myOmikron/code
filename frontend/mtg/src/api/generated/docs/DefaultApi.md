@@ -166,7 +166,7 @@ All URIs are relative to *http://localhost*
 | [**removeTournamentParticipantDeck**](DefaultApi.md#removetournamentparticipantdeck) | **DELETE** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/deck | Remove a Participant\&#39;s Registered deck, as an Organizer, at any time |
 | [**renameAccount**](DefaultApi.md#renameaccountoperation) | **PUT** /api/frontend/v1/accounts/me/username | Rename the logged-in account |
 | [**renamePasskey**](DefaultApi.md#renamepasskeyoperation) | **PUT** /api/frontend/v1/accounts/passkeys/{uuid} | Rename one of the logged-in account\&#39;s passkeys |
-| [**replaceMpcfillFavorite**](DefaultApi.md#replacempcfillfavorite) | **PUT** /api/frontend/v1/mpcfill/favorites/images/{drive_id}/replacement | Move a star to the file that replaced the starred one |
+| [**replaceMpcfillFavorite**](DefaultApi.md#replacempcfillfavorite) | **PUT** /api/frontend/v1/mpcfill/favorites/images/{favorite}/replacement | Move a star to the file that replaced its image |
 | [**reportTournamentMatchResult**](DefaultApi.md#reporttournamentmatchresult) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/report | Report the Result of one\&#39;s own Match, as its Participant |
 | [**resetDeck**](DefaultApi.md#resetdeck) | **POST** /api/frontend/v1/decks/{deck}/history/{change}/reset | Bring the deck back to how it was right after one of its Deck changes |
 | [**resolvePrintings**](DefaultApi.md#resolveprintingsoperation) | **POST** /api/frontend/v1/printings/resolve | Place cards in the catalog |
@@ -199,7 +199,7 @@ All URIs are relative to *http://localhost*
 | [**signUpForTournament**](DefaultApi.md#signupfortournament) | **POST** /api/frontend/v1/tournaments/{tournament}/sign-up | Sign the logged-in Account up for a Tournament it sees by its id |
 | [**signup**](DefaultApi.md#signupoperation) | **POST** /api/frontend/v1/auth/signup | Sign up for a new account |
 | [**splitCollectionEntry**](DefaultApi.md#splitcollectionentryoperation) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/split | Move copies out of a stack into a new one |
-| [**starMpcfillImage**](DefaultApi.md#starmpcfillimage) | **PUT** /api/frontend/v1/mpcfill/favorites/images | Star an image, or star it again as the newest |
+| [**starMpcfillImage**](DefaultApi.md#starmpcfillimage) | **PUT** /api/frontend/v1/mpcfill/favorites/images | Star an image for a face, or star it again as the newest |
 | [**startAddPasskey**](DefaultApi.md#startaddpasskey) | **POST** /api/frontend/v1/accounts/passkeys/start | Start registering another passkey for the logged-in account |
 | [**startLogin**](DefaultApi.md#startloginoperation) | **POST** /api/frontend/v1/auth/login/start | Start a passkey login for a given username |
 | [**startOidcLogin**](DefaultApi.md#startoidcloginoperation) | **POST** /api/frontend/v1/auth/oidc/start | Start an OIDC login, for signing up and logging in alike |
@@ -213,7 +213,7 @@ All URIs are relative to *http://localhost*
 | [**unassignCollectionEntryTag**](DefaultApi.md#unassigncollectionentrytag) | **DELETE** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Take a card-wide tag off a stack, see [&#x60;assign_collection_entry_tag&#x60;] |
 | [**unassignDeckCardTag**](DefaultApi.md#unassigndeckcardtag) | **DELETE** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Take a tag off a card |
 | [**undoDeckChange**](DefaultApi.md#undodeckchange) | **POST** /api/frontend/v1/decks/{deck}/history/undo | Take back the latest Deck change that is not undone yet |
-| [**unstarMpcfillImage**](DefaultApi.md#unstarmpcfillimage) | **DELETE** /api/frontend/v1/mpcfill/favorites/images/{drive_id} | Take the star off an image |
+| [**unstarMpcfillImage**](DefaultApi.md#unstarmpcfillimage) | **DELETE** /api/frontend/v1/mpcfill/favorites/images/{favorite} | Take the star off an image |
 | [**unsubscribePushDevice**](DefaultApi.md#unsubscribepushdevice) | **POST** /api/frontend/v1/accounts/me/push/devices/unsubscribe | Unsubscribe one of the logged-in account\&#39;s devices; a device that is none of its is left alone |
 | [**updateCollection**](DefaultApi.md#updatecollectionoperation) | **PUT** /api/frontend/v1/collections/{collection} |  |
 | [**updateCollectionEntry**](DefaultApi.md#updatecollectionentryoperation) | **PATCH** /api/frontend/v1/collections/{collection}/entries/{entry} | Change a stack: its count, condition, finish, signature, price, date or printing |
@@ -11709,11 +11709,11 @@ No authorization required
 
 ## replaceMpcfillFavorite
 
-> any replaceMpcfillFavorite(drive_id, ReplaceMpcFillFavoriteRequest)
+> any replaceMpcfillFavorite(favorite, ReplaceMpcFillFavoriteRequest)
 
-Move a star to the file that replaced the starred one
+Move a star to the file that replaced its image
 
-Move a star to the file that replaced the starred one
+Move a star to the file that replaced its image
 
 ### Example
 
@@ -11730,7 +11730,7 @@ async function example() {
 
   const body = {
     // string
-    drive_id: drive_id_example,
+    favorite: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
     // ReplaceMpcFillFavoriteRequest (optional)
     ReplaceMpcFillFavoriteRequest: ...,
   } satisfies ReplaceMpcfillFavoriteRequest;
@@ -11752,7 +11752,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **drive_id** | `string` |  | [Defaults to `undefined`] |
+| **favorite** | `string` |  | [Defaults to `undefined`] |
 | **ReplaceMpcFillFavoriteRequest** | [ReplaceMpcFillFavoriteRequest](ReplaceMpcFillFavoriteRequest.md) |  | [Optional] |
 
 ### Return type
@@ -14133,11 +14133,11 @@ No authorization required
 
 ## starMpcfillImage
 
-> any starMpcfillImage(StarMpcFillImageRequest)
+> MpcFillFavoriteResponse starMpcfillImage(StarMpcFillImageRequest)
 
-Star an image, or star it again as the newest
+Star an image for a face, or star it again as the newest
 
-Star an image, or star it again as the newest
+Star an image for a face, or star it again as the newest
 
 ### Example
 
@@ -14178,7 +14178,7 @@ example().catch(console.error);
 
 ### Return type
 
-**any**
+[**MpcFillFavoriteResponse**](MpcFillFavoriteResponse.md)
 
 ### Authorization
 
@@ -15138,7 +15138,7 @@ No authorization required
 
 ## unstarMpcfillImage
 
-> any unstarMpcfillImage(drive_id)
+> any unstarMpcfillImage(favorite)
 
 Take the star off an image
 
@@ -15159,7 +15159,7 @@ async function example() {
 
   const body = {
     // string
-    drive_id: drive_id_example,
+    favorite: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
   } satisfies UnstarMpcfillImageRequest;
 
   try {
@@ -15179,7 +15179,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **drive_id** | `string` |  | [Defaults to `undefined`] |
+| **favorite** | `string` |  | [Defaults to `undefined`] |
 
 ### Return type
 
