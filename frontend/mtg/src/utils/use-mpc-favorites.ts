@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { MpcFillFavoriteResponse, MpcFillImageResponse } from "src/api/generated";
-import { mpcFavoriteImage, mpcStarred } from "src/utils/mpcfill";
+import { mpcFavoriteImage, mpcStarOf } from "src/utils/mpcfill-favorites";
 
 /** What {@link useMpcFavorites} hands back */
 export type MpcFavorites = {
@@ -17,7 +17,7 @@ export type MpcFavorites = {
     drives: Array<string>;
     /** Stars an image for a face, or takes the star off again */
     toggle: (face: string | null, image: MpcFillImageResponse) => void;
-    /** Moves a favorite's star to the file that replaced it */
+    /** Moves a favorite's star to the file that replaced its image */
     replace: (favorite: MpcFillFavoriteResponse, image: MpcFillImageResponse) => void;
     /** Stars a drive, or takes the star off again */
     toggleDrive: (source: string) => void;
@@ -28,7 +28,7 @@ export type MpcFavorites = {
 /**
  * The account's MPCFill favorites, saved as they change
  *
- * Changes show at once. A failed save says so and reloads what the server holds.
+ * A failed save says so and reloads what the server holds.
  *
  * @returns the favorites and their mutators
  */
@@ -42,8 +42,8 @@ export function useMpcFavorites(): MpcFavorites {
      *
      * @returns once it is read, or failed to be
      */
-    function load() {
-        return Api.mpcfill.favorites
+    function fetchFavorites() {
+        return Api.mpcfillFavorites
             .list()
             .then((favorites) => {
                 setImages(favorites.images);
@@ -53,19 +53,24 @@ export function useMpcFavorites(): MpcFavorites {
     }
 
     useEffect(() => {
-        void load();
+        void fetchFavorites();
     }, []);
 
     /**
      * Waits for a save, and reloads when it fails
      *
      * @param request the save
+     *
+     * @returns what the save answered, `undefined` when it failed
      */
-    function save(request: Promise<unknown>) {
-        request.catch(() => {
+    async function persist<T>(request: Promise<T>): Promise<T | undefined> {
+        try {
+            return await request;
+        } catch {
             notify.error(t("toast.favorite-not-saved"));
-            void load();
-        });
+            void fetchFavorites();
+            return undefined;
+        }
     }
 
     /**
@@ -75,33 +80,53 @@ export function useMpcFavorites(): MpcFavorites {
      */
     function setDrives(next: Array<string>) {
         setDrivesState(next);
-        save(Api.mpcfill.favorites.setDrives(next));
+        void persist(Api.mpcfillFavorites.setDrives(next));
+    }
+
+    /**
+     * Stars an image for a face, or takes the star off again
+     *
+     * @param face the name MPCFill is asked for, `null` for the cardback
+     * @param image the image
+     */
+    async function toggle(face: string | null, image: MpcFillImageResponse) {
+        const known = mpcStarOf(images, face, image.id);
+        if (known !== undefined) {
+            setImages((previous) => previous.filter((favorite) => favorite.uuid !== known.uuid));
+            void persist(Api.mpcfillFavorites.unstar(known.uuid));
+            return;
+        }
+
+        const starred = await persist(Api.mpcfillFavorites.star(face, mpcFavoriteImage(image)));
+        if (starred === undefined) return;
+        setImages((previous) => [
+            starred,
+            ...previous.filter((favorite) => mpcStarOf([favorite], face, image.id) === undefined),
+        ]);
+    }
+
+    /**
+     * Moves a favorite's star to the file that replaced its image
+     *
+     * @param favorite the favorite
+     * @param image the file that replaced its image
+     */
+    function replace(favorite: MpcFillFavoriteResponse, image: MpcFillImageResponse) {
+        const moved = { ...favorite, image: mpcFavoriteImage(image) };
+        const face = favorite.face ?? null;
+        setImages((previous) =>
+            previous
+                .filter((known) => known.uuid === favorite.uuid || mpcStarOf([known], face, image.id) === undefined)
+                .map((known) => (known.uuid === favorite.uuid ? moved : known)),
+        );
+        void persist(Api.mpcfillFavorites.replace(favorite.uuid, moved.image));
     }
 
     return {
         images,
         drives,
-        toggle: (face, image) => {
-            const others = (known: MpcFillFavoriteResponse) => known.image.drive_id !== image.id;
-            if (mpcStarred(images, face, image.id)) {
-                setImages((previous) => previous.filter(others));
-                save(Api.mpcfill.favorites.unstar(image.id));
-                return;
-            }
-            const starred = { face, image: mpcFavoriteImage(image), starred_at: new Date().toISOString() };
-            setImages((previous) => [starred, ...previous.filter(others)]);
-            save(Api.mpcfill.favorites.star(face, starred.image));
-        },
-        replace: (favorite, image) => {
-            const old = favorite.image.drive_id;
-            const moved = { ...favorite, image: mpcFavoriteImage(image) };
-            setImages((previous) =>
-                previous
-                    .filter((known) => known.image.drive_id !== image.id)
-                    .map((known) => (known.image.drive_id === old ? moved : known)),
-            );
-            save(Api.mpcfill.favorites.replace(old, moved.image));
-        },
+        toggle: (face, image) => void toggle(face, image),
+        replace,
         toggleDrive: (source) =>
             setDrives(drives.includes(source) ? drives.filter((drive) => drive !== source) : [...drives, source]),
         setDrives,

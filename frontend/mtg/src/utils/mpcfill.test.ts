@@ -1,24 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { MpcFillFavoriteResponse, MpcFillImageResponse } from "src/api/generated";
+import type { MpcFillImageResponse } from "src/api/generated";
 import {
     loadMpcSort,
     MPC_BRACKETS,
     mpcBracket,
-    mpcByDrives,
     mpcCards,
-    mpcFavorite,
-    mpcFavoriteImage,
-    mpcStarred,
     mpcCount,
     mpcFillList,
-    loadMpcArtScope,
-    mpcChoose,
-    mpcGroupsWith,
     mpcNeedsArt,
-    mpcPick,
     mpcQuery,
     mpcTiles,
-    saveMpcArtScope,
     saveMpcSort,
 } from "src/utils/mpcfill";
 import type { ProxyGroup } from "src/utils/proxy-list";
@@ -86,7 +77,7 @@ describe("mpcTiles", () => {
     });
 });
 
-describe("art picks", () => {
+describe("mpcNeedsArt", () => {
     /**
      * An image MPCFill found
      *
@@ -107,154 +98,12 @@ describe("art picks", () => {
     });
     const first = image("1");
     const second = image("2");
-    const third = image("3");
-    const found = [first, second, third];
-    const atraxa: ProxyGroup = { deck: { uuid: "a", name: "Atraxa" }, cards: [card("Sol Ring", 1)] };
-    const hand: ProxyGroup = { deck: null, cards: [card("Sol Ring", 1)] };
-
-    it("takes the top hit until another is picked", () => {
-        expect(mpcPick({}, found, hand, "Sol Ring")).toBe(first);
-        expect(mpcPick(mpcChoose({}, hand, "Sol Ring", "2", false), found, hand, "Sol Ring")).toBe(second);
-        expect(mpcPick(mpcChoose({}, hand, "Sol Ring", "gone", false), found, hand, "Sol Ring")).toBe(first);
-        expect(mpcPick({}, [], hand, "Sol Ring")).toBeNull();
-    });
-
-    it("keeps a pick to its own deck", () => {
-        const picks = mpcChoose({}, atraxa, "Sol Ring", "2", false);
-
-        expect(mpcPick(picks, found, atraxa, "Sol Ring")).toBe(second);
-        expect(mpcPick(picks, found, hand, "Sol Ring")).toBe(first);
-    });
-
-    it("hands a pick to every deck, picked apart before or not", () => {
-        const apart = mpcChoose({}, atraxa, "Sol Ring", "2", false);
-        const picks = mpcChoose(apart, hand, "Sol Ring", "3", true);
-
-        expect(mpcPick(picks, found, atraxa, "Sol Ring")).toBe(third);
-        expect(mpcPick(picks, found, hand, "Sol Ring")).toBe(third);
-    });
-
-    it("lets a deck pick apart from the rest again", () => {
-        const picks = mpcChoose(mpcChoose({}, hand, "Sol Ring", "3", true), atraxa, "Sol Ring", "2", false);
-
-        expect(mpcPick(picks, found, atraxa, "Sol Ring")).toBe(second);
-        expect(mpcPick(picks, found, hand, "Sol Ring")).toBe(third);
-    });
-
-    it("counts the groups holding a face, either side of a card", () => {
-        const delver = { ...card("Delver of Secrets // Insectile Aberration", 1), back: "back.jpg" };
-        const groups = [atraxa, hand, { deck: { uuid: "b", name: "Breya" }, cards: [delver] }];
-
-        expect(mpcGroupsWith(groups, "Sol Ring")).toBe(2);
-        expect(mpcGroupsWith(groups, "Insectile Aberration")).toBe(1);
-        expect(mpcGroupsWith(groups, "Arcane Signet")).toBe(0);
-    });
-
     it("misses art when either side has none", () => {
         const delver = { ...card("Delver of Secrets // Insectile Aberration", 1), back: "back.jpg" };
 
         expect(mpcNeedsArt({ "Delver of Secrets": [first] }, delver)).toBe(true);
         expect(mpcNeedsArt({ "Delver of Secrets": [first], "Insectile Aberration": [] }, delver)).toBe(true);
         expect(mpcNeedsArt({ "Delver of Secrets": [first], "Insectile Aberration": [second] }, delver)).toBe(false);
-    });
-});
-
-describe("favorites", () => {
-    /**
-     * An image in a drive
-     *
-     * @param id its drive id
-     * @param name its file name
-     * @param source its drive
-     *
-     * @returns the image
-     */
-    const found = (id: string, name: string, source: string): MpcFillImageResponse => ({
-        id,
-        name,
-        source,
-        dpi: 800,
-        language: "EN",
-        size: 1,
-        tags: [],
-        thumbnail_medium: "",
-        thumbnail_small: "",
-    });
-
-    /**
-     * A starred image
-     *
-     * @param face the face it was starred for
-     * @param image the image as it was found then
-     *
-     * @returns the favorite
-     */
-    const starred = (face: string | null, image: MpcFillImageResponse): MpcFillFavoriteResponse => ({
-        face,
-        image: mpcFavoriteImage(image),
-        starred_at: "2026-11-01T00:00:00Z",
-    });
-
-    const original = found("a", "Sol Ring.png", "Drive A");
-    const other = found("b", "Sol Ring (2).png", "Drive B");
-
-    it("finds the same file", () => {
-        const match = mpcFavorite([other, original], [starred("Sol Ring", original)], "Sol Ring");
-
-        expect(match?.status).toBe("favorite");
-        expect(match?.image).toBe(original);
-    });
-
-    it("takes the newest favorite that is still there", () => {
-        const favorites = [starred("Sol Ring", found("gone", "Gone.png", "Drive C")), starred("Sol Ring", other)];
-
-        expect(mpcFavorite([original, other], favorites, "Sol Ring")?.image).toBe(other);
-    });
-
-    it("takes a re-upload in the same drive", () => {
-        const reupload = found("a2", "Sol Ring.png", "Drive A");
-        const match = mpcFavorite([other, reupload], [starred("Sol Ring", original)], "Sol Ring");
-
-        expect(match?.status).toBe("updated");
-        expect(match?.image).toBe(reupload);
-    });
-
-    it("only suggests the same file in another drive", () => {
-        const rehost = found("c", "Sol Ring.png", "Drive C");
-        const match = mpcFavorite([other, rehost], [starred("Sol Ring", original)], "Sol Ring");
-
-        expect(match?.status).toBe("suggested");
-        expect(match?.image).toBeNull();
-        expect(match?.suggestion).toBe(rehost);
-    });
-
-    it("reports a favorite that is gone", () => {
-        expect(mpcFavorite([other], [starred("Sol Ring", original)], "Sol Ring")?.status).toBe("missing");
-    });
-
-    it("keeps faces and the cardback apart", () => {
-        const favorites = [starred(null, original)];
-
-        expect(mpcFavorite([original], favorites, "Sol Ring")).toBeNull();
-        expect(mpcFavorite([original], favorites, null)?.status).toBe("favorite");
-        expect(mpcStarred(favorites, null, "a")).toBe(true);
-        expect(mpcStarred(favorites, "Sol Ring", "a")).toBe(false);
-    });
-
-    it("puts starred drives first, otherwise keeping MPCFill's order", () => {
-        const third = found("c", "x.png", "Drive C");
-
-        expect(mpcByDrives([original, other, third], ["Drive C", "Drive B"])).toStrictEqual([third, other, original]);
-        expect(mpcByDrives([original, other], [])).toStrictEqual([original, other]);
-    });
-
-    it("ranks a favorite under the order's own picks", () => {
-        const hand: ProxyGroup = { deck: null, cards: [] };
-
-        expect(mpcPick({}, [original, other], hand, "Sol Ring", other)).toBe(other);
-        expect(mpcPick(mpcChoose({}, hand, "Sol Ring", "a", false), [original, other], hand, "Sol Ring", other)).toBe(
-            original,
-        );
     });
 });
 
@@ -271,18 +120,6 @@ describe("mpc sort memory", () => {
         expect(loadMpcSort()).toBe("added");
         saveMpcSort("name");
         expect(loadMpcSort()).toBe("name");
-    });
-
-    it("asks about every deck until told otherwise", () => {
-        const values = new Map<string, string>();
-        vi.stubGlobal("localStorage", {
-            getItem: (key: string) => values.get(key) ?? null,
-            setItem: (key: string, value: string) => values.set(key, value),
-        });
-
-        expect(loadMpcArtScope()).toBe("ask");
-        saveMpcArtScope("all");
-        expect(loadMpcArtScope()).toBe("all");
     });
 
     it("falls back on a value it does not know", () => {

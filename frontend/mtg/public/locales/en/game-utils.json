@@ -88,7 +88,7 @@
         "art-everywhere_other": "{{name}} is in {{count}} more decks of this order.",
         "favorite-suggested": "Your favorite is now in {{source}}. Star it there to keep it.",
         "favorite-missing": "Your favorite isn't in any drive any more.",
-        "favorite-drives": "Their art comes first."
+        "favorite-drives": "Art from these drives comes first."
     },
     "heading": {
         "add-cards": "Add cards / decks",

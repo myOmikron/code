@@ -19,8 +19,9 @@
  * it is about to cross, and worth splitting once it grows past the largest one.
  */
 
-import type { MpcFillFavoriteImage, MpcFillFavoriteResponse, MpcFillImageResponse } from "src/api/generated";
+import type { MpcFillImageResponse } from "src/api/generated";
 import type { ProxyGroup } from "src/utils/proxy-list";
+import { loadChoice, saveChoice } from "src/utils/stored-choice";
 import type { ProxyCard } from "src/utils/proxy-print";
 
 /** Where the list is pasted in */
@@ -103,187 +104,6 @@ export function mpcTiles(group: ProxyGroup, sort: MpcSort, query: string): Array
     return group.deck === null ? named.reverse() : named;
 }
 
-/** The art picks of an order, image ids by {@link pickKey} */
-export type MpcPicks = Record<string, string>;
-
-/** Whether a new art pick is taken for every deck holding the card */
-export const MPC_ART_SCOPES = ["ask", "all", "deck"] as const;
-
-/** One answer to that */
-export type MpcArtScope = (typeof MPC_ART_SCOPES)[number];
-
-/** Where the answer is remembered on this device */
-const ART_SCOPE_KEY = "cardlens.mpcfill-art-scope.v1";
-
-/** What a pick taken for every deck is filed under in place of a deck's uuid */
-const EVERY_DECK = "*";
-
-/**
- * What an art pick is filed under
- *
- * @param deck the deck's uuid, `""` for the hand picks, {@link EVERY_DECK} for all of them
- * @param face the name MPCFill is asked for
- *
- * @returns the key
- */
-function pickKey(deck: string, face: string): string {
-    return `${deck}|${face}`;
-}
-
-/**
- * The art taken for one face in one group
- *
- * A deck's own pick comes first, then one taken for every deck, then the
- * favorite, then the top hit.
- *
- * @param picks the order's picks
- * @param images what was found for the face
- * @param group the group the card is in
- * @param face the name MPCFill is asked for
- * @param favorite the account's favorite for the face, if it was found
- *
- * @returns the image, `null` while there is none
- */
-export function mpcPick(
-    picks: MpcPicks,
-    images: Array<MpcFillImageResponse>,
-    group: ProxyGroup,
-    face: string,
-    favorite: MpcFillImageResponse | null = null,
-): MpcFillImageResponse | null {
-    const chosen = picks[pickKey(group.deck?.uuid ?? "", face)] ?? picks[pickKey(EVERY_DECK, face)];
-    return images.find((image) => image.id === chosen) ?? favorite ?? images[0] ?? null;
-}
-
-/** How a favorite turned up among what was found for its face */
-export type MpcFavoriteStatus = "favorite" | "updated" | "suggested" | "missing";
-
-/** What the account's favorites say about one face */
-export type MpcFavoriteMatch = {
-    /** How it was found */
-    status: MpcFavoriteStatus;
-    /** The favorite it was found from */
-    favorite: MpcFillFavoriteResponse;
-    /** The image to take: the favorite, or the file that replaced it */
-    image: MpcFillImageResponse | null;
-    /** The same file in another drive, offered rather than taken */
-    suggestion: MpcFillImageResponse | null;
-};
-
-/**
- * Finds the account's favorite for one face among what was found for it
- *
- * Newest favorite first: the same file, then the same file name in the same
- * drive (a re-upload), then the same file name in another drive.
- *
- * @param images what was found for the face
- * @param favorites the account's favorites, newest first
- * @param face the name MPCFill is asked for, `null` for the cardback
- *
- * @returns the match, `null` when nothing for the face is starred
- */
-export function mpcFavorite(
-    images: Array<MpcFillImageResponse>,
-    favorites: Array<MpcFillFavoriteResponse>,
-    face: string | null,
-): MpcFavoriteMatch | null {
-    const mine = favorites.filter((favorite) => (favorite.face ?? null) === face);
-    const first = mine[0];
-    if (first === undefined) return null;
-
-    for (const favorite of mine) {
-        const image = images.find((found) => found.id === favorite.image.drive_id);
-        if (image !== undefined) return { status: "favorite", favorite, image, suggestion: null };
-    }
-    for (const favorite of mine) {
-        const image = images.find(
-            (found) => found.source === favorite.image.source && found.name === favorite.image.file_name,
-        );
-        if (image !== undefined) return { status: "updated", favorite, image, suggestion: null };
-    }
-    for (const favorite of mine) {
-        const suggestion = images.find((found) => found.name === favorite.image.file_name);
-        if (suggestion !== undefined) return { status: "suggested", favorite, image: null, suggestion };
-    }
-    return { status: "missing", favorite: first, image: null, suggestion: null };
-}
-
-/**
- * Whether an image is starred for a face
- *
- * @param favorites the account's favorites
- * @param face the name MPCFill is asked for, `null` for the cardback
- * @param id the image's drive id
- *
- * @returns whether it is
- */
-export function mpcStarred(favorites: Array<MpcFillFavoriteResponse>, face: string | null, id: string): boolean {
-    return favorites.some((favorite) => (favorite.face ?? null) === face && favorite.image.drive_id === id);
-}
-
-/**
- * What was found for a face, the starred drives first in their order
- *
- * @param images what was found
- * @param drives the starred drives, first one first
- *
- * @returns the images, otherwise in MPCFill's order
- */
-export function mpcByDrives(images: Array<MpcFillImageResponse>, drives: Array<string>): Array<MpcFillImageResponse> {
-    if (drives.length === 0) return images;
-    const rank = (image: MpcFillImageResponse) => {
-        const at = drives.indexOf(image.source);
-        return at === -1 ? drives.length : at;
-    };
-    return [...images].sort((left, right) => rank(left) - rank(right));
-}
-
-/**
- * An image as a favorite keeps it
- *
- * @param image the image
- *
- * @returns what is stored
- */
-export function mpcFavoriteImage(image: MpcFillImageResponse): MpcFillFavoriteImage {
-    return { drive_id: image.id, file_name: image.name, source: image.source, dpi: image.dpi, size: image.size };
-}
-
-/**
- * Takes an image for one face
- *
- * @param picks the order's picks
- * @param group the group the card was picked in
- * @param face the name MPCFill is asked for
- * @param id the image
- * @param everywhere whether every deck takes it, decks picked apart before included
- *
- * @returns the new picks
- */
-export function mpcChoose(picks: MpcPicks, group: ProxyGroup, face: string, id: string, everywhere: boolean): MpcPicks {
-    if (!everywhere) return { ...picks, [pickKey(group.deck?.uuid ?? "", face)]: id };
-
-    const kept = Object.entries(picks).filter(([key]) => key.slice(key.indexOf("|") + 1) !== face);
-    return { ...Object.fromEntries(kept), [pickKey(EVERY_DECK, face)]: id };
-}
-
-/**
- * How many groups of the order hold a face
- *
- * @param groups the order
- * @param face the name MPCFill is asked for
- *
- * @returns the groups
- */
-export function mpcGroupsWith(groups: Array<ProxyGroup>, face: string): number {
-    return groups.filter((group) =>
-        group.cards.some((card) => {
-            const { front, back } = mpcFaces(card);
-            return front === face || back === face;
-        }),
-    ).length;
-}
-
 /**
  * Whether a card has no art for one of its sides
  *
@@ -303,7 +123,7 @@ export function mpcNeedsArt(art: Record<string, Array<MpcFillImageResponse>>, ca
  * @returns the sort, newest cards first when there is none
  */
 export function loadMpcSort(): MpcSort {
-    return load(SORT_KEY, MPC_SORTS, "added");
+    return loadChoice(SORT_KEY, MPC_SORTS, "added");
 }
 
 /**
@@ -312,57 +132,7 @@ export function loadMpcSort(): MpcSort {
  * @param sort the sort
  */
 export function saveMpcSort(sort: MpcSort) {
-    save(SORT_KEY, sort);
-}
-
-/**
- * Whether this device takes a new art pick for every deck
- *
- * @returns the answer, asking each time when there is none
- */
-export function loadMpcArtScope(): MpcArtScope {
-    return load(ART_SCOPE_KEY, MPC_ART_SCOPES, "ask");
-}
-
-/**
- * Remembers that on this device
- *
- * @param scope the answer
- */
-export function saveMpcArtScope(scope: MpcArtScope) {
-    save(ART_SCOPE_KEY, scope);
-}
-
-/**
- * One of a few values, as this device stored it
- *
- * @param key where it is stored
- * @param values what it can be
- * @param fallback what it is when nothing usable is stored
- *
- * @returns the value
- */
-function load<T extends string>(key: string, values: ReadonlyArray<T>, fallback: T): T {
-    try {
-        const stored = localStorage.getItem(key);
-        return values.find((value) => value === stored) ?? fallback;
-    } catch {
-        return fallback;
-    }
-}
-
-/**
- * Stores a value on this device, or nothing where storage is blocked
- *
- * @param key where it is stored
- * @param value the value
- */
-function save(key: string, value: string) {
-    try {
-        localStorage.setItem(key, value);
-    } catch {
-        return;
-    }
+    saveChoice(SORT_KEY, sort);
 }
 
 /**
