@@ -25,7 +25,9 @@ use crate::models::card_attributes::CardRarity;
 use crate::models::deck::DeckCardUuid;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::DeckZone;
+use crate::models::deck::sourcing::PHYSICAL_ZONES;
 use crate::models::deck::tag::DeckTagUuid;
+use crate::models::tournament::registered_deck::RegisteredSlot;
 
 /// What the catalog knows about a deck card's printing
 ///
@@ -146,7 +148,7 @@ impl ListedSlot {
     pub async fn read_registered(
         tx: &mut Transaction,
         participant: Uuid,
-    ) -> Result<Vec<(ListedSlot, i32)>, rorm::Error> {
+    ) -> Result<Vec<RegisteredSlot>, rorm::Error> {
         let statement = format!(
             "SELECT {SLOT_COLUMNS}, c.proxies, {CARD_COLUMNS} \
              FROM tournament_registered_card c \
@@ -164,7 +166,10 @@ impl ListedSlot {
                 let proxies = row
                     .get("proxies")
                     .map_err(|error| rorm::Error::RowError(error.into_owned()))?;
-                Ok((decode_slot(row)?, proxies))
+                Ok(RegisteredSlot {
+                    slot: decode_slot(row)?,
+                    proxies,
+                })
             })
             .collect()
     }
@@ -246,13 +251,13 @@ pub struct DeckCommander {
 /// What a deck looks like from the outside
 ///
 /// Everything the list of decks shows besides the deck's own row: how big it
-/// is, what it is worth, and who is at the head of it. The sideboard and the
-/// maybe board are left out of both numbers, the same way the statistics count.
+/// is, what it is worth, and who is at the head of it.
 #[derive(Debug, Clone, Default)]
 pub struct DeckSummary {
-    /// How many cards sit in the deck proper
+    /// How many cards sit in the deck proper: the main deck and the command zone
     pub cards: i64,
-    /// What those cards are worth in euro cents, Proxies or not
+    /// The List value in euro cents: every copy of the main deck, command zone,
+    /// companion and sideboard at the price of its printing and finish, Proxies or not
     pub price_eur: i64,
     /// How many Proxies lie in the deck's Physical deck
     pub proxies: i64,
@@ -315,12 +320,15 @@ async fn read_summaries(
 ) -> Result<HashMap<DeckUuid, DeckSummary>, rorm::Error> {
     let counts = format!(
         "SELECT c.deck AS deck, \
-                COALESCE(SUM(c.quantity), 0)::bigint AS cards, \
-                COALESCE(SUM(c.quantity * COALESCE(p.price_eur, 0)), 0)::bigint AS price \
+                COALESCE(SUM(CASE WHEN c.zone IN ('Main', 'Commander') THEN c.quantity ELSE 0 END), 0)::bigint \
+                    AS cards, \
+                COALESCE(SUM(c.quantity * COALESCE( \
+                    CASE WHEN c.foil THEN COALESCE(p.price_eur_foil, p.price_eur) ELSE p.price_eur END, 0 \
+                )), 0)::bigint AS price \
          FROM deckcard c \
          JOIN deck d ON d.uuid = c.deck \
          LEFT JOIN printing p ON p.id = c.printing \
-         {decks} AND c.zone IN ('Main', 'Commander') \
+         {decks} AND c.zone IN {PHYSICAL_ZONES} \
          GROUP BY c.deck",
         decks = scope.decks(),
     );

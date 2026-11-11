@@ -58,7 +58,7 @@ export function DeckStatistics({ deckId, stats, odds, tags }: DeckStatisticsProp
                     label={t("label.deck-value")}
                     value={formatCurrency(stats.marketValue)}
                     sub={
-                        stats.pricedCards < stats.totalCards
+                        stats.pricedCards < stats.valuedCards
                             ? t("label.priced-cards", { amount: stats.pricedCards })
                             : undefined
                     }

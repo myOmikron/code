@@ -17,7 +17,7 @@
 export type SourcingMatch = {
     /** Whether only the very printing the deck lists counts as a copy */
     exactPrinting: boolean;
-    /** Whether a foil slot only counts foils, and a plain slot only plain ones */
+    /** Whether a foil slot only counts foils, and a plain slot only plain ones; etched copies count for neither */
     matchFinish: boolean;
 };
 
@@ -76,7 +76,7 @@ export type SourcingCount = {
 export function fills(slot: SourcingSlotLike, stack: SourcingStackLike, match: SourcingMatch): boolean {
     if (!samePrinting(slot, stack, match.exactPrinting)) return false;
     if (!match.matchFinish) return true;
-    return slot.foil === (stack.finish === "Foil");
+    return stack.finish === (slot.foil ? "Foil" : "Nonfoil");
 }
 
 /**
@@ -153,11 +153,11 @@ export type PricedCard = {
 /**
  * What one copy of a printing costs
  *
- * A foil is priced as a foil, falling back to the plain price, the way a
+ * A foil or etched copy is priced as a foil, falling back to the plain price, the way a
  * collection's value is.
  *
  * @param card what the catalog knows about the printing
- * @param foil whether the copy is a foil
+ * @param foil whether the copy is a foil or an etched one
  *
  * @returns the price in cents, `null` without one
  */
@@ -216,9 +216,8 @@ export function proxyReplacements<P extends ProxyStackLike, C extends SourcingSt
     return filed
         .filter((stack) => stack.proxy)
         .map((proxy) => {
-            const foil = proxy.finish === "Foil";
-            const slot: SourcingSlotLike = { ...proxy, foil };
-            const price = unitPrice(proxy.card, foil);
+            const slot: SourcingSlotLike = { ...proxy, foil: proxy.finish === "Foil" };
+            const price = unitPrice(proxy.card, proxy.finish !== "Nonfoil");
             return {
                 proxy,
                 candidates: candidates.filter((candidate) => fills(slot, candidate, ANY_MATCH)),

@@ -971,7 +971,8 @@ pub struct DeckOverviewResponse {
     pub deck: DeckResponse,
     /// How many cards sit in the deck proper, the sideboard aside
     pub cards: i64,
-    /// What those cards are worth in euro cents, Proxies or not
+    /// The List value in euro cents: the main deck, command zone, companion
+    /// and sideboard at the price of each printing and finish, Proxies or not
     pub price_eur_cents: i64,
     /// How many Proxies lie in the deck's Physical deck, `null` for a Viewer
     pub proxies: Option<i64>,

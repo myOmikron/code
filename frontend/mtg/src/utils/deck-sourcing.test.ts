@@ -60,6 +60,14 @@ describe("filling a slot", () => {
         expect(fills(slot({ foil: true }), foil, STRICT)).toBe(true);
         expect(fills(slot(), foil, { exactPrinting: true, matchFinish: false })).toBe(true);
     });
+
+    it("takes an etched copy for neither a plain nor a foil slot while the switch is on", () => {
+        const etched = stack({ finish: "Etched" });
+
+        expect(fills(slot(), etched, STRICT)).toBe(false);
+        expect(fills(slot({ foil: true }), etched, STRICT)).toBe(false);
+        expect(fills(slot(), etched, { exactPrinting: true, matchFinish: false })).toBe(true);
+    });
 });
 
 describe("counting a slot", () => {
@@ -173,6 +181,12 @@ describe("replacing Proxies", () => {
 
     it("prices a foil Proxy at the foil price", () => {
         const rows = proxyReplacements([{ ...proxy, finish: "Foil" }], []);
+
+        expect(rows[0].cost).toBe(1800);
+    });
+
+    it("prices an etched Proxy at the foil price", () => {
+        const rows = proxyReplacements([{ ...proxy, finish: "Etched" }], []);
 
         expect(rows[0].cost).toBe(1800);
     });

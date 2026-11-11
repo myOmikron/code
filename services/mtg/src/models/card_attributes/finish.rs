@@ -31,3 +31,10 @@ custom_db_enum! {
     variants: [Nonfoil, Foil, Etched],
     decoder: CardFinishDecoder,
 }
+
+impl CardFinish {
+    /// The finish a Deck entry asks for, which knows only foil or not
+    pub fn of_deck_entry(foil: bool) -> Self {
+        if foil { Self::Foil } else { Self::Nonfoil }
+    }
+}

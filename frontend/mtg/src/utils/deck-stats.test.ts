@@ -237,3 +237,33 @@ describe("deckStats under an eminence", () => {
         expect(alone.manaCurve.find((bucket) => bucket.key === "5")?.cards).toBe(1);
     });
 });
+
+describe("deckStats List value", () => {
+    const sideboard = slot("pyroblast", { type: "Instant", cost: "{R}", manaValue: 1, identity: "R" }, [], "Side");
+    const companion = slot(
+        "lurrus",
+        { type: "Creature", cost: "{3}{W}", manaValue: 4, identity: "W" },
+        [],
+        "Companion",
+    );
+    const maybe = slot("lotus", { type: "Artifact", cost: "{0}", manaValue: 0, identity: "" }, [], "Maybe");
+    const plain = slot("crypt", { type: "Artifact", cost: "{0}", manaValue: 0, identity: "" }, []);
+    const foil = {
+        ...plain,
+        foil: true,
+        card: { ...(plain.card as NonNullable<DeckCardResponse["card"]>), price_eur_foil_cents: 500 },
+    } as DeckCardResponse;
+
+    it("covers the main deck, command zone, companion and sideboard, never the maybe board", () => {
+        const stats = deckStats([...CARDS, sideboard, companion, maybe]);
+
+        expect(stats.marketValue).toBe(7);
+        expect(stats.totalCards).toBe(5);
+    });
+
+    it("prices a foil copy at the foil price", () => {
+        const stats = deckStats([foil]);
+
+        expect(stats.marketValue).toBe(5);
+    });
+});

@@ -482,11 +482,7 @@ impl Tournament {
         deck: &RegisteredDeck,
     ) -> Result<Vec<RegisteredSlot>, rorm::Error> {
         if deck.pinned_at.is_some() {
-            let slots = ListedSlot::read_registered(tx, deck.participant.into_inner()).await?;
-            return Ok(slots
-                .into_iter()
-                .map(|(slot, proxies)| RegisteredSlot { slot, proxies })
-                .collect());
+            return ListedSlot::read_registered(tx, deck.participant.into_inner()).await;
         }
         let Some(followed) = deck.deck else {
             return Ok(Vec::new());

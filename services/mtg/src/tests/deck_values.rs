@@ -265,6 +265,32 @@ fn the_deck_overview_prices_proxied_copies_like_any_other() {
     });
 }
 
+#[test]
+fn the_deck_overview_prices_the_list_like_the_values_do() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let sol_ring = priced("Sol Ring", "3.50").await;
+        let mana_crypt = file(&unique("Mana Crypt"), Print::priced_foil("12.00", "20.00")).await;
+        let black_lotus = priced("Black Lotus", "100.00").await;
+        fixture.add(sol_ring, 1, "Side").await;
+        fixture
+            .send(
+                Method::POST,
+                "cards",
+                json!({ "printing": mana_crypt, "quantity": 1, "zone": "Main", "foil": true }),
+            )
+            .await
+            .ok_json();
+        fixture.add(black_lotus, 1, "Maybe").await;
+
+        let owned = fixture.owner.get(&api("decks")).await.ok_json();
+        let values = fixture.values().await;
+
+        assert_eq!(values["list_value_cents"], 2350, "{values}");
+        assert_eq!(owned[0]["price_eur_cents"], 2350, "{owned}");
+    });
+}
+
 /// The decks shared with the Account behind `client`, as "Shared with me" lists them
 async fn shared_with(client: &mut TestClient) -> Vec<Value> {
     let body = client.get(&api("decks/shared-with-me")).await.ok_json();

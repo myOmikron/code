@@ -322,7 +322,7 @@ pub async fn fill_deck_collection(
         .into_iter()
         .filter(|listed| slot.is_none_or(|wanted| wanted == listed.uuid))
     {
-        let finish = finish_of_slot(slot.foil);
+        let finish = CardFinish::of_deck_entry(slot.foil);
 
         // Only what the deck is short of: a slot somebody already sourced out of
         // a collection keeps the copies it has, origin and all.
@@ -394,7 +394,7 @@ pub async fn put_deck_proxies(
         &mut tx,
         collection.uuid,
         entry.printing,
-        finish_of_slot(entry.foil),
+        CardFinish::of_deck_entry(entry.foil),
         quantity,
     )
     .await?;
@@ -1588,15 +1588,6 @@ pub(in crate::http::handler_frontend::decks) fn granted<T>(
     access: DeckAccess<T>,
 ) -> Result<T, CoreApiError> {
     access.granted().ok_or_else(denied)
-}
-
-/// The finish a Deck entry asks for
-fn finish_of_slot(foil: bool) -> CardFinish {
-    if foil {
-        CardFinish::Foil
-    } else {
-        CardFinish::Nonfoil
-    }
 }
 
 /// The answer a request that may not happen gets

@@ -27,6 +27,8 @@ pub(super) struct Print<'a> {
     finishes: &'a [&'a str],
     /// The non-foil EUR price, as Scryfall writes it
     eur: Option<&'a str>,
+    /// The foil EUR price, as Scryfall writes it
+    eur_foil: Option<&'a str>,
     /// Scryfall's language code
     lang: &'a str,
 }
@@ -39,6 +41,7 @@ impl Default for Print<'_> {
             legal: true,
             finishes: &["nonfoil", "foil"],
             eur: None,
+            eur_foil: None,
             lang: "en",
         }
     }
@@ -49,6 +52,15 @@ impl<'a> Print<'a> {
     pub(super) fn priced(eur: &'a str) -> Self {
         Self {
             eur: Some(eur),
+            ..Self::default()
+        }
+    }
+
+    /// The default printing at a non-foil and a foil EUR price, as Scryfall writes them
+    pub(super) fn priced_foil(eur: &'a str, eur_foil: &'a str) -> Self {
+        Self {
+            eur: Some(eur),
+            eur_foil: Some(eur_foil),
             ..Self::default()
         }
     }
@@ -94,7 +106,7 @@ async fn file_of(name: &str, print: Print<'_>, oracle: Uuid) -> Uuid {
             "released_at": print.released,
             "legalities": legalities,
             "finishes": print.finishes,
-            "prices": { "eur": print.eur, "eur_foil": null },
+            "prices": { "eur": print.eur, "eur_foil": print.eur_foil },
         })
         .to_string(),
     );

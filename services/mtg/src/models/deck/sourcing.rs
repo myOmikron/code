@@ -31,11 +31,11 @@ use crate::models::deck::DeckUuid;
 use crate::models::deck::DeckZone;
 use crate::models::deck::listing::zone_of;
 
-/// The zones whose cards are really in the deck collection
+/// The zones whose cards are really in the Physical deck, and what the List value covers
 ///
 /// A maybe board is a thought, not a pile of cardboard, so nothing is ever
 /// sourced for it.
-const PHYSICAL_ZONES: &str = "('Main', 'Commander', 'Companion', 'Side')";
+pub(in crate::models) const PHYSICAL_ZONES: &str = "('Main', 'Commander', 'Companion', 'Side')";
 
 /// What the catalog knows about a card the sourcing view shows
 ///

@@ -67,12 +67,11 @@ fn value_of(slots: &[SourcingSlot], filed: Option<&[SourcedStack]>) -> DeckValue
     let list = slots
         .iter()
         .map(|slot| {
-            let finish = if slot.foil {
-                CardFinish::Foil
-            } else {
-                CardFinish::Nonfoil
-            };
-            copies_cents(slot.card.as_ref(), finish, slot.quantity)
+            copies_cents(
+                slot.card.as_ref(),
+                CardFinish::of_deck_entry(slot.foil),
+                slot.quantity,
+            )
         })
         .sum();
 
