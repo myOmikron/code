@@ -1,0 +1,29 @@
+[Migration]
+Hash = "14732460768647584610"
+Initial = false
+Dependency = 74
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament"
+
+[Migration.Operations.Field]
+Name = "proxy_rule"
+Type = "text"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = "ProxiesAllowed"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 100
+Column = 9

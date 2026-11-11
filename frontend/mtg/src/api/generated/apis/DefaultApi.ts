@@ -6809,7 +6809,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The logged-in Account\'s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts; a late Participant registers its own until it is pinned.
+     * The logged-in Account\'s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts; a late Participant registers its own until it is pinned. Says too how many of its copies are Proxies and whether they break the Tournament\'s Proxy rule, which the Participant sees before anyone else\'s list.
      * The logged-in Account\'s own Registered deck in a Tournament it plays in
      */
     async getMyTournamentDeckRaw(requestParameters: GetMyTournamentDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyRegisteredDeckResponse>> {
@@ -6820,7 +6820,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The logged-in Account\'s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts; a late Participant registers its own until it is pinned.
+     * The logged-in Account\'s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts; a late Participant registers its own until it is pinned. Says too how many of its copies are Proxies and whether they break the Tournament\'s Proxy rule, which the Participant sees before anyone else\'s list.
      * The logged-in Account\'s own Registered deck in a Tournament it plays in
      */
     async getMyTournamentDeck(requestParameters: GetMyTournamentDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyRegisteredDeckResponse> {

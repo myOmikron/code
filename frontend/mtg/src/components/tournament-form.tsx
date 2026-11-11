@@ -29,7 +29,7 @@ import { useForm } from "@tanstack/react-form";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import { BestOf, CheckIn, Ruleset, TopCut, TournamentState, Visibility } from "src/api/generated";
+import { BestOf, CheckIn, ProxyRule, Ruleset, TopCut, TournamentState, Visibility } from "src/api/generated";
 import type { FormatRulesResponse, TournamentResponse } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
 import { PrimaryButton } from "src/components/primary-button";
@@ -96,6 +96,7 @@ function initialValues(tournament: TournamentResponse) {
                 : fromMinorUnits(tournament.entry_fee.amount, tournament.entry_fee.currency),
         currency: tournament.entry_fee?.currency ?? CURRENCIES[0],
         checkIn: tournament.check_in,
+        proxyRule: tournament.proxy_rule,
     };
 }
 
@@ -144,6 +145,7 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
                     entered_afterwards: value.enteredAfterwards,
                     entry_fee: amount === null ? null : { amount, currency: value.currency },
                     check_in: value.checkIn,
+                    proxy_rule: value.proxyRule,
                 };
                 const response = await Api.tournaments.update(tournament.uuid, request);
                 if (isFormError(response)) {
@@ -724,6 +726,25 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
                                     </form.Field>
                                 )}
                             </form.Subscribe>
+
+                            <form.Field name={"proxyRule"}>
+                                {(fieldApi) => (
+                                    <Field>
+                                        <Label>{t("label.proxy-rule")}</Label>
+                                        <Description>{t("description.proxy-rule")}</Description>
+                                        <Listbox<ProxyRule>
+                                            value={fieldApi.state.value}
+                                            onChange={fieldApi.handleChange}
+                                        >
+                                            {[ProxyRule.ProxiesAllowed, ProxyRule.NoProxies].map((rule) => (
+                                                <ListboxOption key={rule} value={rule}>
+                                                    <ListboxLabel>{labels.proxyRule(rule)}</ListboxLabel>
+                                                </ListboxOption>
+                                            ))}
+                                        </Listbox>
+                                    </Field>
+                                )}
+                            </form.Field>
                         </FieldGroup>
                     </Fieldset>
                 </div>

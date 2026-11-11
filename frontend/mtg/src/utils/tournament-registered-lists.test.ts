@@ -92,6 +92,7 @@ function list(overrides: Partial<RegisteredListResponse> = {}): RegisteredListRe
         shared: false,
         pinned: true,
         cards: [slot("Lightning Bolt", ["modern", "pauper"])],
+        breaks_proxy_rule: false,
         ...overrides,
     };
 }
@@ -148,5 +149,32 @@ describe("registeredListWarnings", () => {
         const warnings = registeredListWarnings(deck, "commander", [COMMANDER], [CORE]);
 
         expect(warnings).toContainEqual({ kind: "bracket", bracket: 2, rules: ["game-changers"] });
+    });
+
+    it("warns about the Proxies of a deck that breaks the Proxy rule", () => {
+        const proxied = list({
+            breaks_proxy_rule: true,
+            cards: [
+                { ...slot("Lightning Bolt", ["modern"]), proxies: 2 },
+                { ...slot("Lava Spike", ["modern"]), proxies: 1 },
+            ],
+        });
+
+        expect(registeredListWarnings(proxied, "modern", [MODERN], [])).toEqual([{ kind: "proxies", proxies: 3 }]);
+    });
+
+    it("says nothing about Proxies the Proxy rule allows", () => {
+        const proxied = list({ cards: [{ ...slot("Lightning Bolt", ["modern"]), proxies: 2 }] });
+
+        expect(registeredListWarnings(proxied, "modern", [MODERN], [])).toEqual([]);
+    });
+
+    it("holds a Limited Tournament's decks to its Proxy rule", () => {
+        const proxied = list({
+            breaks_proxy_rule: true,
+            cards: [{ ...slot("Hymn", ["pauper"]), proxies: 1 }],
+        });
+
+        expect(registeredListWarnings(proxied, "draft", [MODERN], [])).toEqual([{ kind: "proxies", proxies: 1 }]);
     });
 });

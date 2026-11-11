@@ -31,6 +31,7 @@ export function createTournamentWizardStore(): WizardRunStore {
                     startsAt: { value: toLocalInput(nextEvening()), secret: false },
                     visibility: { value: "Public", secret: false },
                     checkIn: { value: "Off", secret: false },
+                    proxyRule: { value: "ProxiesAllowed", secret: false },
                 },
                 completedSteps: [],
                 currentStep: "general",

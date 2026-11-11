@@ -686,6 +686,7 @@ mod tests {
     use crate::models::tournament::TournamentUuid;
     use crate::models::tournament::settings::CheckIn;
     use crate::models::tournament::settings::EntryFee;
+    use crate::models::tournament::settings::ProxyRule;
     use crate::models::visibility::Visibility;
     use crate::tournament::ruleset::Ruleset;
     use crate::tournament::ruleset::TableSize;
@@ -709,6 +710,7 @@ mod tests {
             best_of: None,
             entry_fee: None,
             check_in: CheckIn::Off,
+            proxy_rule: ProxyRule::ProxiesAllowed,
             round_minutes: None,
             swiss_rounds: None,
             top_cut: None,

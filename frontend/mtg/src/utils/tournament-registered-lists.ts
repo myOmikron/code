@@ -17,7 +17,9 @@ export type RegisteredListWarning =
     /** The format's rules find this many remarks, over the deck and its cards */
     | { kind: "legality"; remarks: number }
     /** The bracket the deck claims, and which of its rules the deck breaks */
-    | { kind: "bracket"; bracket: number; rules: Array<BracketRuleCheck["kind"]> };
+    | { kind: "bracket"; bracket: number; rules: Array<BracketRuleCheck["kind"]> }
+    /** The deck holds this many Proxies, which the Tournament's Proxy rule does not allow */
+    | { kind: "proxies"; proxies: number };
 
 /**
  * Check a Registered deck against the Tournament it is played in
@@ -25,7 +27,8 @@ export type RegisteredListWarning =
  * The rules are those of the Tournament's format, whatever format the deck
  * claims; without a Tournament format, the deck's own. A Limited Tournament
  * has no rules to hold a deck against: the deck is what was opened, so it
- * gets no warnings at all.
+ * gets no format, legality or bracket warnings. The Tournament's Proxy rule
+ * holds whatever the format; whether the deck breaks it comes with the list.
  *
  * @param list the Registered deck's list
  * @param tournamentFormat the Tournament's format, `null` when it names none
@@ -41,6 +44,7 @@ export function registeredListWarnings(
     brackets: Array<BracketRulesResponse>,
 ): Array<RegisteredListWarning> {
     const warnings: Array<RegisteredListWarning> = [];
+    if (list.breaks_proxy_rule) warnings.push({ kind: "proxies", proxies: countProxies(list.cards) });
     if (isLimited(tournamentFormat)) return warnings;
     if (tournamentFormat != null && list.format !== tournamentFormat) {
         warnings.push({ kind: "format", format: list.format });
@@ -61,4 +65,15 @@ export function registeredListWarnings(
         if (broken.length > 0) warnings.push({ kind: "bracket", bracket: claimed.number, rules: broken });
     }
     return warnings;
+}
+
+/**
+ * How many copies of a Registered deck are Proxies
+ *
+ * @param cards the Registered deck's lines
+ *
+ * @returns the Proxies over every line
+ */
+function countProxies(cards: Array<{ proxies: number }>): number {
+    return cards.reduce((sum, card) => sum + card.proxies, 0);
 }

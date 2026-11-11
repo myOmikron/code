@@ -12,6 +12,7 @@ Name | Type
 `allow_extra_commanders` | boolean
 `allowed_color_identity` | string
 `bracket` | number
+`breaks_proxy_rule` | boolean
 `cards` | [Array&lt;RegisteredCardResponse&gt;](RegisteredCardResponse.md)
 `deck` | string
 `deck_size` | number

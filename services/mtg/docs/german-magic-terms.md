@@ -166,6 +166,7 @@ Project decisions, not printed on cards, so no source.
 | shock land | Shockland | Schock-Land |
 | combo | die Combo | das Combo |
 | proxy | Proxy, Proxies | Proxys |
+| what a Tournament allows of Proxies | Proxy-Regel | Proxy-Richtlinie, Proxy-Policy |
 | the cardboard really in a deck | Physisches Deck | Deck-Sammlung |
 | where a deck list and its Physical deck disagree | Abweichung | Drift, Unterschied |
 | what a deck list costs, Proxies included | Listenwert | Deckwert (alone), Preis |
