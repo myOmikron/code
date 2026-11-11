@@ -70,6 +70,7 @@ mod tests {
     use uuid::Uuid;
 
     use super::line_proxies;
+    use crate::models::card_attributes::CardFinish;
     use crate::models::deck::DeckCardUuid;
     use crate::models::deck::deviation::DeviationCopies;
     use crate::models::deck::deviation::LineDeviation;
@@ -79,7 +80,7 @@ mod tests {
         DeviationCopies {
             printing: Uuid::now_v7(),
             quantity,
-            foil: false,
+            finish: CardFinish::Nonfoil,
             proxy,
             card: None,
         }

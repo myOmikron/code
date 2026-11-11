@@ -8,7 +8,7 @@ Copies of one printing and finish lying in the Physical deck
 Name | Type
 ------------ | -------------
 `card` | [SourcedPrintingResponse](SourcedPrintingResponse.md)
-`foil` | boolean
+`finish` | [CardFinish](CardFinish.md)
 `printing` | string
 `proxy` | boolean
 `quantity` | number

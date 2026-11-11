@@ -340,7 +340,7 @@ async fn ensure_collection(
     let Some(collection) = collection else {
         return Ok(());
     };
-    match Collection::may_administer(tx, collection, owner).await? {
+    match Collection::may_change_entries(tx, collection, owner).await? {
         CollectionAccess::Granted(()) => Ok(()),
         CollectionAccess::Denied => Err(ApiError::bad_request("Request was denied")),
     }

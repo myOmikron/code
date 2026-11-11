@@ -1794,6 +1794,21 @@ export interface CollectionStatisticsResponse {
      */
     years: Array<StatBucketResponse>;
 }
+/**
+ * Everything an account owns, on the shelf and in its Physical decks, Proxies aside
+ * @export
+ * @interface CollectionTotalsResponse
+ */
+export interface CollectionTotalsResponse {
+    /**
+     * How many copies the account owns
+     */
+    cards: number;
+    /**
+     * What those copies are worth in euro cents
+     */
+    price_eur_cents: number;
+}
 
 /**
  * How much combo play a bracket tolerates
@@ -2524,7 +2539,7 @@ export interface DeckOverviewResponse {
      */
     deck: DeckResponse;
     /**
-     * What those cards are worth in euro cents, Proxies or not
+     * The List value in euro cents: the main deck, command zone, companion and sideboard at the price of each printing and finish, Proxies or not
      */
     price_eur_cents: number;
     /**
@@ -2995,9 +3010,9 @@ export interface DeviationCopiesResponse {
      */
     card?: SourcedPrintingResponse | null;
     /**
-     * Whether they are the foil ones
+     * Their finish
      */
-    foil: boolean;
+    finish: CardFinish;
     /**
      * Scryfall's id of the printing
      */
@@ -3010,6 +3025,19 @@ export interface DeviationCopiesResponse {
      * How many copies
      */
     quantity: number;
+}
+
+
+/**
+ * Request to throw a stack out of the Physical deck
+ * @export
+ * @interface DiscardDeckCardsRequest
+ */
+export interface DiscardDeckCardsRequest {
+    /**
+     * The stack in the Physical deck
+     */
+    entry: string;
 }
 /**
  * Why a Participant's dispute was refused
@@ -5719,6 +5747,17 @@ export interface PendingOidcLogin {
     provider: string;
 }
 /**
+ * What lies in a Physical deck, as an Editor reads it
+ * @export
+ * @interface PhysicalDeckResponse
+ */
+export interface PhysicalDeckResponse {
+    /**
+     * The stacks, oldest first, empty for a deck without a Physical deck
+     */
+    stacks: Array<PhysicalStackResponse>;
+}
+/**
  * What the Physical deck of a deck holds
  * @export
  * @interface PhysicalDeckValueResponse
@@ -5737,6 +5776,43 @@ export interface PhysicalDeckValueResponse {
      */
     proxy_replacement_cents: number;
 }
+/**
+ * One stack lying in a Physical deck, without the collection it came from
+ * @export
+ * @interface PhysicalStackResponse
+ */
+export interface PhysicalStackResponse {
+    /**
+     * What the catalog knows about the printing
+     */
+    card?: SourcedPrintingResponse | null;
+    /**
+     * Condition of the cards
+     */
+    condition: CardCondition;
+    /**
+     * Finish of the cards
+     */
+    finish: CardFinish;
+    /**
+     * Scryfall's id of the printing
+     */
+    printing: string;
+    /**
+     * Whether the stack holds Proxies rather than real cards
+     */
+    proxy: boolean;
+    /**
+     * How many copies the stack holds
+     */
+    quantity: number;
+    /**
+     * Primary key of the stack
+     */
+    uuid: string;
+}
+
+
 /**
  * What one card cost on one day
  * 
@@ -6747,7 +6823,7 @@ export const ResultState = {
 export type ResultState = typeof ResultState[keyof typeof ResultState];
 
 /**
- * Request to sort copies out of the Physical deck back into a collection
+ * Request to sort copies out of the Physical deck back into a collection on the shelf
  * @export
  * @interface ReturnDeckCardsRequest
  */

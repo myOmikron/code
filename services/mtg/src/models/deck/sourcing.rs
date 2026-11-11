@@ -237,6 +237,22 @@ pub(in crate::models) async fn read_slots(
     Ok(slots)
 }
 
+/// What lies in a Physical deck, oldest first, empty for a deck without one
+///
+/// The caller has to have established that the account may see the Physical
+/// deck. Each stack carries the collection it came from; whoever answers an
+/// Editor leaves that out, since the owner's collections stay the owner's.
+#[instrument(name = "read_physical_deck", skip(tx))]
+pub async fn read_physical_deck(
+    tx: &mut Transaction,
+    collection: Option<CollectionUuid>,
+) -> Result<Vec<SourcedStack>, rorm::Error> {
+    match collection {
+        Some(collection) => read_filed(tx, collection).await,
+        None => Ok(Vec::new()),
+    }
+}
+
 /// What is lying in the deck's own collection, oldest first
 pub(in crate::models) async fn read_filed(
     tx: &mut Transaction,

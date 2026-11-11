@@ -27,6 +27,7 @@ use crate::http::handler_frontend::decks::schema::DeckResponse;
 use crate::http::handler_frontend::decks::schema::DeckSourcingResponse;
 use crate::http::handler_frontend::decks::schema::DeckTagResponse;
 use crate::http::handler_frontend::decks::schema::DeckValuesResponse;
+use crate::http::handler_frontend::decks::schema::DiscardDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::FillDeckCollectionRequest;
 use crate::http::handler_frontend::decks::schema::FillDeckCollectionResponse;
 use crate::http::handler_frontend::decks::schema::FormatRulesResponse;
@@ -35,6 +36,7 @@ use crate::http::handler_frontend::decks::schema::ImportDeckCardsResponse;
 use crate::http::handler_frontend::decks::schema::ImportMode;
 use crate::http::handler_frontend::decks::schema::ListDeckCardsResponse;
 use crate::http::handler_frontend::decks::schema::ListFormatsResponse;
+use crate::http::handler_frontend::decks::schema::PhysicalDeckResponse;
 use crate::http::handler_frontend::decks::schema::PutDeckProxiesRequest;
 use crate::http::handler_frontend::decks::schema::ReadDeckCardResponse;
 use crate::http::handler_frontend::decks::schema::ReadDeckUrlRequest;
@@ -60,8 +62,12 @@ use crate::models::account::Account;
 use crate::models::account::AccountUuid;
 use crate::models::card_attributes::CardCondition;
 use crate::models::card_attributes::CardFinish;
+use crate::models::collection::Collection;
+use crate::models::collection::CollectionAccess;
 use crate::models::collection::CollectionEntry;
 use crate::models::collection::CollectionEntryInsert;
+use crate::models::collection::CollectionEntryUuid;
+use crate::models::collection::CollectionUuid;
 use crate::models::collection::DiscardOutcome;
 use crate::models::collection::MoveOutcome;
 use crate::models::deck::Deck;
@@ -72,6 +78,7 @@ use crate::models::deck::DeckCardPatch;
 use crate::models::deck::DeckCardUuid;
 use crate::models::deck::DeckInsert;
 use crate::models::deck::DeckUuid;
+use crate::models::deck::DeleteDeckOutcome;
 use crate::models::deck::TakeApartOutcome;
 use crate::models::deck::access::DeckGrant;
 use crate::models::deck::access::DeckOperation;
@@ -85,6 +92,7 @@ use crate::models::deck::history::UndoState;
 use crate::models::deck::listing::DeckSummary;
 use crate::models::deck::listing::ListedSlot;
 use crate::models::deck::sourcing::DeckSourcing;
+use crate::models::deck::sourcing::read_physical_deck;
 use crate::models::deck::tag::DeckTag;
 use crate::models::deck::tag::DeckTagInsert;
 use crate::models::deck::tag::DeckTagUuid;
@@ -246,34 +254,21 @@ pub async fn take_deck_cards(
         Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::TakeCards).await?,
     )?;
 
-    let source = CollectionEntry::collection_of(&mut tx, grant.owner(), entry)
-        .await?
-        .ok_or_else(denied)?;
-    if Deck::collection(&mut tx, deck_uuid)
-        .await?
-        .is_some_and(|collection| collection.uuid == source)
-    {
-        return Err(ApiError::bad_request("Those cards are already in the deck"));
-    }
+    let source = shelf_source(&mut tx, grant.owner(), entry).await?;
     let collection =
         granted(Deck::physical_deck_or_create(&mut tx, grant.owner(), deck_uuid).await?)?;
 
-    match CollectionEntry::move_copies(
-        &mut tx,
-        grant.owner(),
-        entry,
-        quantity,
-        collection.uuid,
-        Some(source),
-    )
-    .await?
-    {
-        MoveOutcome::Moved { .. } => {}
-        MoveOutcome::TooFewCopies => {
-            return Err(ApiError::bad_request("The stack does not hold that many"));
-        }
-        MoveOutcome::Denied => return Err(denied().into()),
-    }
+    moved(
+        CollectionEntry::move_copies(
+            &mut tx,
+            grant.owner(),
+            entry,
+            quantity,
+            collection.uuid,
+            Some(source),
+        )
+        .await?,
+    )?;
 
     tx.commit().await?;
 
@@ -420,48 +415,27 @@ pub async fn replace_deck_proxy(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let grant = granted(
-        Deck::authorize(
+    let (grant, collection) = physical_deck(
+        &mut tx,
+        deck_uuid,
+        account.uuid,
+        DeckOperation::ChangeProxies,
+    )
+    .await?;
+    let source = shelf_source(&mut tx, grant.owner(), entry).await?;
+
+    discarded(CollectionEntry::discard_proxies(&mut tx, collection.uuid, proxy, quantity).await?)?;
+    moved(
+        CollectionEntry::move_copies(
             &mut tx,
-            deck_uuid,
-            account.uuid,
-            DeckOperation::ChangeProxies,
+            grant.owner(),
+            entry,
+            quantity,
+            collection.uuid,
+            Some(source),
         )
         .await?,
     )?;
-    let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
-        return Err(ApiError::bad_request("This deck has no Physical deck"));
-    };
-    let source = CollectionEntry::collection_of(&mut tx, grant.owner(), entry)
-        .await?
-        .ok_or_else(denied)?;
-    if source == collection.uuid {
-        return Err(ApiError::bad_request("Those cards are already in the deck"));
-    }
-
-    match CollectionEntry::discard_proxies(&mut tx, collection.uuid, proxy, quantity).await? {
-        DiscardOutcome::Discarded => {}
-        DiscardOutcome::TooFewCopies => {
-            return Err(ApiError::bad_request("There are not that many Proxies"));
-        }
-        DiscardOutcome::Denied => return Err(denied().into()),
-    }
-    match CollectionEntry::move_copies(
-        &mut tx,
-        grant.owner(),
-        entry,
-        quantity,
-        collection.uuid,
-        Some(source),
-    )
-    .await?
-    {
-        MoveOutcome::Moved { .. } => {}
-        MoveOutcome::TooFewCopies => {
-            return Err(ApiError::bad_request("The stack does not hold that many"));
-        }
-        MoveOutcome::Denied => return Err(denied().into()),
-    }
 
     tx.commit().await?;
 
@@ -484,40 +458,31 @@ pub async fn return_deck_cards(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let grant = granted(
-        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::ReturnCards).await?,
-    )?;
-    let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
-        return Err(ApiError::bad_request("This deck has no Physical deck"));
-    };
+    let (grant, collection) =
+        physical_deck(&mut tx, deck_uuid, account.uuid, DeckOperation::ReturnCards).await?;
 
     let stack = CollectionEntry::get(&mut tx, collection.uuid, entry)
         .await?
-        .ok_or_else(|| ApiError::bad_request("Request was denied"))?;
+        .ok_or_else(denied)?;
     if stack.proxy {
-        match CollectionEntry::discard_proxies(&mut tx, collection.uuid, entry, quantity).await? {
-            DiscardOutcome::Discarded => {}
-            DiscardOutcome::TooFewCopies => {
-                return Err(ApiError::bad_request("The stack does not hold that many"));
-            }
-            DiscardOutcome::Denied => return Err(denied().into()),
-        }
+        discarded(
+            CollectionEntry::discard_proxies(&mut tx, collection.uuid, entry, quantity).await?,
+        )?;
         tx.commit().await?;
         return Ok(ApiJson(()));
     }
-    // Where they came from, unless the client names somewhere else — which it
-    // has to for cards that were bought straight into the deck.
     let into = target
         .or(stack.origin)
         .ok_or_else(|| ApiError::bad_request("Say which collection they go into"))?;
-
-    match CollectionEntry::move_copies(&mut tx, grant.owner(), entry, quantity, into, None).await? {
-        MoveOutcome::Moved { .. } => {}
-        MoveOutcome::TooFewCopies => {
-            return Err(ApiError::bad_request("The stack does not hold that many"));
-        }
-        MoveOutcome::Denied => return Err(ApiError::bad_request("Request was denied")),
+    if !Collection::is_on_shelf(&mut tx, into, grant.owner()).await? {
+        return Err(ApiError::bad_request(
+            "Cards go back only into a collection on the shelf",
+        ));
     }
+
+    moved(
+        CollectionEntry::move_copies(&mut tx, grant.owner(), entry, quantity, into, None).await?,
+    )?;
 
     tx.commit().await?;
 
@@ -555,6 +520,66 @@ pub async fn take_apart_physical_deck(
     tx.commit().await?;
 
     Ok(ApiJson(TakeApartPhysicalDeckResponse { returned }))
+}
+
+/// Throw a stack out of the Physical deck, and so out of the account
+///
+/// For cards that are gone: sold, traded away, lost. A Proxy stack is simply
+/// thrown away.
+#[post("/{deck}/sourcing/discard")]
+pub async fn discard_deck_cards(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+    ApiJson(DiscardDeckCardsRequest { entry }): ApiJson<DiscardDeckCardsRequest>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let (_, collection) = physical_deck(
+        &mut tx,
+        deck_uuid,
+        account.uuid,
+        DeckOperation::DiscardCards,
+    )
+    .await?;
+
+    match CollectionEntry::delete(&mut tx, collection.uuid, entry).await? {
+        CollectionAccess::Granted(()) => {}
+        CollectionAccess::Denied => return Err(denied().into()),
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// What lies in the Physical deck: real cards and Proxies
+///
+/// What an Editor reads to see what the owner has built. Where the real cards
+/// came from is left out, since the owner's collections stay the owner's; an
+/// empty list for a deck without a Physical deck.
+#[get("/{deck}/physical-deck")]
+pub async fn get_physical_deck(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+) -> ApiResult<ApiJson<PhysicalDeckResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::ReadPhysicalDeck,
+        )
+        .await?,
+    )?;
+
+    let collection = Deck::collection(&mut tx, deck_uuid).await?;
+    let stacks = read_physical_deck(&mut tx, collection.map(|collection| collection.uuid)).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(PhysicalDeckResponse::from(stacks)))
 }
 
 /// File a deck into one of the account's folders
@@ -960,7 +985,10 @@ pub async fn rotate_deck_share_token(
     Ok(ApiJson(RotateDeckShareTokenResponse { share_token }))
 }
 
-/// Delete a deck and everything in it
+/// Delete a deck, its list and its Physical deck
+///
+/// Refused while the Physical deck holds real cards: deleting a deck never
+/// deletes the owner's cards, so it is taken apart first. Proxies go with it.
 #[delete("/{deck}")]
 pub async fn delete_deck(
     account: Account,
@@ -972,7 +1000,15 @@ pub async fn delete_deck(
         Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::DeleteDeck).await?,
     )?;
 
-    granted(Deck::delete(&mut tx, grant.owner(), deck_uuid).await?)?;
+    match Deck::delete(&mut tx, grant.owner(), deck_uuid).await? {
+        DeleteDeckOutcome::Deleted => {}
+        DeleteDeckOutcome::HoldsCards => {
+            return Err(ApiError::bad_request(
+                "Take the Physical deck apart before deleting the deck",
+            ));
+        }
+        DeleteDeckOutcome::Denied => return Err(denied().into()),
+    }
 
     tx.commit().await?;
 
@@ -1579,6 +1615,62 @@ async fn record_settings(
     )
     .await?;
     Ok(())
+}
+
+/// The deck's Physical deck, once `account` is granted `operation` on the deck
+async fn physical_deck(
+    tx: &mut Transaction,
+    deck: DeckUuid,
+    account: AccountUuid,
+    operation: DeckOperation,
+) -> ApiResult<(DeckGrant, Collection)> {
+    let grant = granted(Deck::authorize(&mut *tx, deck, account, operation).await?)?;
+    let Some(collection) = Deck::collection(&mut *tx, deck).await? else {
+        return Err(ApiError::bad_request("This deck has no Physical deck"));
+    };
+    Ok((grant, collection))
+}
+
+/// The collection on `owner`'s shelf a stack lies in
+///
+/// A stack in a Physical deck, of this deck or another, is no source: cards
+/// move between decks only by going back onto the shelf.
+async fn shelf_source(
+    tx: &mut Transaction,
+    owner: AccountUuid,
+    entry: CollectionEntryUuid,
+) -> ApiResult<CollectionUuid> {
+    let source = CollectionEntry::collection_of(&mut *tx, owner, entry)
+        .await?
+        .ok_or_else(denied)?;
+    if !Collection::is_on_shelf(&mut *tx, source, owner).await? {
+        return Err(ApiError::bad_request(
+            "Cards come only out of a collection on the shelf",
+        ));
+    }
+    Ok(source)
+}
+
+/// The answer to moving copies between collections
+fn moved(outcome: MoveOutcome) -> ApiResult<()> {
+    match outcome {
+        MoveOutcome::Moved { .. } => Ok(()),
+        MoveOutcome::TooFewCopies => {
+            Err(ApiError::bad_request("The stack does not hold that many"))
+        }
+        MoveOutcome::Denied => Err(denied().into()),
+    }
+}
+
+/// The answer to throwing Proxies away
+fn discarded(outcome: DiscardOutcome) -> ApiResult<()> {
+    match outcome {
+        DiscardOutcome::Discarded => Ok(()),
+        DiscardOutcome::TooFewCopies => {
+            Err(ApiError::bad_request("There are not that many Proxies"))
+        }
+        DiscardOutcome::Denied => Err(denied().into()),
+    }
 }
 
 /// Turn a denied access into the one answer every refused request gets

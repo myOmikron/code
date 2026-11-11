@@ -35,8 +35,8 @@ pub struct DeviationCopies {
     pub printing: Uuid,
     /// How many copies
     pub quantity: i32,
-    /// Whether they are the foil ones
-    pub foil: bool,
+    /// Their finish
+    pub finish: CardFinish,
     /// Whether they are Proxies
     pub proxy: bool,
     /// What the catalog knows about the printing
@@ -199,9 +199,10 @@ pub fn deviation_of(slots: &[SourcingSlot], filed: &[SourcedStack]) -> DeckDevia
 ///
 /// Stacks are split by condition, which the Deviation does not care about.
 fn add_copies(copies: &mut Vec<DeviationCopies>, stack: &SourcedStack, quantity: i32) {
-    let foil = is_foil(stack.finish);
     if let Some(known) = copies.iter_mut().find(|known| {
-        known.printing == stack.printing && known.foil == foil && known.proxy == stack.proxy
+        known.printing == stack.printing
+            && known.finish == stack.finish
+            && known.proxy == stack.proxy
     }) {
         known.quantity += quantity;
         return;
@@ -209,25 +210,19 @@ fn add_copies(copies: &mut Vec<DeviationCopies>, stack: &SourcedStack, quantity:
     copies.push(DeviationCopies {
         printing: stack.printing,
         quantity,
-        foil,
+        finish: stack.finish,
         proxy: stack.proxy,
         card: stack.card.clone(),
     });
 }
 
 /// Whether a stack is the printing and finish a line asks for
-fn is_exact(slot: &SourcingSlot, stack: &SourcedStack) -> bool {
-    stack.printing == slot.printing && is_foil(stack.finish) == slot.foil
-}
-
-/// Whether a finish counts as the foil one
 ///
-/// Only traditional foil does, which is the same rule the sourcing view counts
-/// by. Deliberately the same and not the stricter one: two views onto the same
-/// cards that answer differently about a line would each be calling the other
-/// a liar on the same screen.
-fn is_foil(finish: CardFinish) -> bool {
-    matches!(finish, CardFinish::Foil)
+/// The finish is compared strictly, the same way recording bought copies
+/// counts what a line holds: an etched copy is neither the plain nor the foil
+/// one.
+fn is_exact(slot: &SourcingSlot, stack: &SourcedStack) -> bool {
+    stack.printing == slot.printing && stack.finish == CardFinish::of_deck_entry(slot.foil)
 }
 
 /// Whether a stack holds the card a line asks for, whatever printing it is

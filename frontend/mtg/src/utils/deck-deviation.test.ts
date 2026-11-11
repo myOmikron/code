@@ -11,7 +11,7 @@ import { deviationCount, lineMarks } from "src/utils/deck-deviation";
  * @returns the copies
  */
 function copies(quantity: number, proxy = false): DeviationCopiesResponse {
-    return { printing: "print", quantity, foil: false, proxy };
+    return { printing: "print", quantity, finish: "Nonfoil", proxy };
 }
 
 /**

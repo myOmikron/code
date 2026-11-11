@@ -433,6 +433,11 @@ function RouteComponent() {
                                     {t("label.sourcing")}
                                 </Tab>
                             )}
+                            {!rights.owner && deviation !== null && deviation.has_physical_deck && (
+                                <Tab href={"/decks/$deckUuid/physical-deck"} params={{ deckUuid }}>
+                                    {t("label.physical-deck")}
+                                </Tab>
+                            )}
                             <Tab href={"/decks/$deckUuid/statistics"} params={{ deckUuid }}>
                                 {t("heading.statistics")}
                             </Tab>

@@ -45,12 +45,12 @@
         "put-in-proxies_other": "{{count}} Proxies hineinlegen",
         "remove-one": "Eine weniger",
         "replace-proxy": "Ersetzen",
-        "return-all": "Auflösen",
         "return-card": "Zurücksortieren",
         "save-collection": "Speichern",
         "scan-into": "Karten hineinscannen",
         "share-collection": "Teilen",
         "split-entry": "Abtrennen",
+        "take-apart": "Auflösen",
         "take-card": "{{count}} holen"
     },
     "description": {
@@ -128,7 +128,9 @@
         "wants-with-available": "Nimmt Karten mit, die du zwar hast, aber noch nicht ins Deck gebucht sind. Damit wird die Liste zum Zettel fürs Regal.",
         "years": "Nach Erscheinungsdatum des Printings, nicht der Karte.",
         "proxy-it": "Noch nicht da? Lege einen Proxy ins Deck, bis die echte Karte kommt.",
-        "replace-proxies": "Proxies stehen für eine Karte, die du nicht im Deck hast. Ersetze sie durch eine Kopie aus deinen Sammlungen oder kaufe das Printing, für das sie stehen."
+        "replace-proxies": "Proxies stehen für eine Karte, die du nicht im Deck hast. Ersetze sie durch eine Kopie aus deinen Sammlungen oder kaufe das Printing, für das sie stehen.",
+        "physical-deck-read-only": "Was wirklich im Deck steckt, echte Karten und Proxies. Ändern kann es nur, wem das Deck gehört.",
+        "physical-deck-nothing": "Im Physischen Deck liegt noch keine Karte."
     },
     "heading": {
         "add-cards": "Karten einräumen",
@@ -160,6 +162,7 @@
         "no-statistics": "Nichts zu zählen",
         "nothing-on-loan": "Nichts in Decks",
         "on-loan": "In Decks verbaut",
+        "physical-deck": "Physisches Deck",
         "pips": "Pips",
         "price-history": "Preisverlauf",
         "purchase-vs-market": "Kauf gegen Markt",
@@ -275,6 +278,7 @@
         "price-low-on": "Tief {{price}} am {{day}}",
         "price-trend": "Trend",
         "priced-cards": "{{amount}} davon mit Preis",
+        "proxy": "Proxy",
         "purchase-price": "Kaufpreis",
         "purchase-value": "Kaufwert",
         "quantity": "Anzahl",

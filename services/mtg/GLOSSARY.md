@@ -279,6 +279,7 @@ _Avoid_: status, phase, closed, completed
 - A deck has exactly one **Deck history**; handing the deck to the **Tombstone** empties it
 - A deck has at most one **Physical deck**; a **Proxy** belongs to exactly one Physical deck and stands for one card of its deck list
 - The owner changes the **Physical deck**; an **Editor** only sees it, a **Viewer** not at all
+- Deleting a deck never deletes real cards: its **Physical deck** is taken apart first, and only its **Proxies** go with the deck
 - A deck has any number of **Collaborators**, each Account at most once, as a **Viewer** or an **Editor**; deleting the deck or the Account removes the Collaborator
 - A **Collaborator** sees the deck whatever its Visibility; Visibility and the Share link work the same with or without Collaborators
 - A **Release** has any number of **Release notes**; pending ones belong to the next Release cut with `just release`

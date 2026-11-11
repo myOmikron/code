@@ -248,6 +248,24 @@ impl Collection {
         })
     }
 
+    /// Whether `account` may file, change, split, merge and delete stacks in
+    /// the collection
+    ///
+    /// Only in a collection on the shelf: a Physical deck changes through its
+    /// deck alone, so its real cards keep their origin and its Proxies stay Proxies.
+    #[instrument(name = "Collection::may_change_entries", skip(tx))]
+    pub async fn may_change_entries(
+        tx: &mut Transaction,
+        uuid: CollectionUuid,
+        account: AccountUuid,
+    ) -> Result<CollectionAccess, rorm::Error> {
+        Ok(if Self::is_on_shelf(&mut *tx, uuid, account).await? {
+            CollectionAccess::Granted(())
+        } else {
+            CollectionAccess::Denied
+        })
+    }
+
     /// Whether the collection is one on `account`'s shelf, not a deck's
     /// Physical deck
     #[instrument(name = "Collection::is_on_shelf", skip(tx))]

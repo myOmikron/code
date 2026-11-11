@@ -34,7 +34,10 @@ import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 
 export const Route = createFileRoute("/_menu/collections/")({
     // In the loader, so hovering the navbar entry already fetches the list.
-    loader: () => Api.collections.list(),
+    loader: async () => {
+        const [collections, totals] = await Promise.all([Api.collections.list(), Api.collections.totals()]);
+        return { collections, totals };
+    },
     component: RouteComponent,
 });
 
@@ -46,7 +49,7 @@ export const Route = createFileRoute("/_menu/collections/")({
 function RouteComponent() {
     const [t] = useTranslation("collection");
     const [tg] = useTranslation();
-    const collections = Route.useLoaderData();
+    const { collections, totals } = Route.useLoaderData();
     const router = useRouter();
     const navigate = useNavigate();
     const [dialog, setDialog] = useState<{ collection: CollectionOverviewResponse | null } | null>(null);
@@ -56,10 +59,8 @@ function RouteComponent() {
     const menu = useContextMenu<CollectionOverviewResponse>();
     const shortcutHelpOpen = useShortcutHelpOpen();
 
-    // Only the shelf: a deck's Physical deck is part of the deck and never
-    // listed among the collections.
-    const cards = collections.reduce((total, overview) => total + overview.cards, 0);
-    const value = collections.reduce((total, overview) => total + overview.price_eur_cents, 0);
+    const cards = totals.cards;
+    const value = totals.price_eur_cents;
 
     const marked = collections.find((overview) => overview.collection.uuid === selected) ?? null;
 

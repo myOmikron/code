@@ -97,10 +97,11 @@
         "deck-not-public": "Dieses Deck gibt es nicht, oder sein Besitzer zeigt es nicht mehr.",
         "deck-not-shared": "Dieses Deck gibt es nicht mehr, oder es ist nicht mehr mit dir geteilt.",
         "decks": "Jedes Deck ist für ein Format gebaut. Was das Format verlangt, steht als Hinweis über der Liste, gesperrt wird nichts.",
-        "delete-deck": "„{{name}}“ und alle darin liegenden Karten werden gelöscht. Das lässt sich nicht rückgängig machen.",
-        "delete-deck-cards": "In diesem Deck liegen {{count}} Karten aus deiner Sammlung.",
+        "delete-deck": "„{{name}}“ und seine Liste werden gelöscht. Deine Karten bleiben dir. Das lässt sich nicht rückgängig machen.",
+        "delete-deck-cards": "Die {{count}} Karten im Physischen Deck wandern zurück in die Sammlungen, aus denen sie kamen.",
+        "delete-deck-no-collection": "Karten, die ohne Sammlung ins Deck kamen, brauchen eine Sammlung, in die sie zurückgehen. Lege zuerst eine an.",
         "delete-folder": "Der Ordner verschwindet, die Decks darin bleiben und stehen danach ohne Ordner.",
-        "delete-menu": "Deck und alle Karten darin",
+        "delete-menu": "Deck und Liste, deine Karten bleiben",
         "delete-tag": "Der Tag verschwindet von allen Karten.",
         "description": "Der Spielplan, Notizen zum Deck, was du willst.",
         "dissolve-menu": "Karten zurück in die Sammlungen, aus denen sie kamen",
@@ -434,7 +435,6 @@
         "remarks_one": "1 Hinweis",
         "remarks_other": "{{count}} Hinweise",
         "resource": "Ressource",
-        "return-cards": "Karten zurücksortieren",
         "return-target": "Zielsammlung",
         "return-to-origin": "Zurück in die Herkunftssammlung",
         "rule-combos": "Combos",
@@ -531,7 +531,9 @@
         "zone-companion": "Companion",
         "zone-main": "Hauptdeck",
         "zone-maybe": "Maybeboard",
-        "zone-side": "Sideboard"
+        "zone-side": "Sideboard",
+        "etched": "Etched",
+        "physical-deck": "Physisches Deck"
     },
     "toast": {
         "bracket-changed": "Bracket gespeichert",

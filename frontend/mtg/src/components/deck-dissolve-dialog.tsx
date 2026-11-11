@@ -69,9 +69,10 @@ export function DeckDissolveDialog({ deck, onClose, onDissolved }: DeckDissolveD
         };
     }, [uuid]);
 
-    const groups = groupByOrigin(filed);
-    const homeless = filed.filter((stack) => stack.origin == null);
-    const copies = filed.reduce((sum, stack) => sum + stack.quantity, 0);
+    const real = filed.filter((stack) => !stack.proxy);
+    const groups = groupByOrigin(real);
+    const homeless = real.filter((stack) => stack.origin == null);
+    const copies = copiesIn(real);
 
     /**
      * Sorts everything back and closes
@@ -96,7 +97,7 @@ export function DeckDissolveDialog({ deck, onClose, onDissolved }: DeckDissolveD
                 {t("description.dissolve-deck", { name: deck?.name ?? "", count: copies })}
             </DialogDescription>
             <DialogBody>
-                {filed.length === 0 ? (
+                {real.length === 0 ? (
                     <Text>{t("description.physical-deck-empty")}</Text>
                 ) : (
                     <div className={"flex flex-col gap-5"}>
@@ -152,9 +153,12 @@ export function DeckDissolveDialog({ deck, onClose, onDissolved }: DeckDissolveD
                 <Button plain={true} onClick={onClose}>
                     {tg("button.cancel")}
                 </Button>
-                <PrimaryButton disabled={busy} onClick={() => void dissolve()}>
+                <PrimaryButton
+                    disabled={busy || (homeless.length > 0 && collections.length === 0)}
+                    onClick={() => void dissolve()}
+                >
                     <ArrowUturnLeftIcon />
-                    {t("button.return-all")}
+                    {t("button.take-apart")}
                 </PrimaryButton>
             </DialogActions>
         </Dialog>

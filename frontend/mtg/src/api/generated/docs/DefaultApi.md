@@ -50,7 +50,7 @@ All URIs are relative to *http://localhost*
 | [**deleteAccount**](DefaultApi.md#deleteaccountoperation) | **DELETE** /api/frontend/v1/accounts/me | Delete the logged-in account |
 | [**deleteCollection**](DefaultApi.md#deletecollection) | **DELETE** /api/frontend/v1/collections/{collection} |  |
 | [**deleteCollectionEntry**](DefaultApi.md#deletecollectionentry) | **DELETE** /api/frontend/v1/collections/{collection}/entries/{entry} | Remove a stack from a collection |
-| [**deleteDeck**](DefaultApi.md#deletedeck) | **DELETE** /api/frontend/v1/decks/{deck} | Delete a deck and everything in it |
+| [**deleteDeck**](DefaultApi.md#deletedeck) | **DELETE** /api/frontend/v1/decks/{deck} | Delete a deck, its list and its Physical deck |
 | [**deleteDeckCard**](DefaultApi.md#deletedeckcard) | **DELETE** /api/frontend/v1/decks/{deck}/cards/{card} | Take a card out of a deck |
 | [**deleteDeckFolder**](DefaultApi.md#deletedeckfolder) | **DELETE** /api/frontend/v1/folders/{folder} | Throw a folder away |
 | [**deleteDeckTag**](DefaultApi.md#deletedecktag) | **DELETE** /api/frontend/v1/decks/{deck}/tags/{tag} | Delete a tag, taking it off every card it sat on |
@@ -61,6 +61,7 @@ All URIs are relative to *http://localhost*
 | [**deleteTournament**](DefaultApi.md#deletetournament) | **DELETE** /api/frontend/v1/tournaments/{tournament} | Delete a Tournament and everything in it, as its Owner |
 | [**deleteWatchList**](DefaultApi.md#deletewatchlist) | **DELETE** /api/frontend/v1/watch-lists/{list} | Throw a watch list away, taking every entry on it with it |
 | [**deleteWatchListEntry**](DefaultApi.md#deletewatchlistentry) | **DELETE** /api/frontend/v1/watch-lists/{list}/entries/{entry} | Take a card off a watch list |
+| [**discardDeckCards**](DefaultApi.md#discarddeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/discard | Throw a stack out of the Physical deck, and so out of the account |
 | [**discardTournamentRound**](DefaultApi.md#discardtournamentround) | **DELETE** /api/frontend/v1/tournaments/{tournament}/rounds/{number} | Throw a previewed Round away, as an Organizer, to pair it again |
 | [**disputeTournamentMatchResult**](DefaultApi.md#disputetournamentmatchresult) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/dispute | Dispute the Result another Participant reported for one\&#39;s own Match |
 | [**dropOutOfTournament**](DefaultApi.md#dropoutoftournament) | **POST** /api/frontend/v1/tournaments/{tournament}/drop | Drop the logged-in Account out of a Tournament it plays in |
@@ -83,6 +84,7 @@ All URIs are relative to *http://localhost*
 | [**getBracketFlags**](DefaultApi.md#getbracketflags) | **POST** /api/frontend/v1/printings/bracket-flags | Which Commander bracket rules the given printings count towards |
 | [**getCollection**](DefaultApi.md#getcollection) | **GET** /api/frontend/v1/collections/{collection} | Fetch a single collection |
 | [**getCollectionStatistics**](DefaultApi.md#getcollectionstatistics) | **GET** /api/frontend/v1/collections/{collection}/statistics |  |
+| [**getCollectionTotals**](DefaultApi.md#getcollectiontotals) | **GET** /api/frontend/v1/collections/totals | How many cards the account owns and what they are worth |
 | [**getDeck**](DefaultApi.md#getdeck) | **GET** /api/frontend/v1/decks/{deck} | Fetch a single deck, with the caller\&#39;s role on it |
 | [**getDeckAdvisorSettings**](DefaultApi.md#getdeckadvisorsettings) | **GET** /api/frontend/v1/decks/{deck}/advisor-settings | Read this deck\&#39;s advisor settings |
 | [**getDeckDeviation**](DefaultApi.md#getdeckdeviation) | **GET** /api/frontend/v1/decks/{deck}/deviation | The Deviation between the deck list and the Physical deck |
@@ -99,6 +101,7 @@ All URIs are relative to *http://localhost*
 | [**getMyTournamentMatch**](DefaultApi.md#getmytournamentmatch) | **GET** /api/frontend/v1/tournaments/{tournament}/my-match | The reader\&#39;s Match in the running Round of a Tournament, with the round timer |
 | [**getMyTournaments**](DefaultApi.md#getmytournaments) | **GET** /api/frontend/v1/tournaments/mine | The Tournaments the logged-in Account organizes and the ones it plays in |
 | [**getPendingOidcLogin**](DefaultApi.md#getpendingoidclogin) | **GET** /api/frontend/v1/auth/oidc/pending | The session\&#39;s OIDC login waiting for its username step |
+| [**getPhysicalDeck**](DefaultApi.md#getphysicaldeck) | **GET** /api/frontend/v1/decks/{deck}/physical-deck | What lies in the Physical deck: real cards and Proxies |
 | [**getPriceHistory**](DefaultApi.md#getpricehistory) | **GET** /api/frontend/v1/printings/{printing}/price-history | What a card has cost over time |
 | [**getPrintingLanguages**](DefaultApi.md#getprintinglanguages) | **GET** /api/frontend/v1/printings/{printing}/languages | Every language the same card exists in |
 | [**getPublicCollection**](DefaultApi.md#getpubliccollection) | **GET** /api/frontend/v1/explore/collections/{collection} | Fetch one collection its owner put on show |
@@ -3537,9 +3540,9 @@ No authorization required
 
 > any deleteDeck(deck)
 
-Delete a deck and everything in it
+Delete a deck, its list and its Physical deck
 
-Delete a deck and everything in it
+Delete a deck, its list and its Physical deck  Refused while the Physical deck holds real cards: deleting a deck never deletes the owner\&#39;s cards, so it is taken apart first. Proxies go with it.
 
 ### Example
 
@@ -4301,6 +4304,79 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## discardDeckCards
+
+> any discardDeckCards(deck, DiscardDeckCardsRequest)
+
+Throw a stack out of the Physical deck, and so out of the account
+
+Throw a stack out of the Physical deck, and so out of the account  For cards that are gone: sold, traded away, lost. A Proxy stack is simply thrown away.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { DiscardDeckCardsOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // DiscardDeckCardsRequest (optional)
+    DiscardDeckCardsRequest: ...,
+  } satisfies DiscardDeckCardsOperationRequest;
+
+  try {
+    const data = await api.discardDeckCards(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+| **DiscardDeckCardsRequest** | [DiscardDeckCardsRequest](DiscardDeckCardsRequest.md) |  | [Optional] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
 - **Accept**: `application/json`
 
 
@@ -5829,6 +5905,68 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## getCollectionTotals
+
+> CollectionTotalsResponse getCollectionTotals()
+
+How many cards the account owns and what they are worth
+
+How many cards the account owns and what they are worth  Real cards in a Physical deck count as the account\&#39;s cards, though the Physical deck is listed with no collections; Proxies never count.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetCollectionTotalsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getCollectionTotals();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**CollectionTotalsResponse**](CollectionTotalsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## getDeck
 
 > DeckResponse getDeck(deck)
@@ -6905,6 +7043,76 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**GetPendingOidcLoginResponse**](GetPendingOidcLoginResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getPhysicalDeck
+
+> PhysicalDeckResponse getPhysicalDeck(deck)
+
+What lies in the Physical deck: real cards and Proxies
+
+What lies in the Physical deck: real cards and Proxies  What an Editor reads to see what the owner has built. Where the real cards came from is left out, since the owner\&#39;s collections stay the owner\&#39;s; an empty list for a deck without a Physical deck.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetPhysicalDeckRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetPhysicalDeckRequest;
+
+  try {
+    const data = await api.getPhysicalDeck(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**PhysicalDeckResponse**](PhysicalDeckResponse.md)
 
 ### Authorization
 

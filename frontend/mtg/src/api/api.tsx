@@ -205,6 +205,7 @@ export const Api = {
     },
     collections: {
         list: async () => handleError(defaultApi.getAllCollections()),
+        totals: async () => handleError(defaultApi.getCollectionTotals()),
         get: async (uuid: UUID) => handleError(defaultApi.getCollection({ collection: uuid })),
         getIfThere: async (uuid: UUID) => orGone(defaultApi.getCollection({ collection: uuid })),
         create: async (req: CreateCollectionRequest) =>
@@ -352,18 +353,13 @@ export const Api = {
         setFolder: async (uuid: UUID, folder: UUID | null) =>
             handleError(defaultApi.setDeckFolder({ deck: uuid, SetDeckFolderRequest: { folder } })),
         deviation: async (deck: UUID) => orGone(defaultApi.getDeckDeviation({ deck })),
-        // The List value, and what the Physical deck is worth and how many
-        // Proxies it holds. The owner and Editors read it; a Viewer gets the
-        // missing-deck answer, which `valuesIfShown` turns into `null`.
+        physicalDeck: async (deck: UUID) => handleError(defaultApi.getPhysicalDeck({ deck })),
         values: async (deck: UUID) => handleError(defaultApi.getDeckValues({ deck })),
         valuesIfShown: async (deck: UUID) => orGone(defaultApi.getDeckValues({ deck })),
         sourcing: {
             // What the deck asks for, what is in it, and where the rest could
             // come from — three flat lists the client matches up itself.
             read: async (deck: UUID) => handleError(defaultApi.getDeckSourcing({ deck })),
-            // Move copies out of a box and into the Physical deck, remembering
-            // the box. The first card creates the Physical deck; the list
-            // stays as it is whatever printing arrives.
             take: async (deck: UUID, entry: UUID, quantity: number) =>
                 handleError(defaultApi.takeDeckCards({ deck, TakeDeckCardsRequest: { entry, quantity } })),
             // The way back. `target` is only needed for cards that remember no
@@ -374,10 +370,10 @@ export const Api = {
             // deck imported from elsewhere gets its cards without a shopping trip.
             fill: async (deck: UUID, slot: UUID | null = null) =>
                 handleError(defaultApi.fillDeckCollection({ deck, FillDeckCollectionRequest: { slot } })),
-            // Taking the Physical deck apart: everything goes back, `target`
-            // takes the cards that remember no origin. All or nothing.
             takeApart: async (deck: UUID, target: UUID | null = null) =>
                 handleError(defaultApi.takeApartPhysicalDeck({ deck, TakeApartPhysicalDeckRequest: { target } })),
+            discard: async (deck: UUID, entry: UUID) =>
+                handleError(defaultApi.discardDeckCards({ deck, DiscardDeckCardsRequest: { entry } })),
             putProxies: async (deck: UUID, slot: UUID, quantity: number) =>
                 handleError(defaultApi.putDeckProxies({ deck, PutDeckProxiesRequest: { slot, quantity } })),
             replaceProxy: async (deck: UUID, proxy: UUID, entry: UUID, quantity: number) =>
@@ -497,8 +493,6 @@ export const Api = {
             handleError(defaultApi.updateScannerSession({ session, UpdateScannerSessionRequest: req })),
         // Takes the staging area with it, never the cards already filed.
         delete: async (session: UUID) => handleError(defaultApi.deleteScannerSession({ session })),
-        // Files every staged stack into a collection or a deck's Physical deck and
-        // empties the session, both inside one transaction.
         file: async (session: UUID, target: FilingTarget) =>
             handleError(defaultApi.fileScannerSession({ session, FileScannerSessionRequest: target })),
         entries: {

@@ -28,7 +28,7 @@ export function DeckNotOnList({ copies }: DeckNotOnListProps) {
     return (
         <section
             className={
-                "flex flex-col gap-3 rounded-(--radius-card) bg-amber-500/5 p-4 ring-1 ring-amber-600/20 dark:ring-amber-400/25"
+                "flex flex-col gap-3 rounded-(--radius-card) bg-amber-500/5 p-4 ring-1 ring-amber-600/20 dark:bg-amber-400/10 dark:ring-amber-400/25"
             }
         >
             <div className={"flex items-start gap-2"}>
@@ -41,7 +41,7 @@ export function DeckNotOnList({ copies }: DeckNotOnListProps) {
             <ul className={"flex flex-col gap-0.5"}>
                 {copies.map((entry) => (
                     <li
-                        key={`${entry.printing}-${entry.foil}-${entry.proxy}`}
+                        key={`${entry.printing}-${entry.finish}-${entry.proxy}`}
                         className={"text-sm text-zinc-700 dark:text-zinc-300"}
                     >
                         {`${entry.quantity}× ${entry.card?.name ?? t("label.unknown-printing")} (${copiesLabel(entry, t)})`}

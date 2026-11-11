@@ -45,12 +45,12 @@
         "put-in-proxies_other": "Put in {{count}} Proxies",
         "remove-one": "One fewer",
         "replace-proxy": "Replace",
-        "return-all": "Take apart",
         "return-card": "Sort back",
         "save-collection": "Save",
         "scan-into": "Scan cards into it",
         "share-collection": "Share",
         "split-entry": "Split off",
+        "take-apart": "Take apart",
         "take-card": "Take {{count}}"
     },
     "description": {
@@ -128,7 +128,9 @@
         "wants-with-available": "Takes in cards you own but have not sleeved into the deck yet, which turns the list into a note for the shelf.",
         "years": "By the release date of the printing, not of the card.",
         "proxy-it": "Not there yet? Put a Proxy into the deck until the real card arrives.",
-        "replace-proxies": "Proxies stand in for a card the deck does not hold. Replace them with a copy from your collections, or buy the printing they stand for."
+        "replace-proxies": "Proxies stand in for a card the deck does not hold. Replace them with a copy from your collections, or buy the printing they stand for.",
+        "physical-deck-read-only": "What is really in the deck, real cards and Proxies. Only the deck's owner changes it.",
+        "physical-deck-nothing": "There is no card in the Physical deck yet."
     },
     "heading": {
         "add-cards": "File cards",
@@ -160,6 +162,7 @@
         "no-statistics": "Nothing to count",
         "nothing-on-loan": "Nothing in a deck",
         "on-loan": "Sleeved up in decks",
+        "physical-deck": "Physical deck",
         "pips": "Pips",
         "price-history": "Price history",
         "purchase-vs-market": "Paid against worth",
@@ -275,6 +278,7 @@
         "price-low-on": "Low {{price}} on {{day}}",
         "price-trend": "Trend",
         "priced-cards": "{{amount}} of them priced",
+        "proxy": "Proxy",
         "purchase-price": "Purchase price",
         "purchase-value": "Purchase value",
         "quantity": "Quantity",

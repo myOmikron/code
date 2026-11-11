@@ -107,6 +107,8 @@ pub enum DeckOperation {
     ReadDeviation,
     /// Read what the Physical deck is worth and how many Proxies it holds
     ReadPhysicalValue,
+    /// Read what lies in the Physical deck, real cards and Proxies
+    ReadPhysicalDeck,
     /// Move copies out of a collection and into the Physical deck
     TakeCards,
     /// Record copies bought straight into the Physical deck
@@ -116,6 +118,8 @@ pub enum DeckOperation {
     /// Sort copies out of the Physical deck back into a collection, or take
     /// it apart
     ReturnCards,
+    /// Throw a stack out of the Physical deck and out of the account
+    DiscardCards,
     /// Delete the deck
     DeleteDeck,
     /// Read the Deck history
@@ -148,9 +152,9 @@ impl DeckOperation {
             | Self::AssignTag
             | Self::UnassignTag => DeckClass::Edit,
 
-            // An Editor sees the Physical deck, so its list edits can be
-            // weighed against what the owner built; a Viewer does not.
-            Self::ReadDeviation | Self::ReadPhysicalValue => DeckClass::Edit,
+            Self::ReadDeviation | Self::ReadPhysicalValue | Self::ReadPhysicalDeck => {
+                DeckClass::Edit
+            }
 
             Self::SetVisibility
             | Self::RotateShareToken
@@ -160,6 +164,7 @@ impl DeckOperation {
             | Self::FillCollection
             | Self::ChangeProxies
             | Self::ReturnCards
+            | Self::DiscardCards
             | Self::DeleteDeck
             | Self::ReadHistory
             | Self::ChangeHistory
@@ -278,6 +283,7 @@ mod tests {
             DeckOperation::FillCollection,
             DeckOperation::ChangeProxies,
             DeckOperation::ReturnCards,
+            DeckOperation::DiscardCards,
             DeckOperation::DeleteDeck,
             DeckOperation::ReadHistory,
             DeckOperation::ChangeHistory,
@@ -307,7 +313,13 @@ mod tests {
 
     #[test]
     fn an_editor_reads_the_physical_deck_a_viewer_does_not() {
-        assert_eq!(DeckOperation::ReadDeviation.class(), DeckClass::Edit);
+        for operation in [
+            DeckOperation::ReadDeviation,
+            DeckOperation::ReadPhysicalValue,
+            DeckOperation::ReadPhysicalDeck,
+        ] {
+            assert_eq!(operation.class(), DeckClass::Edit, "{operation:?}");
+        }
     }
 
     #[test]

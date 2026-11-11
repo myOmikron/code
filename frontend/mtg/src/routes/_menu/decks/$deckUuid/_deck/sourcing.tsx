@@ -197,10 +197,9 @@ function RouteComponent() {
      * @param stack the stack to delete
      */
     async function destroy(stack: SourcedStackResponse) {
-        if (sourcing.physical_deck == null) return;
         setBusy(true);
         try {
-            await Api.collections.entries.delete(sourcing.physical_deck, stack.uuid);
+            await Api.decks.sourcing.discard(deckUuid, stack.uuid);
             setDeleting(null);
             notify.success(t("toast.cards-deleted", { count: stack.quantity }));
             await refresh();
@@ -365,7 +364,7 @@ function RouteComponent() {
                         {sourcing.physical_deck != null && (
                             <Button outline={true} disabled={busy} onClick={() => setDissolving(true)}>
                                 <ArrowUturnLeftIcon />
-                                {t("button.return-all")}
+                                {t("button.take-apart")}
                             </Button>
                         )}
                     </div>

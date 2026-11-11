@@ -2832,6 +2832,55 @@
                 }
             }
         },
+        "/api/frontend/v1/collections/totals": {
+            "get": {
+                "summary": "How many cards the account owns and what they are worth",
+                "description": "How many cards the account owns and what they are worth\n\nReal cards in a Physical deck count as the account's cards, though the\nPhysical deck is listed with no collections; Proxies never count.",
+                "operationId": "get_collection_totals",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CollectionTotalsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/collections/{collection}": {
             "get": {
                 "summary": "Fetch a single collection",
@@ -4395,8 +4444,8 @@
                 }
             },
             "delete": {
-                "summary": "Delete a deck and everything in it",
-                "description": "Delete a deck and everything in it",
+                "summary": "Delete a deck, its list and its Physical deck",
+                "description": "Delete a deck, its list and its Physical deck\n\nRefused while the Physical deck holds real cards: deleting a deck never\ndeletes the owner's cards, so it is taken apart first. Proxies go with it.",
                 "operationId": "delete_deck",
                 "parameters": [
                     {
@@ -5507,6 +5556,139 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/TakeApartPhysicalDeckResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/sourcing/discard": {
+            "post": {
+                "summary": "Throw a stack out of the Physical deck, and so out of the account",
+                "description": "Throw a stack out of the Physical deck, and so out of the account\n\nFor cards that are gone: sold, traded away, lost. A Proxy stack is simply\nthrown away.",
+                "operationId": "discard_deck_cards",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DiscardDeckCardsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/physical-deck": {
+            "get": {
+                "summary": "What lies in the Physical deck: real cards and Proxies",
+                "description": "What lies in the Physical deck: real cards and Proxies\n\nWhat an Editor reads to see what the owner has built. Where the real cards\ncame from is left out, since the owner's collections stay the owner's; an\nempty list for a deck without a Physical deck.",
+                "operationId": "get_physical_deck",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PhysicalDeckResponse"
                                 }
                             }
                         }
@@ -17739,6 +17921,26 @@
                     "years"
                 ]
             },
+            "CollectionTotalsResponse": {
+                "description": "Everything an account owns, on the shelf and in its Physical decks, Proxies aside",
+                "type": "object",
+                "properties": {
+                    "cards": {
+                        "description": "How many copies the account owns",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "price_eur_cents": {
+                        "description": "What those copies are worth in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "cards",
+                    "price_eur_cents"
+                ]
+            },
             "CollectionUuid": {
                 "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
                 "type": "string",
@@ -18801,7 +19003,7 @@
                         ]
                     },
                     "price_eur_cents": {
-                        "description": "What those cards are worth in euro cents, Proxies or not",
+                        "description": "The List value in euro cents: the main deck, command zone, companion and sideboard at the price of each printing and finish, Proxies or not",
                         "type": "integer",
                         "format": "int64"
                     },
@@ -19476,9 +19678,13 @@
                             }
                         ]
                     },
-                    "foil": {
-                        "description": "Whether they are the foil ones",
-                        "type": "boolean"
+                    "finish": {
+                        "description": "Their finish",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardFinish"
+                            }
+                        ]
                     },
                     "printing": {
                         "description": "Scryfall's id of the printing",
@@ -19496,10 +19702,27 @@
                     }
                 },
                 "required": [
-                    "foil",
+                    "finish",
                     "printing",
                     "proxy",
                     "quantity"
+                ]
+            },
+            "DiscardDeckCardsRequest": {
+                "description": "Request to throw a stack out of the Physical deck",
+                "type": "object",
+                "properties": {
+                    "entry": {
+                        "description": "The stack in the Physical deck",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionEntryUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "entry"
                 ]
             },
             "DisputeResultErrors": {
@@ -23314,6 +23537,22 @@
                     "provider"
                 ]
             },
+            "PhysicalDeckResponse": {
+                "description": "What lies in a Physical deck, as an Editor reads it",
+                "type": "object",
+                "properties": {
+                    "stacks": {
+                        "description": "The stacks, oldest first, empty for a deck without a Physical deck",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PhysicalStackResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "stacks"
+                ]
+            },
             "PhysicalDeckValueResponse": {
                 "description": "What the Physical deck of a deck holds",
                 "type": "object",
@@ -23338,6 +23577,67 @@
                     "physical_value_cents",
                     "proxies",
                     "proxy_replacement_cents"
+                ]
+            },
+            "PhysicalStackResponse": {
+                "description": "One stack lying in a Physical deck, without the collection it came from",
+                "type": "object",
+                "properties": {
+                    "card": {
+                        "nullable": true,
+                        "description": "What the catalog knows about the printing",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SourcedPrintingResponse"
+                            }
+                        ]
+                    },
+                    "condition": {
+                        "description": "Condition of the cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardCondition"
+                            }
+                        ]
+                    },
+                    "finish": {
+                        "description": "Finish of the cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardFinish"
+                            }
+                        ]
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "proxy": {
+                        "description": "Whether the stack holds Proxies rather than real cards",
+                        "type": "boolean"
+                    },
+                    "quantity": {
+                        "description": "How many copies the stack holds",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "uuid": {
+                        "description": "Primary key of the stack",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionEntryUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "condition",
+                    "finish",
+                    "printing",
+                    "proxy",
+                    "quantity",
+                    "uuid"
                 ]
             },
             "PriceDayResponse": {
@@ -24726,7 +25026,7 @@
                 ]
             },
             "ReturnDeckCardsRequest": {
-                "description": "Request to sort copies out of the Physical deck back into a collection",
+                "description": "Request to sort copies out of the Physical deck back into a collection on the shelf",
                 "type": "object",
                 "properties": {
                     "entry": {

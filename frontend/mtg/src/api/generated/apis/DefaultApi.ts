@@ -55,6 +55,7 @@ import type {
     CollectionOverviewResponse,
     CollectionResponse,
     CollectionStatisticsResponse,
+    CollectionTotalsResponse,
     CreateCollectionRequest,
     CreateDeckFolderRequest,
     CreateDeckRequest,
@@ -75,6 +76,7 @@ import type {
     DeckUndoResponse,
     DeckValuesResponse,
     DeleteAccountRequest,
+    DiscardDeckCardsRequest,
     EndTournamentRound200Response,
     EntrySort,
     FileScannerSessionRequest,
@@ -146,6 +148,7 @@ import type {
     NameAccountRequest,
     OfferTournamentHandover200Response,
     PairTournamentRound200Response,
+    PhysicalDeckResponse,
     PriceHistoryResponse,
     PrintingLanguagesResponse,
     PublicCollectionResponse,
@@ -779,6 +782,17 @@ export interface DeleteWatchListEntryRequest {
     entry: string;
 }
 
+export interface DiscardDeckCardsOperationRequest {
+    /**
+     * 
+     */
+    deck: string;
+    /**
+     * 
+     */
+    DiscardDeckCardsRequest?: DiscardDeckCardsRequest;
+}
+
 export interface DiscardTournamentRoundRequest {
     /**
      * 
@@ -1022,6 +1036,13 @@ export interface GetMyTournamentMatchRequest {
      * 
      */
     tournament: string;
+}
+
+export interface GetPhysicalDeckRequest {
+    /**
+     * 
+     */
+    deck: string;
 }
 
 export interface GetPriceHistoryRequest {
@@ -4641,8 +4662,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Delete a deck and everything in it
-     * Delete a deck and everything in it
+     * Delete a deck, its list and its Physical deck  Refused while the Physical deck holds real cards: deleting a deck never deletes the owner\'s cards, so it is taken apart first. Proxies go with it.
+     * Delete a deck, its list and its Physical deck
      */
     async deleteDeckRaw(requestParameters: DeleteDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
         const requestOptions = await this.deleteDeckRequestOpts(requestParameters);
@@ -4656,8 +4677,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Delete a deck and everything in it
-     * Delete a deck and everything in it
+     * Delete a deck, its list and its Physical deck  Refused while the Physical deck holds real cards: deleting a deck never deletes the owner\'s cards, so it is taken apart first. Proxies go with it.
+     * Delete a deck, its list and its Physical deck
      */
     async deleteDeck(requestParameters: DeleteDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.deleteDeckRaw(requestParameters, initOverrides);
@@ -5199,6 +5220,60 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async deleteWatchListEntry(requestParameters: DeleteWatchListEntryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.deleteWatchListEntryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for discardDeckCards without sending the request
+     */
+    async discardDeckCardsRequestOpts(requestParameters: DiscardDeckCardsOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling discardDeckCards().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/sourcing/discard`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['DiscardDeckCardsRequest'],
+        };
+    }
+
+    /**
+     * Throw a stack out of the Physical deck, and so out of the account  For cards that are gone: sold, traded away, lost. A Proxy stack is simply thrown away.
+     * Throw a stack out of the Physical deck, and so out of the account
+     */
+    async discardDeckCardsRaw(requestParameters: DiscardDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.discardDeckCardsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Throw a stack out of the Physical deck, and so out of the account  For cards that are gone: sold, traded away, lost. A Proxy stack is simply thrown away.
+     * Throw a stack out of the Physical deck, and so out of the account
+     */
+    async discardDeckCards(requestParameters: DiscardDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.discardDeckCardsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -6202,6 +6277,45 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getCollectionTotals without sending the request
+     */
+    async getCollectionTotalsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/collections/totals`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * How many cards the account owns and what they are worth  Real cards in a Physical deck count as the account\'s cards, though the Physical deck is listed with no collections; Proxies never count.
+     * How many cards the account owns and what they are worth
+     */
+    async getCollectionTotalsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CollectionTotalsResponse>> {
+        const requestOptions = await this.getCollectionTotalsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * How many cards the account owns and what they are worth  Real cards in a Physical deck count as the account\'s cards, though the Physical deck is listed with no collections; Proxies never count.
+     * How many cards the account owns and what they are worth
+     */
+    async getCollectionTotals(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionTotalsResponse> {
+        const response = await this.getCollectionTotalsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getDeck without sending the request
      */
     async getDeckRequestOpts(requestParameters: GetDeckRequest): Promise<runtime.RequestOpts> {
@@ -6950,6 +7064,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getPendingOidcLogin(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetPendingOidcLoginResponse> {
         const response = await this.getPendingOidcLoginRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getPhysicalDeck without sending the request
+     */
+    async getPhysicalDeckRequestOpts(requestParameters: GetPhysicalDeckRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling getPhysicalDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/physical-deck`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * What lies in the Physical deck: real cards and Proxies  What an Editor reads to see what the owner has built. Where the real cards came from is left out, since the owner\'s collections stay the owner\'s; an empty list for a deck without a Physical deck.
+     * What lies in the Physical deck: real cards and Proxies
+     */
+    async getPhysicalDeckRaw(requestParameters: GetPhysicalDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PhysicalDeckResponse>> {
+        const requestOptions = await this.getPhysicalDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * What lies in the Physical deck: real cards and Proxies  What an Editor reads to see what the owner has built. Where the real cards came from is left out, since the owner\'s collections stay the owner\'s; an empty list for a deck without a Physical deck.
+     * What lies in the Physical deck: real cards and Proxies
+     */
+    async getPhysicalDeck(requestParameters: GetPhysicalDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PhysicalDeckResponse> {
+        const response = await this.getPhysicalDeckRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

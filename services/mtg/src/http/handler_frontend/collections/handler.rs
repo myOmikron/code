@@ -19,6 +19,7 @@ use crate::http::handler_frontend::collections::schema::CollectionEntryResponse;
 use crate::http::handler_frontend::collections::schema::CollectionOverviewResponse;
 use crate::http::handler_frontend::collections::schema::CollectionResponse;
 use crate::http::handler_frontend::collections::schema::CollectionStatisticsResponse;
+use crate::http::handler_frontend::collections::schema::CollectionTotalsResponse;
 use crate::http::handler_frontend::collections::schema::CreateCollectionRequest;
 use crate::http::handler_frontend::collections::schema::ListCardsQuery;
 use crate::http::handler_frontend::collections::schema::ListCardsResponse;
@@ -48,6 +49,7 @@ use crate::models::collection::CollectionUuid;
 use crate::models::collection::MergeOutcome;
 use crate::models::collection::SplitOutcome;
 use crate::models::collection::listing::CollectionSummary;
+use crate::models::collection::listing::CollectionTotals;
 use crate::models::collection::listing::EntryPage;
 use crate::models::collection::listing::EntryQuery;
 use crate::models::collection::listing::MAX_LIMIT;
@@ -77,6 +79,26 @@ pub async fn get_all_collections(
     tx.commit().await?;
 
     Ok(ApiJson(res))
+}
+
+/// How many cards the account owns and what they are worth
+///
+/// Real cards in a Physical deck count as the account's cards, though the
+/// Physical deck is listed with no collections; Proxies never count.
+#[get("/totals")]
+pub async fn get_collection_totals(
+    account: Account,
+) -> ApiResult<ApiJson<CollectionTotalsResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let totals = CollectionTotals::read_for_account(&mut tx, account.uuid).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(CollectionTotalsResponse {
+        cards: totals.cards,
+        price_eur_cents: totals.price_eur,
+    }))
 }
 
 #[post("/")]
@@ -365,7 +387,7 @@ pub async fn add_collection_entries(
 
     // The insert cannot carry the ownership condition itself, so it is checked
     // first — inside the same transaction, so nothing can change in between.
-    match Collection::may_administer(&mut tx, collection_uuid, account.uuid).await? {
+    match Collection::may_change_entries(&mut tx, collection_uuid, account.uuid).await? {
         CollectionAccess::Granted(_) => {}
         CollectionAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
     }
@@ -400,7 +422,7 @@ pub async fn update_collection_entry(
 ) -> ApiResult<ApiJson<CollectionEntryResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    match Collection::may_administer(&mut tx, collection_uuid, account.uuid).await? {
+    match Collection::may_change_entries(&mut tx, collection_uuid, account.uuid).await? {
         CollectionAccess::Granted(_) => {}
         CollectionAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
     }
@@ -443,7 +465,7 @@ pub async fn split_collection_entry(
 ) -> ApiResult<ApiJson<SplitCollectionEntryResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    match Collection::may_administer(&mut tx, collection_uuid, account.uuid).await? {
+    match Collection::may_change_entries(&mut tx, collection_uuid, account.uuid).await? {
         CollectionAccess::Granted(_) => {}
         CollectionAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
     }
@@ -496,7 +518,7 @@ pub async fn merge_collection_entries(
 ) -> ApiResult<ApiJson<CollectionEntryResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    match Collection::may_administer(&mut tx, collection_uuid, account.uuid).await? {
+    match Collection::may_change_entries(&mut tx, collection_uuid, account.uuid).await? {
         CollectionAccess::Granted(_) => {}
         CollectionAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
     }
@@ -524,7 +546,7 @@ pub async fn delete_collection_entry(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    match Collection::may_administer(&mut tx, collection_uuid, account.uuid).await? {
+    match Collection::may_change_entries(&mut tx, collection_uuid, account.uuid).await? {
         CollectionAccess::Granted(_) => {}
         CollectionAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
     }

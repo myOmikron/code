@@ -1107,7 +1107,7 @@ impl Fixture {
     }
 }
 
-/// The copies the Deviation lists, as (printing, quantity, foil, proxy)
+/// The copies the Deviation lists, as (printing, quantity, finish, proxy)
 fn copies(list: &Value) -> Vec<(Value, Value, Value, Value)> {
     list.as_array()
         .expect("copies list")
@@ -1116,7 +1116,7 @@ fn copies(list: &Value) -> Vec<(Value, Value, Value, Value)> {
             (
                 copies["printing"].clone(),
                 copies["quantity"].clone(),
-                copies["foil"].clone(),
+                copies["finish"].clone(),
                 copies["proxy"].clone(),
             )
         })
@@ -1138,7 +1138,12 @@ fn another_printing_in_the_deck_stands_in_for_a_line_as_a_deviation() {
         assert_eq!(line["missing"], 0, "{line}");
         assert_eq!(
             copies(&line["other_printing"]),
-            vec![(json!(printings[1]), json!(1), json!(false), json!(false))],
+            vec![(
+                json!(printings[1]),
+                json!(1),
+                json!("Nonfoil"),
+                json!(false)
+            )],
         );
         assert_eq!(deviation["not_on_list"], json!([]), "{deviation}");
     });
@@ -1159,7 +1164,7 @@ fn another_finish_of_the_listed_printing_is_a_deviation() {
         assert_eq!(line["in_deck"], 0, "{line}");
         assert_eq!(
             copies(&line["other_printing"]),
-            vec![(json!(printing), json!(1), json!(false), json!(false))],
+            vec![(json!(printing), json!(1), json!("Nonfoil"), json!(false))],
         );
     });
 }
@@ -1194,7 +1199,7 @@ fn a_card_the_list_does_not_name_is_not_on_the_list() {
         assert_eq!(line(&deviation, &entry)["missing"], 1, "{deviation}");
         assert_eq!(
             copies(&deviation["not_on_list"]),
-            vec![(json!(stray), json!(2), json!(false), json!(false))],
+            vec![(json!(stray), json!(2), json!("Nonfoil"), json!(false))],
         );
     });
 }
@@ -1223,7 +1228,7 @@ fn the_maybe_board_never_counts_and_its_cards_in_the_deck_are_not_on_the_list() 
         assert!(lines.is_empty(), "{deviation}");
         assert_eq!(
             copies(&deviation["not_on_list"]),
-            vec![(json!(maybe), json!(1), json!(false), json!(false))],
+            vec![(json!(maybe), json!(1), json!("Nonfoil"), json!(false))],
         );
     });
 }
@@ -1265,7 +1270,7 @@ fn a_proxy_of_another_printing_is_a_deviation_like_a_real_card() {
         assert_eq!(line["proxies"], 0, "{line}");
         assert_eq!(
             copies(&line["other_printing"]),
-            vec![(json!(printings[0]), json!(1), json!(false), json!(true))],
+            vec![(json!(printings[0]), json!(1), json!("Nonfoil"), json!(true))],
         );
         assert_eq!(filed(&fixture.sourcing().await), filed_before);
     });
@@ -1324,7 +1329,7 @@ fn undoing_a_list_change_leaves_the_physical_deck_alone_and_shows_as_deviation()
         let deviation = fixture.deviation().await;
         assert_eq!(
             copies(&deviation["not_on_list"]),
-            vec![(json!(printing), json!(2), json!(false), json!(false))],
+            vec![(json!(printing), json!(2), json!("Nonfoil"), json!(false))],
         );
     });
 }
@@ -1355,7 +1360,7 @@ fn resetting_the_list_leaves_the_physical_deck_alone_and_shows_as_deviation() {
         assert_eq!(line(&deviation, &entry)["missing"], 0, "{deviation}");
         assert_eq!(
             copies(&deviation["not_on_list"]),
-            vec![(json!(dropped), json!(1), json!(false), json!(false))],
+            vec![(json!(dropped), json!(1), json!("Nonfoil"), json!(false))],
         );
     });
 }
@@ -1391,5 +1396,365 @@ fn a_line_says_how_many_of_its_copies_are_missing() {
         assert_eq!(line["surplus"], 0, "{line}");
         assert_eq!(line["other_printing"], json!([]), "{line}");
         assert_eq!(deviation["not_on_list"], json!([]), "{deviation}");
+    });
+}
+
+impl Fixture {
+    /// Files copies of a printing in `finish` into a collection, answering the stack's uuid
+    async fn file_finish(
+        &mut self,
+        collection: &str,
+        printing: Uuid,
+        quantity: i32,
+        finish: &str,
+    ) -> String {
+        self.owner
+            .json(
+                Method::POST,
+                &api(&format!("collections/{collection}/entries")),
+                &json!({ "entries": [{
+                    "printing": printing,
+                    "quantity": quantity,
+                    "condition": "NearMint",
+                    "finish": finish,
+                    "purchase_price_cents": null,
+                    "acquired_at": null,
+                }] }),
+            )
+            .await
+            .ok_json();
+        self.stacks(collection)
+            .await
+            .into_iter()
+            .find(|stack| stack["printing"] == json!(printing) && stack["finish"] == finish)
+            .and_then(|stack| stack["uuid"].as_str().map(str::to_string))
+            .expect("the stack just filed")
+    }
+
+    /// Another deck of the owner, answering its uuid
+    async fn other_deck(&mut self) -> String {
+        let body = self
+            .owner
+            .json(
+                Method::POST,
+                &api("decks"),
+                &json!({
+                    "name": "Other",
+                    "description": null,
+                    "format": "commander",
+                    "visibility": "Private",
+                }),
+            )
+            .await
+            .ok_json();
+        body["uuid"].as_str().expect("deck uuid").to_string()
+    }
+
+    /// Names a fresh Account a Collaborator at `level`, answering its client
+    async fn collaborator(&mut self, level: &str) -> TestClient {
+        let account = create_account(Role::Member).await;
+        self.send(
+            Method::PUT,
+            "collaborators",
+            json!({ "username": account.username, "level": level }),
+        )
+        .await
+        .ok_json();
+        TestClient::logged_in(&account).await
+    }
+}
+
+/// The uuid of the first stack in `stacks` that is a Proxy stack or not
+fn stack_of(stacks: &[Value], proxy: bool) -> String {
+    stacks
+        .iter()
+        .find(|stack| stack["proxy"] == proxy)
+        .and_then(|stack| stack["uuid"].as_str())
+        .expect("a stack of that kind")
+        .to_string()
+}
+
+#[test]
+fn the_shelf_totals_count_real_cards_in_physical_decks_but_never_proxies() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let ring = file(&unique("Sol Ring"), Print::priced("3.50")).await;
+        let crypt = file(&unique("Mana Crypt"), Print::priced("12.00")).await;
+        fixture.add(ring, 2).await;
+        let proxied = fixture.add(crypt, 1).await;
+        let binder = fixture.collection("Binder").await;
+        let stack = fixture.file(&binder, ring, 3).await;
+        fixture.take(&stack, 2).await.ok_json();
+        fixture.proxy(&proxied, 1).await.ok_json();
+
+        let totals = fixture
+            .owner
+            .get(&api("collections/totals"))
+            .await
+            .ok_json();
+
+        assert_eq!(totals["cards"], 3, "{totals}");
+        assert_eq!(totals["price_eur_cents"], 1050, "{totals}");
+    });
+}
+
+#[test]
+fn deleting_a_deck_is_refused_while_its_physical_deck_holds_real_cards() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        fixture.add(printing, 1).await;
+        let binder = fixture.collection("Binder").await;
+        let stack = fixture.file(&binder, printing, 1).await;
+        fixture.take(&stack, 1).await.ok_json();
+
+        let refused = fixture.send(Method::DELETE, "", json!({})).await;
+
+        assert_eq!(refused.status, StatusCode::BAD_REQUEST, "{refused:?}");
+        let filed = filed(&fixture.sourcing().await);
+        assert_eq!(filed.len(), 1, "{filed:?}");
+    });
+}
+
+#[test]
+fn a_deck_whose_physical_deck_holds_only_proxies_is_deleted_with_them() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let entry = fixture.add(Uuid::new_v4(), 1).await;
+        fixture.proxy(&entry, 1).await.ok_json();
+
+        fixture.send(Method::DELETE, "", json!({})).await.ok_json();
+
+        let decks = fixture.owner.get(&api("decks")).await.ok_json();
+        assert_eq!(decks, json!([]), "{decks}");
+    });
+}
+
+#[test]
+fn an_editor_reads_the_physical_deck_without_the_owners_collections_and_a_viewer_sees_nothing() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture.add(printing, 2).await;
+        let binder = fixture.collection("Binder").await;
+        let stack = fixture.file(&binder, printing, 2).await;
+        fixture.take(&stack, 1).await.ok_json();
+        fixture.proxy(&entry, 1).await.ok_json();
+        let mut editor = fixture.collaborator("Editor").await;
+        let mut viewer = fixture.collaborator("Viewer").await;
+        let missing = Uuid::new_v4();
+
+        let read = editor.get(&fixture.url("physical-deck")).await.ok_json();
+        let refused = viewer.get(&fixture.url("physical-deck")).await;
+        let gone = viewer
+            .get(&api(&format!("decks/{missing}/physical-deck")))
+            .await;
+        let sourcing = editor.get(&fixture.url("sourcing")).await;
+        let no_sourcing = editor.get(&api(&format!("decks/{missing}/sourcing"))).await;
+
+        let stacks = read["stacks"].as_array().expect("stack list");
+        let mut kinds: Vec<(Value, bool)> = stacks
+            .iter()
+            .map(|stack| (stack["quantity"].clone(), stack["proxy"] == true))
+            .collect();
+        kinds.sort_by_key(|(_, proxy)| *proxy);
+        assert_eq!(kinds, vec![(json!(1), false), (json!(1), true)], "{read}");
+        assert!(
+            stacks
+                .iter()
+                .all(|stack| stack.get("origin").is_none() && stack.get("origin_name").is_none()),
+            "{read}"
+        );
+        assert_eq!(refused.status, gone.status, "{refused:?}");
+        assert_eq!(refused.body, gone.body, "{refused:?}");
+        assert_eq!(sourcing.status, no_sourcing.status, "{sourcing:?}");
+        assert_eq!(sourcing.body, no_sourcing.body, "{sourcing:?}");
+    });
+}
+
+#[test]
+fn an_etched_copy_of_the_listed_printing_is_a_deviation() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture.add(printing, 1).await;
+        let binder = fixture.collection("Binder").await;
+        let stack = fixture.file_finish(&binder, printing, 1, "Etched").await;
+        fixture.take(&stack, 1).await.ok_json();
+
+        let line = line(&fixture.deviation().await, &entry);
+
+        assert_eq!(line["in_deck"], 0, "{line}");
+        assert_eq!(
+            copies(&line["other_printing"]),
+            vec![(json!(printing), json!(1), json!("Etched"), json!(false))],
+        );
+    });
+}
+
+#[test]
+fn another_decks_physical_deck_is_neither_source_nor_target() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture.add(printing, 2).await;
+        let binder = fixture.collection("Binder").await;
+        let stack = fixture.file(&binder, printing, 2).await;
+        fixture.take(&stack, 1).await.ok_json();
+        fixture.proxy(&entry, 1).await.ok_json();
+        let mine = filed(&fixture.sourcing().await);
+        let real = stack_of(&mine, false);
+        let proxies = stack_of(&mine, true);
+        let other = fixture.other_deck().await;
+        fixture
+            .owner
+            .json(
+                Method::POST,
+                &api(&format!("decks/{other}/sourcing/take")),
+                &json!({ "entry": stack, "quantity": 1 }),
+            )
+            .await
+            .ok_json();
+        let theirs = fixture
+            .owner
+            .get(&api(&format!("decks/{other}/sourcing")))
+            .await
+            .ok_json();
+        let their_stack = filed(&theirs)[0]["uuid"].clone();
+        let their_deck = theirs["physical_deck"].clone();
+
+        let taken = fixture
+            .send(
+                Method::POST,
+                "sourcing/take",
+                json!({ "entry": their_stack, "quantity": 1 }),
+            )
+            .await;
+        let returned = fixture
+            .send(
+                Method::POST,
+                "sourcing/return",
+                json!({ "entry": real, "quantity": 1, "target": their_deck }),
+            )
+            .await;
+        let replaced = fixture
+            .send(
+                Method::POST,
+                "sourcing/replace-proxy",
+                json!({ "proxy": proxies, "entry": their_stack, "quantity": 1 }),
+            )
+            .await;
+
+        for (name, refused) in [("take", taken), ("return", returned), ("replace", replaced)] {
+            assert_eq!(
+                refused.status,
+                StatusCode::BAD_REQUEST,
+                "{name}: {refused:?}"
+            );
+        }
+        assert_eq!(filed(&fixture.sourcing().await), mine);
+        let theirs_after = fixture
+            .owner
+            .get(&api(&format!("decks/{other}/sourcing")))
+            .await
+            .ok_json();
+        assert_eq!(filed(&theirs_after), filed(&theirs));
+    });
+}
+
+#[test]
+fn a_physical_decks_stacks_change_only_through_the_deck() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture.add(printing, 2).await;
+        let binder = fixture.collection("Binder").await;
+        let stack = fixture.file(&binder, printing, 2).await;
+        fixture.take(&stack, 2).await.ok_json();
+        fixture.proxy(&entry, 1).await.ok_json();
+        let sourcing = fixture.sourcing().await;
+        let physical = sourcing["physical_deck"]
+            .as_str()
+            .expect("a Physical deck")
+            .to_string();
+        let before = filed(&sourcing);
+        let real = stack_of(&before, false);
+        let proxies = stack_of(&before, true);
+        let entries = format!("collections/{physical}/entries");
+        let requests = [
+            (
+                Method::POST,
+                entries.clone(),
+                json!({ "entries": [{
+                    "printing": printing,
+                    "quantity": 1,
+                    "condition": "NearMint",
+                    "finish": "Nonfoil",
+                    "purchase_price_cents": null,
+                    "acquired_at": null,
+                }] }),
+            ),
+            (
+                Method::PATCH,
+                format!("{entries}/{real}"),
+                json!({ "quantity": 5 }),
+            ),
+            (
+                Method::POST,
+                format!("{entries}/{real}/split"),
+                json!({ "quantity": 1, "condition": "Played" }),
+            ),
+            (
+                Method::POST,
+                format!("{entries}/merge"),
+                json!({ "entries": [real, proxies] }),
+            ),
+            (Method::DELETE, format!("{entries}/{proxies}"), json!({})),
+            (Method::DELETE, format!("{entries}/{real}"), json!({})),
+        ];
+
+        for (method, path, body) in requests {
+            let refused = fixture.owner.json(method, &api(&path), &body).await;
+            assert_eq!(
+                refused.status,
+                StatusCode::BAD_REQUEST,
+                "{path}: {refused:?}"
+            );
+        }
+        assert_eq!(filed(&fixture.sourcing().await), before);
+    });
+}
+
+#[test]
+fn discarding_a_stack_takes_it_out_of_the_physical_deck_and_the_account() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        fixture.add(printing, 1).await;
+        let binder = fixture.collection("Binder").await;
+        let stack = fixture.file(&binder, printing, 1).await;
+        fixture.take(&stack, 1).await.ok_json();
+        let in_deck = filed(&fixture.sourcing().await)[0]["uuid"].clone();
+        let mut editor = fixture.collaborator("Editor").await;
+
+        let refused = editor
+            .json(
+                Method::POST,
+                &fixture.url("sourcing/discard"),
+                &json!({ "entry": in_deck }),
+            )
+            .await;
+        fixture
+            .send(
+                Method::POST,
+                "sourcing/discard",
+                json!({ "entry": in_deck }),
+            )
+            .await
+            .ok_json();
+
+        assert_eq!(refused.status, StatusCode::BAD_REQUEST, "{refused:?}");
+        assert!(filed(&fixture.sourcing().await).is_empty());
+        assert_eq!(fixture.held(&binder, printing).await, 0);
     });
 }

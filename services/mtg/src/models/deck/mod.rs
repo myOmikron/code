@@ -31,6 +31,7 @@ use crate::models::collection::CollectionEntry;
 use crate::models::collection::CollectionInsert;
 use crate::models::collection::CollectionUuid;
 use crate::models::collection::MoveOutcome;
+use crate::models::collection::db::CollectionEntryModel;
 use crate::models::collection::db::CollectionModel;
 use crate::models::deck::collaborator::DeckCollaborator;
 use crate::models::deck::db::DeckCardInsertPatch;
@@ -99,6 +100,17 @@ pub enum TakeApartOutcome {
     /// A real card has nowhere to go: no usable origin and no target, or the
     /// target is no collection on the owner's shelf
     Unplaceable,
+    /// The deck is gone, or it is not this account's to touch
+    Denied,
+}
+
+/// Outcome of deleting a deck
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DeleteDeckOutcome {
+    /// The deck is gone, Proxies and all
+    Deleted,
+    /// Its Physical deck still holds real cards; it has to be taken apart first
+    HoldsCards,
     /// The deck is gone, or it is not this account's to touch
     Denied,
 }
@@ -675,17 +687,42 @@ impl Deck {
         Ok(decks.len() as u64)
     }
 
-    /// Delete a deck and, through the cascade, all its cards
+    /// Delete a deck, its list and its Physical deck
+    ///
+    /// Deleting a deck never deletes the owner's cards: while its Physical deck
+    /// holds a real card, the deck stays and has to be taken apart first.
+    /// Proxies are no cards and go with the deck.
     #[instrument(name = "Deck::delete", skip(tx))]
     pub async fn delete(
         tx: &mut Transaction,
         owner: AccountUuid,
         uuid: DeckUuid,
-    ) -> Result<DeckAccess, rorm::Error> {
+    ) -> Result<DeleteDeckOutcome, rorm::Error> {
+        if let Some(collection) = Self::collection(&mut *tx, uuid).await?
+            && collection.owner == owner
+        {
+            let real = rorm::query(&mut *tx, CollectionEntryModel.uuid)
+                .condition(rorm::and![
+                    CollectionEntryModel
+                        .collection
+                        .equals(collection.uuid.into_inner()),
+                    CollectionEntryModel.proxy.equals(false),
+                ])
+                .optional()
+                .await?;
+            if real.is_some() {
+                return Ok(DeleteDeckOutcome::HoldsCards);
+            }
+        }
+
         let affected = rorm::delete(&mut *tx, DeckModel)
             .condition(owned_by(uuid, owner))
             .await?;
-        Ok(access(affected, ()))
+        Ok(if affected > 0 {
+            DeleteDeckOutcome::Deleted
+        } else {
+            DeleteDeckOutcome::Denied
+        })
     }
 }
 

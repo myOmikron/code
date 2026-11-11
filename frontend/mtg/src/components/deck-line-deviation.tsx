@@ -91,7 +91,8 @@ export function copiesLabel(
 ): string {
     const print =
         copies.card == null ? t("label.unknown-printing") : `${copies.card.set_code} #${copies.card.collector_number}`;
-    const foil = copies.foil ? ` · ${t("label.foil")}` : "";
+    const finish =
+        copies.finish === "Nonfoil" ? "" : ` · ${t(copies.finish === "Etched" ? "label.etched" : "label.foil")}`;
     const proxy = copies.proxy ? ` · ${t("label.proxy")}` : "";
-    return `${print}${foil}${proxy}`;
+    return `${print}${finish}${proxy}`;
 }

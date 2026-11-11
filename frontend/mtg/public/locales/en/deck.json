@@ -97,10 +97,11 @@
         "deck-not-public": "There is no such deck, or its owner no longer shows it.",
         "deck-not-shared": "This deck is gone, or it is no longer shared with you.",
         "decks": "Every deck is built for a format. What that format asks for stands above the list as a remark, nothing is locked.",
-        "delete-deck": "“{{name}}” and every card in it will be deleted. This cannot be undone.",
-        "delete-deck-cards": "This deck holds {{count}} cards from your collection.",
+        "delete-deck": "“{{name}}” and its list will be deleted. Your cards stay yours. This cannot be undone.",
+        "delete-deck-cards": "The {{count}} cards in its Physical deck go back into the collections they came from.",
+        "delete-deck-no-collection": "Cards that came into the deck without a collection need one to go back into. Create a collection first.",
         "delete-folder": "The folder goes; the decks in it stay and end up without a folder.",
-        "delete-menu": "The deck and every card in it",
+        "delete-menu": "The deck and its list; your cards stay",
         "delete-tag": "The tag comes off every card it sits on.",
         "description": "The game plan, notes on the deck, whatever you want.",
         "dissolve-menu": "Cards go back into the collections they came from",
@@ -434,7 +435,6 @@
         "remarks_one": "1 remark",
         "remarks_other": "{{count}} remarks",
         "resource": "Resource",
-        "return-cards": "Sort the cards back",
         "return-target": "Collection to sort into",
         "return-to-origin": "Back to where they came from",
         "rule-combos": "Combos",
@@ -531,7 +531,9 @@
         "zone-companion": "Companion",
         "zone-main": "Main deck",
         "zone-maybe": "Maybe",
-        "zone-side": "Sideboard"
+        "zone-side": "Sideboard",
+        "etched": "Etched",
+        "physical-deck": "Physical deck"
     },
     "toast": {
         "bracket-changed": "Bracket saved",

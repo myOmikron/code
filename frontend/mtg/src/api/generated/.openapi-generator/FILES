@@ -82,6 +82,7 @@ docs/CollectionEntryResponse.md
 docs/CollectionOverviewResponse.md
 docs/CollectionResponse.md
 docs/CollectionStatisticsResponse.md
+docs/CollectionTotalsResponse.md
 docs/ComboRule.md
 docs/CommanderRule.md
 docs/CommanderRuleOneOf.md
@@ -129,6 +130,7 @@ docs/DeleteAccountRequest.md
 docs/DeletePasskeyErrors.md
 docs/DeletionMode.md
 docs/DeviationCopiesResponse.md
+docs/DiscardDeckCardsRequest.md
 docs/DisputeResultErrors.md
 docs/DropErrors.md
 docs/EndTournamentRound200Response.md
@@ -268,7 +270,9 @@ docs/PairedRoundResponse.md
 docs/ParticipantDeckResponse.md
 docs/ParticipantResponse.md
 docs/PendingOidcLogin.md
+docs/PhysicalDeckResponse.md
 docs/PhysicalDeckValueResponse.md
+docs/PhysicalStackResponse.md
 docs/PriceDayResponse.md
 docs/PriceHistoryResponse.md
 docs/PricePointResponse.md

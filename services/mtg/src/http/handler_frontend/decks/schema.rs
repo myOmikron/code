@@ -160,6 +160,51 @@ pub struct SourcedStackResponse {
     pub card: Option<SourcedPrintingResponse>,
 }
 
+/// What lies in a Physical deck, as an Editor reads it
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PhysicalDeckResponse {
+    /// The stacks, oldest first, empty for a deck without a Physical deck
+    pub stacks: Vec<PhysicalStackResponse>,
+}
+
+/// One stack lying in a Physical deck, without the collection it came from
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PhysicalStackResponse {
+    /// Primary key of the stack
+    pub uuid: CollectionEntryUuid,
+    /// Scryfall's id of the printing
+    pub printing: Uuid,
+    /// How many copies the stack holds
+    pub quantity: i32,
+    /// Condition of the cards
+    pub condition: CardCondition,
+    /// Finish of the cards
+    pub finish: CardFinish,
+    /// Whether the stack holds Proxies rather than real cards
+    pub proxy: bool,
+    /// What the catalog knows about the printing
+    pub card: Option<SourcedPrintingResponse>,
+}
+
+impl From<Vec<SourcedStack>> for PhysicalDeckResponse {
+    fn from(stacks: Vec<SourcedStack>) -> Self {
+        Self {
+            stacks: stacks
+                .into_iter()
+                .map(|stack| PhysicalStackResponse {
+                    uuid: stack.uuid,
+                    printing: stack.printing,
+                    quantity: stack.quantity,
+                    condition: stack.condition,
+                    finish: stack.finish,
+                    proxy: stack.proxy,
+                    card: stack.card.map(SourcedPrintingResponse::from),
+                })
+                .collect(),
+        }
+    }
+}
+
 /// One stack elsewhere in the account that could fill a slot
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct SourcingCandidateResponse {
@@ -210,7 +255,7 @@ pub struct TakeDeckCardsRequest {
     pub quantity: i32,
 }
 
-/// Request to sort copies out of the Physical deck back into a collection
+/// Request to sort copies out of the Physical deck back into a collection on the shelf
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ReturnDeckCardsRequest {
     /// The stack in the Physical deck to take them from
@@ -219,6 +264,13 @@ pub struct ReturnDeckCardsRequest {
     pub quantity: i32,
     /// Where to put them, `None` to use where they came from
     pub target: Option<CollectionUuid>,
+}
+
+/// Request to throw a stack out of the Physical deck
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DiscardDeckCardsRequest {
+    /// The stack in the Physical deck
+    pub entry: CollectionEntryUuid,
 }
 
 /// Request to put Proxies into the Physical deck for a Deck entry
@@ -410,8 +462,8 @@ pub struct DeviationCopiesResponse {
     pub printing: Uuid,
     /// How many copies
     pub quantity: i32,
-    /// Whether they are the foil ones
-    pub foil: bool,
+    /// Their finish
+    pub finish: CardFinish,
     /// Whether they are Proxies
     pub proxy: bool,
     /// What the catalog knows about the printing
@@ -461,7 +513,7 @@ impl From<DeviationCopies> for DeviationCopiesResponse {
         Self {
             printing: copies.printing,
             quantity: copies.quantity,
-            foil: copies.foil,
+            finish: copies.finish,
             proxy: copies.proxy,
             card: copies.card.map(SourcedPrintingResponse::from),
         }
