@@ -352,6 +352,33 @@ export function GroupHeading({
 }
 
 /**
+ * Whether a tile shows the row under its artwork: finish, Deviation and tags
+ *
+ * @param card the slot
+ * @param strip whether the tile offers its tags
+ * @param deviates whether the Physical deck deviates from the slot
+ *
+ * @returns whether the row is shown
+ */
+export function showsTileRow(card: DeckCardResponse, strip: boolean, deviates: boolean): boolean {
+    return strip || finishOf(card) !== "Nonfoil" || deviates;
+}
+
+/**
+ * How much a tile adds under its artwork, as a CSS length
+ *
+ * The row is `h-6` and the remark line one `text-xs` line, each after the tile's `gap-1`.
+ *
+ * @param row whether the tile shows its row, see {@link showsTileRow}
+ * @param remark whether the tile shows a remark line
+ *
+ * @returns the length
+ */
+export function tileUnder(row: boolean, remark: boolean): string {
+    return `${(row ? 1.75 : 0) + (remark ? 1.25 : 0)}rem`;
+}
+
+/**
  * The properties for {@link Tile}
  */
 export type TileProps = {
@@ -566,7 +593,7 @@ export function Tile({
                 </span>
             )}
 
-            {(strip || finish !== "Nonfoil" || deviates) && (
+            {showsTileRow(card, strip, deviates) && (
                 <div className={"flex h-6 min-w-0 items-center gap-1.5"}>
                     {/* Under the tile with the tags rather than over the
                         artwork: the picture is the card, and every mark laid on
