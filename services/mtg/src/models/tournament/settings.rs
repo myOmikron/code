@@ -9,6 +9,7 @@ use serde::Serialize;
 
 use crate::models::format::rules_for;
 use crate::models::tournament::Tournament;
+use crate::models::tournament::registered_deck::RegisteredSlot;
 use crate::models::visibility::Visibility;
 use crate::tournament::ruleset::BestOf;
 use crate::tournament::ruleset::Ruleset;
@@ -52,6 +53,32 @@ pub struct RawTournamentSettings {
     pub entry_fee: Option<EntryFee>,
     /// Whether Participants check in before they are paired
     pub check_in: CheckIn,
+    /// What the Tournament allows of Proxies in its Registered decks
+    pub proxy_rule: ProxyRule,
+}
+
+/// What a Tournament allows of Proxies in its Registered decks
+///
+/// A Registered deck breaking it is a warning to its Participant and the
+/// Organizers that never blocks registration, check-in or pairing. A deck
+/// without a Physical deck has no Proxies and so breaks none.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub enum ProxyRule {
+    /// Any number of Proxies
+    #[default]
+    ProxiesAllowed,
+    /// Not a single Proxy
+    NoProxies,
+}
+
+impl ProxyRule {
+    /// Whether a Registered deck with these lines breaks the rule
+    pub fn broken_by(self, slots: &[RegisteredSlot]) -> bool {
+        match self {
+            ProxyRule::ProxiesAllowed => false,
+            ProxyRule::NoProxies => slots.iter().any(|slot| slot.proxies > 0),
+        }
+    }
 }
 
 /// Whether a Tournament's Participants check in before they are paired
@@ -128,6 +155,10 @@ pub struct TournamentSettings {
     pub entry_fee: Option<EntryFee>,
     /// Whether Participants check in before they are paired
     pub check_in: CheckIn,
+    /// What the Tournament allows of Proxies in its Registered decks
+    ///
+    /// Only a warning, so it stays editable at any time.
+    pub proxy_rule: ProxyRule,
 }
 
 impl TournamentSettings {
@@ -267,6 +298,7 @@ impl TournamentSettings {
                 entered_afterwards: raw.entered_afterwards,
                 entry_fee: raw.entry_fee,
                 check_in: raw.check_in,
+                proxy_rule: raw.proxy_rule,
             }),
             _ => Err(refusal),
         }
@@ -280,6 +312,7 @@ mod tests {
 
     use super::CheckIn;
     use super::EntryFee;
+    use super::ProxyRule;
     use super::RawTournamentSettings;
     use super::TournamentSettings;
     use crate::models::tournament::Tournament;
@@ -307,6 +340,7 @@ mod tests {
             entry_fee: None,
             round_minutes: None,
             check_in: CheckIn::Off,
+            proxy_rule: ProxyRule::ProxiesAllowed,
         }
     }
 

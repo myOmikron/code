@@ -103,6 +103,9 @@ export function TournamentDetails({ tournament }: TournamentDetailsProps) {
                     {tournament.entry_fee == null ? t("label.entry-fee-none") : formatEntryFee(tournament.entry_fee)}
                 </DescriptionDetails>
 
+                <DescriptionTerm>{t("label.proxy-rule")}</DescriptionTerm>
+                <DescriptionDetails>{labels.proxyRule(tournament.proxy_rule)}</DescriptionDetails>
+
                 <DescriptionTerm>{t("label.state")}</DescriptionTerm>
                 <DescriptionDetails>{labels.state(tournament.state)}</DescriptionDetails>
 

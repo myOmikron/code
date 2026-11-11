@@ -6669,7 +6669,7 @@ No authorization required
 
 The logged-in Account\&#39;s own Registered deck in a Tournament it plays in
 
-The logged-in Account\&#39;s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts; a late Participant registers its own until it is pinned.
+The logged-in Account\&#39;s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts; a late Participant registers its own until it is pinned. Says too how many of its copies are Proxies and whether they break the Tournament\&#39;s Proxy rule, which the Participant sees before anyone else\&#39;s list.
 
 ### Example
 

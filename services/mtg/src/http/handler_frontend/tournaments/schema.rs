@@ -16,6 +16,7 @@ use crate::models::tournament::listing::OverviewFilter;
 use crate::models::tournament::listing::Timeframe;
 use crate::models::tournament::settings::CheckIn;
 use crate::models::tournament::settings::EntryFee;
+use crate::models::tournament::settings::ProxyRule;
 use crate::models::tournament::settings::RawTournamentSettings;
 use crate::models::tournament::settings::SettingsRefusal;
 use crate::models::visibility::Visibility;
@@ -71,6 +72,12 @@ pub struct TournamentSettingsRequest {
     /// deck; not in Draft or Sealed. Changing it is refused after the first Round started.
     #[serde(default)]
     pub check_in: CheckIn,
+    /// What the Tournament allows of Proxies in its Registered decks,
+    /// `ProxiesAllowed` when left out
+    ///
+    /// Breaking it is only a warning, so it may change at any time.
+    #[serde(default)]
+    pub proxy_rule: ProxyRule,
 }
 
 /// What playing in a Tournament costs
@@ -120,6 +127,7 @@ impl From<TournamentSettingsRequest> for RawTournamentSettings {
             entered_afterwards: value.entered_afterwards,
             entry_fee: value.entry_fee.map(EntryFee::from),
             check_in: value.check_in,
+            proxy_rule: value.proxy_rule,
         }
     }
 }
@@ -224,6 +232,8 @@ pub struct TournamentResponse {
     pub entry_fee: Option<EntryFeeSchema>,
     /// Whether Participants check in before they are paired
     pub check_in: CheckIn,
+    /// What the Tournament allows of Proxies in its Registered decks
+    pub proxy_rule: ProxyRule,
     /// Its Owner's username, `null` while the Tombstone holds it
     pub owner: Option<String>,
     /// The part the reader plays in running it, `null` for none
@@ -262,6 +272,7 @@ impl TournamentResponse {
             entered_afterwards: tournament.entered_afterwards,
             entry_fee: tournament.entry_fee.map(EntryFeeSchema::from),
             check_in: tournament.check_in,
+            proxy_rule: tournament.proxy_rule,
             owner: owner.map(|owner| owner.as_str().to_string()),
             organizer_role,
             share_token: organizer_role.and(tournament.share_token),

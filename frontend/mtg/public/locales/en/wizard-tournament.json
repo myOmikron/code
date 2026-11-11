@@ -20,7 +20,10 @@
         "visibility": "Visibility",
         "visibility-private": "Private",
         "visibility-public": "Public",
-        "visibility-unlisted": "By link"
+        "visibility-unlisted": "By link",
+        "proxy-rule": "Proxy rule",
+        "proxy-rule-proxies-allowed": "Proxies allowed",
+        "proxy-rule-no-proxies": "No Proxies"
     },
     "description": {
         "check-in": "Only checked-in players are paired.",
@@ -34,7 +37,8 @@
         "step-game": "Format, table, ruleset and top cut.",
         "step-general": "The tournament's name, start and place.",
         "step-registration": "Who sees the tournament and how players join.",
-        "visibility": "Public: Anyone finds the tournament in the overview. By link: Anyone with the link sees the tournament. Private: Only you, your co-organizers and the players see the tournament."
+        "visibility": "Public: Anyone finds the tournament in the overview. By link: Anyone with the link sees the tournament. Private: Only you, your co-organizers and the players see the tournament.",
+        "proxy-rule": "A deck breaking the rule is only a warning: registration, check-in and pairing go ahead anyway."
     },
     "error": {
         "best-of-mismatch": "Best of applies to two players at a table only, and there it must be chosen.",

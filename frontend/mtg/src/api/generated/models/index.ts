@@ -5403,6 +5403,10 @@ export interface MyMatchResponse {
  */
 export interface MyRegisteredDeckResponse {
     /**
+     * Whether its Proxies break the Tournament's Proxy rule, a warning that never blocks
+     */
+    breaks_proxy_rule: boolean;
+    /**
      * Whether the reader may still register, swap or remove it itself
      */
     changeable: boolean;
@@ -5410,6 +5414,10 @@ export interface MyRegisteredDeckResponse {
      * The Registered deck, `null` while the reader plays without one
      */
     deck?: RegisteredDeckResponse | null;
+    /**
+     * How many of its copies are Proxies, 0 without a Registered deck or a Physical deck
+     */
+    proxies: number;
 }
 /**
  * The Tournaments an Account runs and the ones it plays in
@@ -5869,6 +5877,25 @@ export interface PrintingLookupRequest {
      */
     set_code?: string | null;
 }
+
+/**
+ * What a Tournament allows of Proxies in its Registered decks
+ * 
+ * A Registered deck breaking it is a warning to its Participant and the Organizers that never blocks registration, check-in or pairing. A deck without a Physical deck has no Proxies and so breaks none.
+ * @export
+ */
+export const ProxyRule = {
+    /**
+    * Any number of Proxies
+    */
+    ProxiesAllowed: 'ProxiesAllowed',
+    /**
+    * Not a single Proxy
+    */
+    NoProxies: 'NoProxies',
+} as const;
+export type ProxyRule = typeof ProxyRule[keyof typeof ProxyRule];
+
 /**
  * A collection somebody put on show
  * 
@@ -6395,6 +6422,10 @@ export interface RegisteredListResponse {
      * The Commander bracket it is built to, `null` when unset
      */
     bracket?: number | null;
+    /**
+     * Whether its Proxies break the Tournament's Proxy rule, a warning that never blocks
+     */
+    breaks_proxy_rule: boolean;
     /**
      * Its Deck entries, joined against the card catalog
      */
@@ -9098,6 +9129,10 @@ export interface TournamentResponse {
      */
     participant_limit?: number | null;
     /**
+     * What the Tournament allows of Proxies in its Registered decks
+     */
+    proxy_rule: ProxyRule;
+    /**
      * How many minutes the round timer gives a Round, `null` for no timer
      */
     round_minutes?: number | null;
@@ -9253,6 +9288,12 @@ export interface TournamentSettingsRequest {
      * How many Participants self sign-up admits at most, two or more; `null` for no limit
      */
     participant_limit?: number | null;
+    /**
+     * What the Tournament allows of Proxies in its Registered decks, `ProxiesAllowed` when left out
+     * 
+     * Breaking it is only a warning, so it may change at any time.
+     */
+    proxy_rule?: ProxyRule;
     /**
      * How many minutes the round timer gives a Round, 1 to 240; `null` for no timer
      */

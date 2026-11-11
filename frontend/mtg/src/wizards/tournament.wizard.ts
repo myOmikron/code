@@ -1,5 +1,5 @@
 import { defineWizard } from "components";
-import { CheckIn, Visibility } from "src/api/generated";
+import { CheckIn, ProxyRule, Visibility } from "src/api/generated";
 
 /** Setting up a new Tournament: what it is, how it is played, who takes part */
 export const tournamentWizard = defineWizard({
@@ -128,6 +128,19 @@ export const tournamentWizard = defineWizard({
                                     { value: CheckIn.Off, label: "label.check-in-off" },
                                     { value: CheckIn.Required, label: "label.check-in-required" },
                                     { value: CheckIn.RequiredWithDeck, label: "label.check-in-required-with-deck" },
+                                ],
+                            },
+                        },
+                        {
+                            id: "proxyRule",
+                            type: "radio",
+                            label: "label.proxy-rule",
+                            description: "description.proxy-rule",
+                            required: true,
+                            config: {
+                                options: [
+                                    { value: ProxyRule.ProxiesAllowed, label: "label.proxy-rule-proxies-allowed" },
+                                    { value: ProxyRule.NoProxies, label: "label.proxy-rule-no-proxies" },
                                 ],
                             },
                         },
