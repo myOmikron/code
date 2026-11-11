@@ -10,7 +10,7 @@ use crate::tests::harness::migrated_database;
 use crate::tests::harness::run;
 
 /// The last migration before Deck entries lost their proxy flag
-const BEFORE_PROXIES_LEFT_THE_LIST: u16 = 74;
+const BEFORE_PROXIES_LEFT_THE_LIST: u16 = 75;
 
 /// Inserts an Account and answers its uuid
 async fn account(pool: &PgPool, name: &str) -> Uuid {
