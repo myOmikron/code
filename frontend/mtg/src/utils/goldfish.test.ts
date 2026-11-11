@@ -42,7 +42,6 @@ function slot(name: string, quantity: number, zone: DeckZone = "Main", typeLine 
         quantity,
         zone,
         foil: false,
-        proxy: false,
         tags: [],
         card: {
             name,

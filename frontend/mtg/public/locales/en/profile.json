@@ -27,7 +27,7 @@
         "foil-tilt": "The sheen on foil cards follows how you tilt your device, the way a card held in the hand catches the light.",
         "language": "Applies to the interface. Card names come from Scryfall and are unaffected.",
         "passkeys": "These devices can sign you in. Add a passkey per device — if you lose one, the others still get you in.",
-        "proxy-fade": "Cards marked as proxies are drawn washed out in the deck, so a stand-in never passes for the real card at a glance.",
+        "proxy-fade": "Proxies in the Physical deck are drawn washed out, so a stand-in never passes for the real card at a glance.",
         "push-device": "Get notifications on this device. You sign up each device on its own.",
         "push-unavailable": "This browser cannot receive notifications. On iPhone and iPad they only work once the app is added to the home screen.",
         "remove-passkey": "You will no longer be able to sign in with \"{{label}}\". The only way back is to add the device again.",

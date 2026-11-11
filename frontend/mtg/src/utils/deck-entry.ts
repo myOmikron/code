@@ -6,7 +6,7 @@ import type { Printing } from "src/utils/scryfall";
  *
  * The entry holding the hit's own printing, else one holding the same card in
  * another printing: a card already in the zone keeps the printing it has there.
- * Either way a plain entry, neither foil nor proxy, goes before the others.
+ * Either way a plain entry, not foil, goes before the others.
  *
  * @param entries the deck's entries
  * @param zone the zone being filed into
@@ -34,5 +34,5 @@ export function zoneEntryOf(
  * @returns the entry, `undefined` for no candidates
  */
 function plainFirst(entries: Array<DeckCardResponse>): DeckCardResponse | undefined {
-    return entries.find((entry) => !entry.foil && !entry.proxy) ?? entries[0];
+    return entries.find((entry) => !entry.foil) ?? entries[0];
 }

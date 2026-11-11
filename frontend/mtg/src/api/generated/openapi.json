@@ -5192,7 +5192,7 @@
         "/api/frontend/v1/decks/{deck}/sourcing/fill": {
             "post": {
                 "summary": "Declare that the deck holds what its list asks for",
-                "description": "Declare that the deck holds what its list asks for\n\nTwo things at once, because they are the same thing at different sizes: the\nway in for a deck that arrived from somewhere else, where the list is already\nright and saying so one card at a time would be an afternoon's work, and the\nanswer to \"I bought that one\" for a single slot.\n\nThe slots are topped up to what they ask for, in the printing and finish they\nname, as near mint and without an origin: nothing was taken out of a\ncollection, so there is nowhere to put it back. Sorting them into one later\nis the same return call with a target. The first card creates the Physical\ndeck. Proxies of a slot's printing and finish count as held, and the list\nis never changed: filling a proxy slot leaves its flag as it is.",
+                "description": "Declare that the deck holds what its list asks for\n\nTwo things at once, because they are the same thing at different sizes: the\nway in for a deck that arrived from somewhere else, where the list is already\nright and saying so one card at a time would be an afternoon's work, and the\nanswer to \"I bought that one\" for a single slot.\n\nThe slots are topped up to what they ask for, in the printing and finish they\nname, as near mint and without an origin: nothing was taken out of a\ncollection, so there is nowhere to put it back. Sorting them into one later\nis the same return call with a target. The first card creates the Physical\ndeck. Proxies of a slot's printing and finish count as held, and the list\nis never changed.",
                 "operationId": "fill_deck_collection",
                 "parameters": [
                     {
@@ -5547,7 +5547,7 @@
         "/api/frontend/v1/decks/{deck}/cards": {
             "get": {
                 "summary": "Every card of a deck, with the catalog data and the tags on it",
-                "description": "Every card of a deck, with the catalog data and the tags on it\n\nThe whole deck in one answer: a hundred slots are not worth paging, and the\nclient groups and sorts them however the list is being looked at. A\nCollaborator gets it the way the Share link shows it, see [`redact_slot`].",
+                "description": "Every card of a deck, with the catalog data and the tags on it\n\nThe whole deck in one answer: a hundred slots are not worth paging, and the\nclient groups and sorts them however the list is being looked at. A\nCollaborator reads the same list the owner does: a Deck entry says nothing\nabout the owner's shelf (ADR 0007).",
                 "operationId": "list_deck_cards",
                 "parameters": [
                     {
@@ -5607,7 +5607,7 @@
             },
             "post": {
                 "summary": "Put a card into a deck",
-                "description": "Put a card into a deck\n\nCopies joining an alike Deck entry (same printing, zone, finish and proxy\nstatus) raise its count instead of opening a second line beside it. The\nanswer is the entry's bookkeeping fields either way; catalog data and tags\ncome from the list endpoint. Only the owner adds proxies, see\n[`DeckGrant::proxy`].",
+                "description": "Put a card into a deck\n\nCopies joining an alike Deck entry (same printing, zone and finish) raise its count instead of opening a second line beside it. The\nanswer is the entry's bookkeeping fields either way; catalog data and tags\ncome from the list endpoint.",
                 "operationId": "add_deck_card",
                 "parameters": [
                     {
@@ -5874,7 +5874,7 @@
             },
             "patch": {
                 "summary": "Change a Deck entry: its count, its zone or the print it sleeves",
-                "description": "Change a Deck entry: its count, its zone or the print it sleeves\n\nAn entry made alike to another one merges into it, and a count of zero\nremoves it. A Collaborator's change leaves the proxy flag as it is, see\n[`DeckGrant::proxy`].",
+                "description": "Change a Deck entry: its count, its zone or the print it sleeves\n\nAn entry made alike to another one merges into it, and a count of zero\nremoves it.",
                 "operationId": "update_deck_card",
                 "parameters": [
                     {
@@ -7490,7 +7490,7 @@
         "/api/frontend/v1/explore/decks/{deck}/cards": {
             "get": {
                 "summary": "Every card of a public deck, with the catalog data and the tags on it",
-                "description": "Every card of a public deck, with the catalog data and the tags on it\n\nThe listing the owner reads, minus the proxy flags, see [`redact_slot`].",
+                "description": "Every card of a public deck, with the catalog data and the tags on it\n\nThe listing the owner reads.",
                 "operationId": "list_public_deck_cards",
                 "parameters": [
                     {
@@ -9452,7 +9452,7 @@
         "/api/frontend/v1/shared/decks/{token}/cards": {
             "get": {
                 "summary": "Every card of a shared deck, with the catalog data and the tags on it",
-                "description": "Every card of a shared deck, with the catalog data and the tags on it\n\nThe listing the owner reads, minus the proxy flags, see [`redact_slot`].",
+                "description": "Every card of a shared deck, with the catalog data and the tags on it\n\nThe listing the owner reads.",
                 "operationId": "list_shared_deck_cards",
                 "parameters": [
                     {
@@ -15291,11 +15291,6 @@
                         "type": "string",
                         "format": "uuid"
                     },
-                    "proxy": {
-                        "nullable": true,
-                        "description": "Whether the copies are stand-ins rather than the real cards, `null` for the ordinary ones",
-                        "type": "boolean"
-                    },
                     "quantity": {
                         "description": "How many copies to put in",
                         "type": "integer",
@@ -18319,10 +18314,6 @@
                         "type": "string",
                         "format": "uuid"
                     },
-                    "proxy": {
-                        "description": "Whether the copies in this slot are stand-ins rather than the real cards",
-                        "type": "boolean"
-                    },
                     "quantity": {
                         "description": "How many copies this slot holds",
                         "type": "integer",
@@ -18355,7 +18346,6 @@
                 "required": [
                     "foil",
                     "printing",
-                    "proxy",
                     "quantity",
                     "tags",
                     "uuid",
@@ -18399,7 +18389,7 @@
                         ]
                     },
                     {
-                        "description": "A Deck entry switched to another printing, finish or proxy status",
+                        "description": "A Deck entry switched to another printing or finish",
                         "type": "string",
                         "enum": [
                             "Switch"
@@ -18434,7 +18424,7 @@
                         ]
                     },
                     {
-                        "description": "A Deck entry made to say what was sourced for it: another printing or finish, or no longer a proxy",
+                        "description": "A Deck entry made to say what was sourced for it: another printing or finish",
                         "type": "string",
                         "enum": [
                             "Sourcing"
@@ -18666,10 +18656,6 @@
                         "type": "string",
                         "format": "uuid"
                     },
-                    "proxy": {
-                        "description": "Whether the copies are stand-ins rather than the real cards",
-                        "type": "boolean"
-                    },
                     "zone": {
                         "description": "Which zone the entry sits in",
                         "allOf": [
@@ -18684,7 +18670,6 @@
                     "before",
                     "foil",
                     "printing",
-                    "proxy",
                     "zone"
                 ]
             },
@@ -18874,10 +18859,6 @@
                         "type": "string",
                         "format": "uuid"
                     },
-                    "proxy": {
-                        "description": "Whether the copies were stand-ins rather than the real cards",
-                        "type": "boolean"
-                    },
                     "quantity": {
                         "description": "How many copies it held",
                         "type": "integer",
@@ -18895,7 +18876,6 @@
                 "required": [
                     "foil",
                     "printing",
-                    "proxy",
                     "quantity",
                     "zone"
                 ]
@@ -24121,10 +24101,6 @@
                         "type": "integer",
                         "format": "int32"
                     },
-                    "proxy": {
-                        "description": "Whether the copies in this slot are stand-ins rather than the real cards",
-                        "type": "boolean"
-                    },
                     "quantity": {
                         "description": "How many copies this slot holds",
                         "type": "integer",
@@ -24158,7 +24134,6 @@
                     "foil",
                     "printing",
                     "proxies",
-                    "proxy",
                     "quantity",
                     "tags",
                     "uuid",
@@ -26583,10 +26558,6 @@
                         "type": "string",
                         "format": "uuid"
                     },
-                    "proxy": {
-                        "description": "Whether the slot is a stand-in — it asks for no cardboard",
-                        "type": "boolean"
-                    },
                     "quantity": {
                         "description": "How many copies it asks for",
                         "type": "integer",
@@ -26612,7 +26583,6 @@
                 "required": [
                     "foil",
                     "printing",
-                    "proxy",
                     "quantity",
                     "uuid",
                     "zone"
@@ -27034,11 +27004,6 @@
                         "description": "Scryfall's id of the printing coming in",
                         "type": "string",
                         "format": "uuid"
-                    },
-                    "proxy": {
-                        "nullable": true,
-                        "description": "Whether the incoming copies are stand-ins rather than the real cards, `null` for the ordinary ones",
-                        "type": "boolean"
                     },
                     "quantity": {
                         "description": "How many copies leave the entry and how many of the other card come in",
@@ -28352,11 +28317,6 @@
                         "description": "Scryfall's id of the printing — send this to sleeve a different print",
                         "type": "string",
                         "format": "uuid"
-                    },
-                    "proxy": {
-                        "nullable": true,
-                        "description": "Whether the copies in this slot are stand-ins rather than the real cards",
-                        "type": "boolean"
                     },
                     "quantity": {
                         "nullable": true,

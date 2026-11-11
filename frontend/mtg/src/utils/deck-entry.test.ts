@@ -10,9 +10,8 @@ import type { Printing } from "src/utils/scryfall";
  * @param zone where it lies
  * @param printing which printing it holds
  * @param name the card's name
- * @param kind whether it holds foil or proxy copies, plain when left out
+ * @param kind whether it holds foil copies, plain when left out
  * @param kind.foil whether its copies are foil
- * @param kind.proxy whether its copies are stand-ins
  *
  * @returns the entry
  */
@@ -21,9 +20,9 @@ function entry(
     zone: DeckZone,
     printing: string,
     name: string,
-    { foil = false, proxy = false }: { foil?: boolean; proxy?: boolean } = {},
+    { foil = false }: { foil?: boolean } = {},
 ) {
-    return { uuid, zone, printing, quantity: 1, foil, proxy, card: { name } } as unknown as DeckCardResponse;
+    return { uuid, zone, printing, quantity: 1, foil, card: { name } } as unknown as DeckCardResponse;
 }
 
 /**
@@ -54,10 +53,9 @@ describe("zoneEntryOf", () => {
         expect(zoneEntryOf(entries, "Main", hit("2xm", "Lightning Bolt"))?.uuid).toBe("bolt-2xm");
     });
 
-    it("takes a plain entry of the card over a foil or proxy one", () => {
+    it("takes a plain entry of the card over a foil one", () => {
         const entries = [
             entry("bolt-foil", "Main", "m10", "Lightning Bolt", { foil: true }),
-            entry("bolt-proxy", "Main", "m11", "Lightning Bolt", { proxy: true }),
             entry("bolt-plain", "Main", "m12", "Lightning Bolt"),
         ];
 

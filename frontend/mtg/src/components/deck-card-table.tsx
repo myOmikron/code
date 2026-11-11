@@ -17,7 +17,7 @@ import { artworkOf, hasBack } from "src/utils/card-artwork";
 import { isMaybeGroup } from "src/utils/deck-grouping";
 import type { DeckGroup, DeckGrouping } from "src/utils/deck-grouping";
 import type { SlotViolation } from "src/utils/deck-rules";
-import { FoilMark, ProxyMark } from "src/components/card-attribute-badge";
+import { FoilMark } from "src/components/card-attribute-badge";
 import { DeckLineDeviation } from "src/components/deck-line-deviation";
 import { finishOf, priceOf } from "src/utils/deck-foil";
 import { formatCurrency } from "src/utils/format";
@@ -171,7 +171,6 @@ export function DeckCardTable({
                                                             {printing?.name ?? t("label.unknown-printing")}
                                                         </button>
                                                         <FoilMark finish={finishOf(card)} />
-                                                        <ProxyMark proxy={card.proxy} />
                                                         {hasBack(printing) && (
                                                             <CardFlipButton
                                                                 flipped={isFlipped(card)}

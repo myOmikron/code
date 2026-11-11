@@ -11,7 +11,6 @@ Name | Type
 `foil` | boolean
 `printing` | string
 `proxies` | number
-`proxy` | boolean
 `quantity` | number
 `tags` | Array&lt;string&gt;
 `uuid` | string

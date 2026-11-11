@@ -450,7 +450,7 @@ No authorization required
 
 Put a card into a deck
 
-Put a card into a deck  Copies joining an alike Deck entry (same printing, zone, finish and proxy status) raise its count instead of opening a second line beside it. The answer is the entry\&#39;s bookkeeping fields either way; catalog data and tags come from the list endpoint. Only the owner adds proxies, see [&#x60;DeckGrant::proxy&#x60;].
+Put a card into a deck  Copies joining an alike Deck entry (same printing, zone and finish) raise its count instead of opening a second line beside it. The answer is the entry\&#39;s bookkeeping fields either way; catalog data and tags come from the list endpoint.
 
 ### Example
 
@@ -4756,7 +4756,7 @@ No authorization required
 
 Declare that the deck holds what its list asks for
 
-Declare that the deck holds what its list asks for  Two things at once, because they are the same thing at different sizes: the way in for a deck that arrived from somewhere else, where the list is already right and saying so one card at a time would be an afternoon\&#39;s work, and the answer to \&quot;I bought that one\&quot; for a single slot.  The slots are topped up to what they ask for, in the printing and finish they name, as near mint and without an origin: nothing was taken out of a collection, so there is nowhere to put it back. Sorting them into one later is the same return call with a target. The first card creates the Physical deck. Proxies of a slot\&#39;s printing and finish count as held, and the list is never changed: filling a proxy slot leaves its flag as it is.
+Declare that the deck holds what its list asks for  Two things at once, because they are the same thing at different sizes: the way in for a deck that arrived from somewhere else, where the list is already right and saying so one card at a time would be an afternoon\&#39;s work, and the answer to \&quot;I bought that one\&quot; for a single slot.  The slots are topped up to what they ask for, in the printing and finish they name, as near mint and without an origin: nothing was taken out of a collection, so there is nowhere to put it back. Sorting them into one later is the same return call with a target. The first card creates the Physical deck. Proxies of a slot\&#39;s printing and finish count as held, and the list is never changed.
 
 ### Example
 
@@ -8625,7 +8625,7 @@ No authorization required
 
 Every card of a deck, with the catalog data and the tags on it
 
-Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at. A Collaborator gets it the way the Share link shows it, see [&#x60;redact_slot&#x60;].
+Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at. A Collaborator reads the same list the owner does: a Deck entry says nothing about the owner\&#39;s shelf (ADR 0007).
 
 ### Example
 
@@ -9059,7 +9059,7 @@ No authorization required
 
 Every card of a public deck, with the catalog data and the tags on it
 
-Every card of a public deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [&#x60;redact_slot&#x60;].
+Every card of a public deck, with the catalog data and the tags on it  The listing the owner reads.
 
 ### Example
 
@@ -9305,7 +9305,7 @@ No authorization required
 
 Every card of a shared deck, with the catalog data and the tags on it
 
-Every card of a shared deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [&#x60;redact_slot&#x60;].
+Every card of a shared deck, with the catalog data and the tags on it  The listing the owner reads.
 
 ### Example
 
@@ -15229,7 +15229,7 @@ No authorization required
 
 Change a Deck entry: its count, its zone or the print it sleeves
 
-Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it. A Collaborator\&#39;s change leaves the proxy flag as it is, see [&#x60;DeckGrant::proxy&#x60;].
+Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it.
 
 ### Example
 

@@ -2518,7 +2518,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Put a card into a deck  Copies joining an alike Deck entry (same printing, zone, finish and proxy status) raise its count instead of opening a second line beside it. The answer is the entry\'s bookkeeping fields either way; catalog data and tags come from the list endpoint. Only the owner adds proxies, see [`DeckGrant::proxy`].
+     * Put a card into a deck  Copies joining an alike Deck entry (same printing, zone and finish) raise its count instead of opening a second line beside it. The answer is the entry\'s bookkeeping fields either way; catalog data and tags come from the list endpoint.
      * Put a card into a deck
      */
     async addDeckCardRaw(requestParameters: AddDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckCardResponse>> {
@@ -2529,7 +2529,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Put a card into a deck  Copies joining an alike Deck entry (same printing, zone, finish and proxy status) raise its count instead of opening a second line beside it. The answer is the entry\'s bookkeeping fields either way; catalog data and tags come from the list endpoint. Only the owner adds proxies, see [`DeckGrant::proxy`].
+     * Put a card into a deck  Copies joining an alike Deck entry (same printing, zone and finish) raise its count instead of opening a second line beside it. The answer is the entry\'s bookkeeping fields either way; catalog data and tags come from the list endpoint.
      * Put a card into a deck
      */
     async addDeckCard(requestParameters: AddDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckCardResponse> {
@@ -5550,7 +5550,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Declare that the deck holds what its list asks for  Two things at once, because they are the same thing at different sizes: the way in for a deck that arrived from somewhere else, where the list is already right and saying so one card at a time would be an afternoon\'s work, and the answer to \"I bought that one\" for a single slot.  The slots are topped up to what they ask for, in the printing and finish they name, as near mint and without an origin: nothing was taken out of a collection, so there is nowhere to put it back. Sorting them into one later is the same return call with a target. The first card creates the Physical deck. Proxies of a slot\'s printing and finish count as held, and the list is never changed: filling a proxy slot leaves its flag as it is.
+     * Declare that the deck holds what its list asks for  Two things at once, because they are the same thing at different sizes: the way in for a deck that arrived from somewhere else, where the list is already right and saying so one card at a time would be an afternoon\'s work, and the answer to \"I bought that one\" for a single slot.  The slots are topped up to what they ask for, in the printing and finish they name, as near mint and without an origin: nothing was taken out of a collection, so there is nowhere to put it back. Sorting them into one later is the same return call with a target. The first card creates the Physical deck. Proxies of a slot\'s printing and finish count as held, and the list is never changed.
      * Declare that the deck holds what its list asks for
      */
     async fillDeckCollectionRaw(requestParameters: FillDeckCollectionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FillDeckCollectionResponse>> {
@@ -5561,7 +5561,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Declare that the deck holds what its list asks for  Two things at once, because they are the same thing at different sizes: the way in for a deck that arrived from somewhere else, where the list is already right and saying so one card at a time would be an afternoon\'s work, and the answer to \"I bought that one\" for a single slot.  The slots are topped up to what they ask for, in the printing and finish they name, as near mint and without an origin: nothing was taken out of a collection, so there is nowhere to put it back. Sorting them into one later is the same return call with a target. The first card creates the Physical deck. Proxies of a slot\'s printing and finish count as held, and the list is never changed: filling a proxy slot leaves its flag as it is.
+     * Declare that the deck holds what its list asks for  Two things at once, because they are the same thing at different sizes: the way in for a deck that arrived from somewhere else, where the list is already right and saying so one card at a time would be an afternoon\'s work, and the answer to \"I bought that one\" for a single slot.  The slots are topped up to what they ask for, in the printing and finish they name, as near mint and without an origin: nothing was taken out of a collection, so there is nowhere to put it back. Sorting them into one later is the same return call with a target. The first card creates the Physical deck. Proxies of a slot\'s printing and finish count as held, and the list is never changed.
      * Declare that the deck holds what its list asks for
      */
     async fillDeckCollection(requestParameters: FillDeckCollectionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FillDeckCollectionResponse> {
@@ -8140,7 +8140,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at. A Collaborator gets it the way the Share link shows it, see [`redact_slot`].
+     * Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at. A Collaborator reads the same list the owner does: a Deck entry says nothing about the owner\'s shelf (ADR 0007).
      * Every card of a deck, with the catalog data and the tags on it
      */
     async listDeckCardsRaw(requestParameters: ListDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckCardsResponse>> {
@@ -8151,7 +8151,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at. A Collaborator gets it the way the Share link shows it, see [`redact_slot`].
+     * Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at. A Collaborator reads the same list the owner does: a Deck entry says nothing about the owner\'s shelf (ADR 0007).
      * Every card of a deck, with the catalog data and the tags on it
      */
     async listDeckCards(requestParameters: ListDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCardsResponse> {
@@ -8454,7 +8454,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a public deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [`redact_slot`].
+     * Every card of a public deck, with the catalog data and the tags on it  The listing the owner reads.
      * Every card of a public deck, with the catalog data and the tags on it
      */
     async listPublicDeckCardsRaw(requestParameters: ListPublicDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckCardsResponse>> {
@@ -8465,7 +8465,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a public deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [`redact_slot`].
+     * Every card of a public deck, with the catalog data and the tags on it  The listing the owner reads.
      * Every card of a public deck, with the catalog data and the tags on it
      */
     async listPublicDeckCards(requestParameters: ListPublicDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCardsResponse> {
@@ -8639,7 +8639,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a shared deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [`redact_slot`].
+     * Every card of a shared deck, with the catalog data and the tags on it  The listing the owner reads.
      * Every card of a shared deck, with the catalog data and the tags on it
      */
     async listSharedDeckCardsRaw(requestParameters: ListSharedDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckCardsResponse>> {
@@ -8650,7 +8650,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a shared deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [`redact_slot`].
+     * Every card of a shared deck, with the catalog data and the tags on it  The listing the owner reads.
      * Every card of a shared deck, with the catalog data and the tags on it
      */
     async listSharedDeckCards(requestParameters: ListSharedDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCardsResponse> {
@@ -12880,7 +12880,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it. A Collaborator\'s change leaves the proxy flag as it is, see [`DeckGrant::proxy`].
+     * Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it.
      * Change a Deck entry: its count, its zone or the print it sleeves
      */
     async updateDeckCardRaw(requestParameters: UpdateDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
@@ -12895,7 +12895,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it. A Collaborator\'s change leaves the proxy flag as it is, see [`DeckGrant::proxy`].
+     * Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it.
      * Change a Deck entry: its count, its zone or the print it sleeves
      */
     async updateDeckCard(requestParameters: UpdateDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {

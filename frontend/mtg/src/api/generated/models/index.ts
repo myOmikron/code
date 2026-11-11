@@ -83,10 +83,6 @@ export interface AddDeckCardRequest {
      */
     printing: string;
     /**
-     * Whether the copies are stand-ins rather than the real cards, `null` for the ordinary ones
-     */
-    proxy?: boolean | null;
-    /**
      * How many copies to put in
      */
     quantity: number;
@@ -2216,10 +2212,6 @@ export interface DeckCardResponse {
      */
     printing: string;
     /**
-     * Whether the copies in this slot are stand-ins rather than the real cards
-     */
-    proxy: boolean;
-    /**
      * How many copies this slot holds
      */
     quantity: number;
@@ -2261,7 +2253,7 @@ export const DeckChangeKind = {
     */
     Move: 'Move',
     /**
-    * A Deck entry switched to another printing, finish or proxy status
+    * A Deck entry switched to another printing or finish
     */
     Switch: 'Switch',
     /**
@@ -2281,7 +2273,7 @@ export const DeckChangeKind = {
     */
     Fill: 'Fill',
     /**
-    * A Deck entry made to say what was sourced for it: another printing or finish, or no longer a proxy
+    * A Deck entry made to say what was sourced for it: another printing or finish
     */
     Sourcing: 'Sourcing',
     /**
@@ -2440,10 +2432,6 @@ export interface DeckEntryChangeResponse {
      */
     printing: string;
     /**
-     * Whether the copies are stand-ins rather than the real cards
-     */
-    proxy: boolean;
-    /**
      * Which zone the entry sits in
      */
     zone: DeckZone;
@@ -2577,10 +2565,6 @@ export interface DeckPointEntryResponse {
      * Scryfall's id of the printing
      */
     printing: string;
-    /**
-     * Whether the copies were stand-ins rather than the real cards
-     */
-    proxy: boolean;
     /**
      * How many copies it held
      */
@@ -6312,10 +6296,6 @@ export interface RegisteredCardResponse {
      */
     proxies: number;
     /**
-     * Whether the copies in this slot are stand-ins rather than the real cards
-     */
-    proxy: boolean;
-    /**
      * How many copies this slot holds
      */
     quantity: number;
@@ -8081,10 +8061,6 @@ export interface SourcingSlotResponse {
      */
     printing: string;
     /**
-     * Whether the slot is a stand-in — it asks for no cardboard
-     */
-    proxy: boolean;
-    /**
      * How many copies it asks for
      */
     quantity: number;
@@ -8409,10 +8385,6 @@ export interface SwapDeckCardRequest {
      * Scryfall's id of the printing coming in
      */
     printing: string;
-    /**
-     * Whether the incoming copies are stand-ins rather than the real cards, `null` for the ordinary ones
-     */
-    proxy?: boolean | null;
     /**
      * How many copies leave the entry and how many of the other card come in
      */
@@ -9457,10 +9429,6 @@ export interface UpdateDeckCardRequest {
      * Scryfall's id of the printing — send this to sleeve a different print
      */
     printing?: string | null;
-    /**
-     * Whether the copies in this slot are stand-ins rather than the real cards
-     */
-    proxy?: boolean | null;
     /**
      * The new count, zero removes the Deck entry
      */

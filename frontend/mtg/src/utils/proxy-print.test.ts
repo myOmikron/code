@@ -126,7 +126,6 @@ function slot(name: string, zone: DeckZone, quantity = 1, foil = false): DeckCar
         quantity,
         zone,
         foil,
-        proxy: false,
         tags: [],
         card:
             name === ""

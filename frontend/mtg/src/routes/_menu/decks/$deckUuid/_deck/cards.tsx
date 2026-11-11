@@ -370,10 +370,6 @@ function RouteComponent() {
                       "mod+z": undoChange,
                       "mod+y": redoChange,
                       "mod+shift+z": redoChange,
-                      x: () => {
-                          const card = hovered;
-                          if (card !== null) void toggleProxy(card, !card.proxy);
-                      },
                   }
                 : {}),
             a: () => setAdding(true),
@@ -802,17 +798,6 @@ function RouteComponent() {
     async function toggleFoil(card: DeckCardResponse, foil: boolean) {
         if (!canFoil(card) || onlyFoil(card)) return;
         await Api.decks.cards.update(deckUuid, card.uuid, { foil });
-        await refresh();
-    }
-
-    /**
-     * Marks a slot as a proxy, or clears the mark again
-     *
-     * @param card the slot
-     * @param proxy whether the copies are stand-ins
-     */
-    async function toggleProxy(card: DeckCardResponse, proxy: boolean) {
-        await Api.decks.cards.update(deckUuid, card.uuid, { proxy });
         await refresh();
     }
 
@@ -1323,7 +1308,6 @@ function RouteComponent() {
                                 : undefined
                         }
                         onToggleFoil={(card, foil) => void toggleFoil(card, foil)}
-                        onToggleProxy={rights.owner ? (card, proxy) => void toggleProxy(card, proxy) : undefined}
                         onToggleTag={tagging.onToggleTag}
                         onDelete={(card) => void remove(card)}
                         onClose={() => setMenu(null)}
@@ -1339,14 +1323,6 @@ function RouteComponent() {
                         onPick={(printing) => {
                             if (printed !== null) void switchPrinting(printed, printing);
                         }}
-                        proxy={rights.owner ? printed?.proxy : undefined}
-                        onToggleProxy={
-                            rights.owner
-                                ? (proxy) => {
-                                      if (printed !== null) void toggleProxy(printed, proxy);
-                                  }
-                                : undefined
-                        }
                         onClose={() => setPrintingFor(null)}
                     />
 

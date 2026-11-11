@@ -61,7 +61,6 @@ function slot(name: string, legal: Array<string>, gameChanger = false): Register
             game_changer: gameChanger,
         } as RegisteredCardResponse["card"],
         foil: false,
-        proxy: false,
         proxies: 0,
         printing: `${name}-printing`,
         quantity: 4,

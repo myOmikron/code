@@ -6,7 +6,7 @@ import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { CardFlipButton } from "src/components/card-flip-button";
 import { CardmarketLink } from "src/components/cardmarket-link";
-import { FoilMark, ProxyBadge, finishLabel } from "src/components/card-attribute-badge";
+import { FoilMark, finishLabel } from "src/components/card-attribute-badge";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckLineDeviation } from "src/components/deck-line-deviation";
@@ -109,7 +109,6 @@ export function DeckCardRow({
                         name={printing?.name ?? ""}
                         image={artwork.image}
                         finish={finish}
-                        muted={card.proxy}
                         className={"h-20 rounded-lg sm:h-24 lg:h-28 xl:h-32"}
                     />
                 </button>
@@ -161,7 +160,6 @@ export function DeckCardRow({
                         </span>
                     )}
                     {printing?.game_changer === true && <GameChangerMarker />}
-                    <ProxyBadge proxy={card.proxy} />
                     {price !== null && <Badge color={"green"}>{formatCurrency((price * card.quantity) / 100)}</Badge>}
                     {violations.length > 0 && (
                         <Badge color={"amber"}>
