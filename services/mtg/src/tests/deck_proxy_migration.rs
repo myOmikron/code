@@ -124,10 +124,8 @@ fn proxy_lines_become_proxies_in_the_physical_deck_and_merge_with_their_real_lin
         let clean = deck(pool, owner).await;
         let [sol_ring, crypt, rings, bolt] = [(); 4].map(|()| Uuid::now_v7());
 
-        // Sol Ring: a proxy line next to a real one, tagged, merges into it
         let proxied = entry(pool, unbuilt, sol_ring, (2, "Main", false, true)).await;
         let real = entry(pool, unbuilt, sol_ring, (1, "Main", false, false)).await;
-        // Mana Crypt in foil on two zones: one Proxy stack of foil ones
         entry(pool, unbuilt, crypt, (1, "Main", true, true)).await;
         entry(pool, unbuilt, crypt, (1, "Side", true, true)).await;
         let tag = Uuid::now_v7();
@@ -151,7 +149,6 @@ fn proxy_lines_become_proxies_in_the_physical_deck_and_merge_with_their_real_lin
                 .expect("tag an entry");
         }
 
-        // A deck already kept a deck collection with a real card in it
         entry(pool, built, rings, (1, "Main", false, true)).await;
         entry(pool, built, bolt, (1, "Main", false, false)).await;
         let collection = Uuid::now_v7();

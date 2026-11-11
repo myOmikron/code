@@ -123,8 +123,6 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
      * @param intoCollection whether the deck should physically hold what was imported
      */
     async function fill(uuid: string, url: string, intoCollection: boolean) {
-        // Without a list there is nothing the deck could physically hold yet:
-        // its Physical deck comes with the first card put in.
         if (url.trim() === "") return;
 
         try {

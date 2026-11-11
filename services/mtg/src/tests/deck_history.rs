@@ -2865,8 +2865,6 @@ fn deck_changes_stored_with_a_proxy_flag_still_read_undo_and_reset_as_one_entry(
     run(async {
         let mut fixture = Fixture::new().await;
         let printing = Uuid::new_v4();
-        // Before Proxies left the list: one real copy, then a proxy line of
-        // two beside it, which the migration merged into one entry of three
         fixture
             .add(json!({ "printing": printing, "quantity": 1, "zone": "Main" }))
             .await;

@@ -542,8 +542,6 @@ pub async fn take_apart_physical_deck(
         Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::ReturnCards).await?,
     )?;
 
-    // Returning early drops the transaction, which rolls back whatever was
-    // already sorted back: a deck is taken apart whole or not at all.
     let returned = match Deck::take_apart(&mut tx, grant.owner(), deck_uuid, target).await? {
         TakeApartOutcome::TakenApart { returned } => returned,
         TakeApartOutcome::Unplaceable => {

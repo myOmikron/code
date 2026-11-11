@@ -123,8 +123,6 @@ function RouteComponent() {
     const rights = deckRights(deck.role);
     const deviations = ruleZeroCount(deck);
     const deviated = deviation === null ? 0 : deviationCount(deviation);
-    // Whether the export dropdown offers to proxy only what the Physical deck
-    // lacks, beside the whole deck.
     const lacking = deviation !== null && deviation.entries.some((line) => line.missing > 0);
     const rules = formats.find((format) => format.slug === deck.format);
 

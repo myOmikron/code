@@ -478,8 +478,6 @@ impl Deck {
             return Ok(DeckAccess::Granted(existing));
         }
 
-        // Name, colour and pictogram are never shown: a Physical deck appears
-        // in no collection list. The columns just have to hold something.
         let collection = Collection::create(
             &mut *tx,
             owner,
@@ -526,8 +524,6 @@ impl Deck {
         let Some(collection) = Self::collection(&mut *tx, uuid).await? else {
             return Ok(TakeApartOutcome::TakenApart { returned: 0 });
         };
-        // Only a collection on the shelf takes the homeless cards: one standing
-        // for a deck, this one above all, is no place to sort cards back into.
         if let Some(target) = target
             && !Collection::is_on_shelf(&mut *tx, target, owner).await?
         {

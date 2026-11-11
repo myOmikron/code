@@ -1051,8 +1051,6 @@ fn the_migration_turns_frozen_proxy_entries_into_a_proxy_count() {
             .await
             .expect("connect to the test database");
         let mut conn = db.as_pool().acquire().await.expect("a connection");
-        // A copied Deck entry is all the migration reads; the Tournament around
-        // it would only be rows to satisfy foreign keys, so they are switched off
         sqlx::query("SET session_replication_role = replica")
             .execute(&mut *conn)
             .await
