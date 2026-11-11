@@ -197,18 +197,6 @@ impl DeckGrant {
         self.role
     }
 
-    /// The proxy flag the caller's request may set, `None` to leave it alone
-    ///
-    /// Whether a copy is a proxy is about the owner's shelf, so only the owner
-    /// sets it. A Collaborator's request leaves it as it is, and a Deck entry it
-    /// opens is no proxy.
-    pub fn proxy(&self, requested: Option<bool>) -> Option<bool> {
-        match self.role {
-            DeckRole::Owner => requested,
-            DeckRole::Editor | DeckRole::Viewer => None,
-        }
-    }
-
     /// Whether the caller may create, change, delete or assign global tags
     ///
     /// A global tag and its card-wide assignments reach every deck of the
@@ -340,15 +328,6 @@ mod tests {
             deck: DeckUuid::from_uuid(uuid::Uuid::new_v4()),
             owner: AccountUuid::new(uuid::Uuid::new_v4()),
             role,
-        }
-    }
-
-    #[test]
-    fn only_the_owner_sets_the_proxy_flag() {
-        for requested in [None, Some(false), Some(true)] {
-            assert_eq!(grant(DeckRole::Owner).proxy(requested), requested);
-            assert_eq!(grant(DeckRole::Editor).proxy(requested), None);
-            assert_eq!(grant(DeckRole::Viewer).proxy(requested), None);
         }
     }
 

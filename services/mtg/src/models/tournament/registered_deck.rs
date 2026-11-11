@@ -318,7 +318,6 @@ impl Tournament {
                         printing: card.printing,
                         zone: card.zone,
                         foil: card.foil,
-                        proxy: card.proxy,
                     },
                     quantity: card.quantity,
                     proxies: proxies.of(card.uuid),
@@ -342,7 +341,6 @@ impl Tournament {
                     printing: card.printing,
                     zone: card.zone,
                     foil: card.foil,
-                    proxy: false,
                 },
                 quantity: card.quantity,
                 proxies: card.proxies,
@@ -499,10 +497,7 @@ impl Tournament {
             .into_iter()
             .map(|slot| RegisteredSlot {
                 proxies: proxies.of(slot.uuid),
-                slot: ListedSlot {
-                    proxy: false,
-                    ..slot
-                },
+                slot,
             })
             .collect())
     }

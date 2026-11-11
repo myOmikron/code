@@ -56,7 +56,6 @@ use crate::http::handler_frontend::decks::schema::TakeDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckCardRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckTagRequest;
-use crate::http::handler_frontend::shared::schema::redact_slot;
 use crate::models::account::Account;
 use crate::models::account::AccountUuid;
 use crate::models::card_attributes::CardCondition;
@@ -76,7 +75,6 @@ use crate::models::deck::DeckUuid;
 use crate::models::deck::TakeApartOutcome;
 use crate::models::deck::access::DeckGrant;
 use crate::models::deck::access::DeckOperation;
-use crate::models::deck::access::DeckRole;
 use crate::models::deck::advisor::AdvisorSettings;
 use crate::models::deck::deviation::DeckDeviation;
 use crate::models::deck::history::DeckChangeKind;
@@ -294,7 +292,7 @@ pub async fn take_deck_cards(
 /// collection, so there is nowhere to put it back. Sorting them into one later
 /// is the same return call with a target. The first card creates the Physical
 /// deck. Proxies of a slot's printing and finish count as held, and the list
-/// is never changed: filling a proxy slot leaves its flag as it is.
+/// is never changed.
 #[post("/{deck}/sourcing/fill")]
 pub async fn fill_deck_collection(
     account: Account,
@@ -319,19 +317,12 @@ pub async fn fill_deck_collection(
         DeckSourcing::read(&mut tx, grant.owner(), deck_uuid, Some(collection.uuid)).await?;
 
     let mut filed = 0;
-    // The loop below shadows `slot` with each listed slot in turn, so whether
-    // this call means "everything short" or "just this one" has to be read off
-    // the request before that happens.
-    let fill_all = slot.is_none();
     for slot in sourcing
         .slots
         .into_iter()
         .filter(|listed| slot.is_none_or(|wanted| wanted == listed.uuid))
     {
         let finish = finish_of_slot(slot.foil);
-        if slot.proxy && fill_all {
-            continue;
-        }
 
         // Only what the deck is short of: a slot somebody already sourced out of
         // a collection keeps the copies it has, origin and all.
@@ -994,7 +985,8 @@ pub async fn delete_deck(
 ///
 /// The whole deck in one answer: a hundred slots are not worth paging, and the
 /// client groups and sorts them however the list is being looked at. A
-/// Collaborator gets it the way the Share link shows it, see [`redact_slot`].
+/// Collaborator reads the same list the owner does: a Deck entry says nothing
+/// about the owner's shelf (ADR 0007).
 #[get("/{deck}/cards")]
 pub async fn list_deck_cards(
     account: Account,
@@ -1006,12 +998,10 @@ pub async fn list_deck_cards(
         Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::ListCards).await?,
     )?;
 
-    let owner = grant.role() == DeckRole::Owner;
     let cards = ListedSlot::read_deck(&mut tx, deck_uuid)
         .await?
         .into_iter()
         .map(DeckCardResponse::from)
-        .map(|slot| if owner { slot } else { redact_slot(slot) })
         .collect();
     let tags = DeckTag::get_usable(&mut tx, grant.owner(), deck_uuid)
         .await?
@@ -1026,11 +1016,9 @@ pub async fn list_deck_cards(
 
 /// Put a card into a deck
 ///
-/// Copies joining an alike Deck entry (same printing, zone, finish and proxy
-/// status) raise its count instead of opening a second line beside it. The
+/// Copies joining an alike Deck entry (same printing, zone and finish) raise its count instead of opening a second line beside it. The
 /// answer is the entry's bookkeeping fields either way; catalog data and tags
-/// come from the list endpoint. Only the owner adds proxies, see
-/// [`DeckGrant::proxy`].
+/// come from the list endpoint.
 #[post("/{deck}/cards")]
 pub async fn add_deck_card(
     account: Account,
@@ -1040,7 +1028,6 @@ pub async fn add_deck_card(
         quantity,
         zone,
         foil,
-        proxy,
     }): ApiJson<AddDeckCardRequest>,
 ) -> ApiResult<ApiJson<DeckCardResponse>> {
     let mut tx = Database::global().start_transaction().await?;
@@ -1061,7 +1048,6 @@ pub async fn add_deck_card(
             quantity,
             zone,
             foil: foil.unwrap_or(false),
-            proxy: grant.proxy(proxy).unwrap_or(false),
         },
     )
     .await?;
@@ -1078,7 +1064,6 @@ pub async fn add_deck_card(
         quantity: card.quantity,
         zone: card.zone,
         foil: card.foil,
-        proxy: card.proxy,
         card: None,
         tags: Vec::new(),
     }))
@@ -1244,7 +1229,6 @@ pub async fn import_deck_cards(
             quantity: card.quantity,
             zone: card.zone,
             foil: card.foil.unwrap_or(false),
-            proxy: grant.proxy(card.proxy).unwrap_or(false),
         })
         .collect();
     let added = inserts.len() as u32;
@@ -1269,8 +1253,7 @@ pub async fn import_deck_cards(
 /// Change a Deck entry: its count, its zone or the print it sleeves
 ///
 /// An entry made alike to another one merges into it, and a count of zero
-/// removes it. A Collaborator's change leaves the proxy flag as it is, see
-/// [`DeckGrant::proxy`].
+/// removes it.
 #[patch("/{deck}/cards/{card}")]
 pub async fn update_deck_card(
     account: Account,
@@ -1302,7 +1285,6 @@ pub async fn update_deck_card(
                 quantity: request.quantity,
                 zone: request.zone,
                 foil: request.foil,
-                proxy: grant.proxy(request.proxy),
             },
         )
         .await?,
@@ -1336,7 +1318,6 @@ pub async fn swap_deck_card(
         quantity,
         printing,
         foil,
-        proxy,
     }): ApiJson<SwapDeckCardRequest>,
 ) -> ApiResult<ApiJson<DeckCardResponse>> {
     let mut tx = Database::global().start_transaction().await?;
@@ -1362,7 +1343,6 @@ pub async fn swap_deck_card(
         quantity,
         zone: going.zone,
         foil: foil.unwrap_or(false),
-        proxy: grant.proxy(proxy).unwrap_or(false),
     };
     if coming.key() == going.key() {
         return Err(ApiError::bad_request("A card is not swapped for itself"));
@@ -1383,7 +1363,6 @@ pub async fn swap_deck_card(
         quantity: card.quantity,
         zone: card.zone,
         foil: card.foil,
-        proxy: card.proxy,
         card: None,
         tags: Vec::new(),
     }))

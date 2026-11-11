@@ -195,9 +195,11 @@ pub struct DeckInsertPatch {
 
 /// One Deck entry of a [`DeckModel`]
 ///
-/// A deck holds at most one per printing, zone, foil and proxy: the unique
-/// index `deckcard_entry` over those and `deck` is created by hand in migration
-/// 0046, since rorm declares no unique index across several columns.
+/// A deck holds at most one per printing, zone and foil: the unique index
+/// `deckcard_entry` over those and `deck` is created by hand in migration
+/// 0076, since rorm declares no unique index across several columns. Whether
+/// a copy is a Proxy is not the list's business but the Physical deck's
+/// (ADR 0007).
 #[derive(Model, Debug)]
 #[rorm(rename = "deckcard")]
 pub struct DeckCardModel {
@@ -244,10 +246,6 @@ pub struct DeckCardModel {
     /// without this being set.
     #[rorm(default = false)]
     pub foil: bool,
-
-    /// Whether the copies in this slot are stand-ins rather than the real cards
-    #[rorm(default = false)]
-    pub proxy: bool,
 }
 
 /// Insert patch for [`DeckCardModel`]
@@ -266,8 +264,6 @@ pub struct DeckCardInsertPatch {
     pub zone: DeckZone,
     /// Whether the copies in this slot are the foil ones
     pub foil: bool,
-    /// Whether the copies in this slot are stand-ins rather than the real cards
-    pub proxy: bool,
 }
 
 /// An etiquette put on a deck's cards, e.g. "Ramp" or "Removal"

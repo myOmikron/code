@@ -97,8 +97,6 @@ pub struct ListedSlot {
     pub zone: DeckZone,
     /// Whether the copies in this slot are the foil ones
     pub foil: bool,
-    /// Whether the copies in this slot are stand-ins rather than the real cards
-    pub proxy: bool,
     /// The card, as far as the catalog knows it
     pub card: Option<ListedDeckCard>,
     /// Local tags put on this slot plus global tags for its card identity
@@ -116,7 +114,7 @@ impl ListedSlot {
         deck: DeckUuid,
     ) -> Result<Vec<ListedSlot>, rorm::Error> {
         let statement = format!(
-            "SELECT {SLOT_COLUMNS}, c.proxy, {CARD_COLUMNS} \
+            "SELECT {SLOT_COLUMNS}, {CARD_COLUMNS} \
              FROM deckcard c \
              LEFT JOIN printing p ON p.id = c.printing \
              WHERE c.deck = $1 \
@@ -150,7 +148,7 @@ impl ListedSlot {
         participant: Uuid,
     ) -> Result<Vec<(ListedSlot, i32)>, rorm::Error> {
         let statement = format!(
-            "SELECT {SLOT_COLUMNS}, false AS proxy, c.proxies, {CARD_COLUMNS} \
+            "SELECT {SLOT_COLUMNS}, c.proxies, {CARD_COLUMNS} \
              FROM tournament_registered_card c \
              JOIN tournament_registered_deck d ON d.uuid = c.registered_deck \
              LEFT JOIN printing p ON p.id = c.printing \
@@ -172,7 +170,7 @@ impl ListedSlot {
     }
 }
 
-/// The columns of a slot `c` [`decode_slot`] reads besides its `proxy` flag
+/// The columns of a slot `c` [`decode_slot`] reads
 const SLOT_COLUMNS: &str = "c.uuid, c.printing, c.quantity, c.zone, c.foil";
 
 /// The columns of the printing `p` a slot is joined against that [`decode_slot`] reads
@@ -183,7 +181,7 @@ const CARD_COLUMNS: &str = "p.name, p.oracle_id, p.set_code, p.set_name, p.colle
     p.price_eur, p.price_eur_foil, p.finishes, p.produced_mana, p.game_changer, \
     p.mass_land_denial, p.extra_turns, p.reserved";
 
-/// One slot out of a row holding [`SLOT_COLUMNS`], `proxy` and [`CARD_COLUMNS`], still without its tags
+/// One slot out of a row holding [`SLOT_COLUMNS`] and [`CARD_COLUMNS`], still without its tags
 fn decode_slot(row: &Row) -> Result<ListedSlot, rorm::Error> {
     let decode = |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
 
@@ -225,7 +223,6 @@ fn decode_slot(row: &Row) -> Result<ListedSlot, rorm::Error> {
         quantity: row.get("quantity").map_err(decode)?,
         zone: zone_of(row.get::<String>("zone").map_err(decode)?.as_str()),
         foil: row.get("foil").map_err(decode)?,
-        proxy: row.get("proxy").map_err(decode)?,
         card,
         tags: Vec::new(),
     })

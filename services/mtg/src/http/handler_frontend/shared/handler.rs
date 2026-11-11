@@ -21,7 +21,6 @@ use crate::http::handler_frontend::decks::schema::ListDeckCardsResponse;
 use crate::http::handler_frontend::shared::schema::SharedCollectionResponse;
 use crate::http::handler_frontend::shared::schema::SharedDeckResponse;
 use crate::http::handler_frontend::shared::schema::redact_entry;
-use crate::http::handler_frontend::shared::schema::redact_slot;
 use crate::http::handler_frontend::shared::schema::redact_statistics;
 use crate::http::handler_frontend::tournaments::decks;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisteredListsResponse;
@@ -162,7 +161,7 @@ pub async fn get_shared_deck(Path(token): Path<String>) -> ApiResult<ApiJson<Sha
 
 /// Every card of a shared deck, with the catalog data and the tags on it
 ///
-/// The listing the owner reads, minus the proxy flags, see [`redact_slot`].
+/// The listing the owner reads.
 #[get("/{token}/cards")]
 pub async fn list_shared_deck_cards(
     Path(token): Path<String>,
@@ -175,7 +174,6 @@ pub async fn list_shared_deck_cards(
         .await?
         .into_iter()
         .map(DeckCardResponse::from)
-        .map(redact_slot)
         .collect();
     // The owner's tags, so the reader can group by them as the owner does.
     let tags = DeckTag::get_usable(&mut tx, deck.owner, deck.uuid)

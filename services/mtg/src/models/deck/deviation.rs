@@ -277,7 +277,6 @@ mod tests {
             quantity,
             zone: DeckZone::Main,
             foil,
-            proxy: false,
             card: Some(printing(oracle, "LTR")),
         }
     }

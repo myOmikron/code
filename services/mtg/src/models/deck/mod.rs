@@ -747,8 +747,6 @@ pub struct DeckCard {
     pub zone: DeckZone,
     /// Whether the copies in this slot are the foil ones
     pub foil: bool,
-    /// Whether the copies in this slot are stand-ins rather than the real cards
-    pub proxy: bool,
 }
 
 /// Wrapper for the primary key of the [`DeckCard`] model.
@@ -784,8 +782,6 @@ pub struct DeckCardPatch {
     pub zone: Option<DeckZone>,
     /// Whether the copies in this slot are the foil ones
     pub foil: Option<bool>,
-    /// Whether the copies in this slot are stand-ins rather than the real cards
-    pub proxy: Option<bool>,
 }
 
 /// What tells the Deck entries of one deck apart
@@ -801,8 +797,6 @@ pub struct DeckEntryKey {
     pub zone: DeckZone,
     /// Whether the copies are the foil ones
     pub foil: bool,
-    /// Whether the copies are stand-ins rather than the real cards
-    pub proxy: bool,
 }
 
 /// One card slot to write into a [`Deck`]
@@ -816,8 +810,6 @@ pub struct DeckCardInsert {
     pub zone: DeckZone,
     /// Whether the copies in this slot are the foil ones
     pub foil: bool,
-    /// Whether the copies in this slot are stand-ins rather than the real cards
-    pub proxy: bool,
 }
 
 impl DeckCardInsert {
@@ -827,7 +819,6 @@ impl DeckCardInsert {
             printing: self.printing,
             zone: self.zone,
             foil: self.foil,
-            proxy: self.proxy,
         }
     }
 }
@@ -839,7 +830,6 @@ impl DeckCard {
             printing: self.printing,
             zone: self.zone,
             foil: self.foil,
-            proxy: self.proxy,
         }
     }
 
@@ -893,7 +883,6 @@ impl DeckCard {
                 DeckCardModel.printing.equals(key.printing),
                 DeckCardModel.zone.equals(key.zone),
                 DeckCardModel.foil.equals(key.foil),
-                DeckCardModel.proxy.equals(key.proxy),
             ])
             .optional()
             .await?;
@@ -936,9 +925,7 @@ impl DeckCard {
     ///
     /// When the deck already holds an alike Deck entry, the copies raise its
     /// count instead of opening another one beside it. Only an exact match
-    /// folds: a different printing, zone, finish or proxy status is a Deck
-    /// entry of its own, so a real add never launders into a stack of
-    /// stand-ins, or the other way around.
+    /// folds: a different printing, zone or finish is a Deck entry of its own.
     #[instrument(name = "DeckCard::add", skip(tx))]
     pub async fn add(
         tx: &mut Transaction,
@@ -959,7 +946,6 @@ impl DeckCard {
                 quantity: insert.quantity,
                 zone: insert.zone,
                 foil: insert.foil,
-                proxy: insert.proxy,
             })
             .await?;
         Ok(DeckCard::from(card))
@@ -995,7 +981,6 @@ impl DeckCard {
             printing: patch.printing.unwrap_or(entry.printing),
             zone: patch.zone.unwrap_or(entry.zone),
             foil: patch.foil.unwrap_or(entry.foil),
-            proxy: patch.proxy.unwrap_or(entry.proxy),
         };
         if key != entry.key()
             && let Some(alike) = Self::find_alike(&mut *tx, deck, key).await?
@@ -1009,7 +994,6 @@ impl DeckCard {
             .set(DeckCardModel.quantity, quantity)
             .set(DeckCardModel.zone, key.zone)
             .set(DeckCardModel.foil, key.foil)
-            .set(DeckCardModel.proxy, key.proxy)
             .condition(DeckCardModel.uuid.equals(uuid.0))
             .await?;
         Ok(DeckAccess::Granted(Some(DeckCard {
@@ -1019,7 +1003,6 @@ impl DeckCard {
             quantity,
             zone: key.zone,
             foil: key.foil,
-            proxy: key.proxy,
         })))
     }
 
@@ -1034,13 +1017,7 @@ impl DeckCard {
     /// not change. Either way, copies that end up alike to another Deck entry
     /// merge into it.
     ///
-    /// Filing real cardboard also clears a proxy flag: this is how "I found a
-    /// copy" turns a stand-in back into the genuine article, covered or split
-    /// the same way as a printing change. An entry already pointed at this exact
-    /// printing and finish still needs to run through when it is proxied, so a
-    /// proxy of the very printing later acquired clears too.
-    ///
-    /// Does nothing when the entry already says what arrived and is not proxied.
+    /// Does nothing when the entry already says what arrived.
     /// Answers what it did to the Deck entries, for the Deck history.
     #[instrument(name = "DeckCard::point_at", skip(tx))]
     pub async fn point_at(
@@ -1055,7 +1032,7 @@ impl DeckCard {
             return Ok(DeckAccess::Denied);
         };
         let mut difference = DeckDifference::default();
-        if slot.printing == printing && slot.foil == foil && !slot.proxy {
+        if slot.printing == printing && slot.foil == foil {
             return Ok(DeckAccess::Granted(difference));
         }
 
@@ -1067,7 +1044,6 @@ impl DeckCard {
                 DeckCardPatch {
                     printing: Some(printing),
                     foil: Some(foil),
-                    proxy: Some(false),
                     ..Default::default()
                 },
             )
@@ -1088,7 +1064,6 @@ impl DeckCard {
                 quantity,
                 zone: slot.zone,
                 foil,
-                proxy: false,
             },
         )
         .await?;
@@ -1212,7 +1187,6 @@ impl DeckCard {
                     quantity: card.quantity,
                     zone: card.zone,
                     foil: card.foil,
-                    proxy: card.proxy,
                 }),
             }
         }
@@ -1303,7 +1277,6 @@ impl From<DeckCardModel> for DeckCard {
             quantity: value.quantity,
             zone: value.zone,
             foil: value.foil,
-            proxy: value.proxy,
         }
     }
 }

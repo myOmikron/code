@@ -160,7 +160,7 @@ pub struct RegisteredListResponse {
 /// One Deck entry of a Registered deck's list
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RegisteredCardResponse {
-    /// The Deck entry; its `proxy` flag is always `false`, `proxies` counts instead
+    /// The Deck entry
     #[serde(flatten)]
     pub slot: DeckCardResponse,
     /// How many of its copies are Proxies: those in the deck's Physical deck

@@ -69,7 +69,7 @@ pub enum DeckChangeKind {
     Quantity,
     /// A Deck entry moved to another zone
     Move,
-    /// A Deck entry switched to another printing, finish or proxy status
+    /// A Deck entry switched to another printing or finish
     Switch,
     /// Copies of a Deck entry given up for another card in the same zone
     Swap,
@@ -80,7 +80,7 @@ pub enum DeckChangeKind {
     /// The advisor's suggestions added to the deck
     Fill,
     /// A Deck entry made to say what was sourced for it: another printing or
-    /// finish, or no longer a proxy
+    /// finish
     Sourcing,
     /// Deck fields changed: name, description, format, colors, bracket,
     /// rule-zero exceptions or size
@@ -120,8 +120,10 @@ pub struct DeckChangeUuid(Uuid);
 /// What one Deck change did to its deck
 ///
 /// Stored as json; a part added later carries `#[serde(default)]`, so the
-/// Deck changes already stored still read.
+/// Deck changes already stored still read. A part taken away is ignored on
+/// read, see [`EntryDifference::legacy`].
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(from = "StoredDifference")]
 pub struct DeckDifference {
     /// The Deck entries it touched, at most one per key
     #[serde(default)]
@@ -129,6 +131,43 @@ pub struct DeckDifference {
     /// The deck fields it changed, at most one per field
     #[serde(default)]
     pub fields: Vec<FieldDifference>,
+}
+
+/// A [`DeckDifference`] as stored, before the Deck entries that only a
+/// proxy flag told apart are folded together
+#[derive(Deserialize)]
+struct StoredDifference {
+    /// The Deck entries it touched
+    #[serde(default)]
+    entries: Vec<EntryDifference>,
+    /// The deck fields it changed
+    #[serde(default)]
+    fields: Vec<FieldDifference>,
+}
+
+impl From<StoredDifference> for DeckDifference {
+    /// Folds the Deck entries of one key together, summing their copies
+    ///
+    /// Only a Deck change recorded while Deck entries carried a proxy flag
+    /// holds two of a key: the proxy line and the real line, which the
+    /// migration of ADR 0007 merged into one Deck entry the same way.
+    fn from(stored: StoredDifference) -> Self {
+        let mut entries: Vec<EntryDifference> = Vec::with_capacity(stored.entries.len());
+        for entry in stored.entries {
+            match entries.iter_mut().find(|known| known.key() == entry.key()) {
+                Some(known) => {
+                    known.before += entry.before;
+                    known.after += entry.after;
+                    known.legacy |= entry.legacy;
+                }
+                None => entries.push(entry),
+            }
+        }
+        Self {
+            entries,
+            fields: stored.fields,
+        }
+    }
 }
 
 /// The value one deck field held before and after a Deck change
@@ -394,12 +433,34 @@ pub struct EntryDifference {
     pub zone: DeckZone,
     /// Whether the copies are the foil ones
     pub foil: bool,
-    /// Whether the copies are stand-ins rather than the real cards
-    pub proxy: bool,
     /// How many copies the entry held before
     pub before: i32,
     /// How many copies the entry holds after
     pub after: i32,
+    /// Whether it was recorded while Deck entries still carried a proxy flag
+    ///
+    /// Such a Deck change stored a `proxy` beside each entry; reading ignores
+    /// its value (ADR 0007). Its `before` and `after` count only the copies of
+    /// the proxy line or of the real line, which are one Deck entry now, so
+    /// they are true as a step, not as a count: undoing it or computing a
+    /// point back across it moves the entry by `after - before` instead of
+    /// setting it to a count. Never written again.
+    #[serde(
+        rename = "proxy",
+        default,
+        skip_serializing,
+        deserialize_with = "recorded_with_proxy_flag"
+    )]
+    legacy: bool,
+}
+
+/// Whether a stored entry carries a proxy flag: it does when there is one,
+/// whichever value it holds
+fn recorded_with_proxy_flag<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<bool, D::Error> {
+    bool::deserialize(deserializer)?;
+    Ok(true)
 }
 
 impl EntryDifference {
@@ -409,7 +470,6 @@ impl EntryDifference {
             printing: self.printing,
             zone: self.zone,
             foil: self.foil,
-            proxy: self.proxy,
         }
     }
 }
@@ -426,9 +486,9 @@ impl DeckDifference {
                 printing: key.printing,
                 zone: key.zone,
                 foil: key.foil,
-                proxy: key.proxy,
                 before,
                 after,
+                legacy: false,
             }),
         }
     }
@@ -492,12 +552,12 @@ impl DeckDifference {
                 printing: key.printing,
                 zone: key.zone,
                 foil: key.foil,
-                proxy: key.proxy,
                 before,
                 after,
+                legacy: false,
             })
             .collect();
-        entries.sort_by_key(|entry| (entry.printing, entry.zone.as_str(), entry.foil, entry.proxy));
+        entries.sort_by_key(|entry| (entry.printing, entry.zone.as_str(), entry.foil));
         Self {
             entries,
             fields: Vec::new(),
@@ -567,6 +627,11 @@ impl DeckDifference {
                 .collect(),
             fields: self.fields.iter().map(FieldDifference::inverse).collect(),
         }
+    }
+
+    /// Whether it was recorded while Deck entries carried a proxy flag
+    fn is_legacy(&self) -> bool {
+        self.entries.iter().any(|entry| entry.legacy)
     }
 
     /// Whether it changes nothing
@@ -647,7 +712,8 @@ impl DeckEdit {
     ///
     /// It does when both are of the same kind, one that coalesces, touching
     /// the very same single Deck entry or deck field, and the latest is still
-    /// inside the [`COALESCING_WINDOW`] and carries no Deck checkpoint.
+    /// inside the [`COALESCING_WINDOW`], carries no Deck checkpoint and was
+    /// recorded after Deck entries lost their proxy flag.
     fn joins(
         latest: &StoredChange,
         kind: DeckChangeKind,
@@ -658,6 +724,7 @@ impl DeckEdit {
             && kind.coalesces()
             && now - latest.changed_at < COALESCING_WINDOW
             && latest.checkpoint.is_none()
+            && !latest.difference.is_legacy()
             && latest.difference.touches_the_same(difference)
     }
 
@@ -679,9 +746,10 @@ impl DeckEdit {
     ///
     /// Each Deck entry the difference names ends up holding its `after`
     /// copies, whatever it holds now, and each deck field its `after` value;
-    /// the `before` side is not read. An entry that comes back is a new one
-    /// without card tags; one that is still there keeps its tags. The deck's
-    /// collection is never touched.
+    /// the `before` side is not read. An entry recorded with a proxy flag
+    /// moves by its step instead, see [`EntryDifference::legacy`]. An entry
+    /// that comes back is a new one without card tags; one that is still there
+    /// keeps its tags. The deck's Physical deck is never touched.
     ///
     /// Answers what it really did, ready to record: for an undo, redo or
     /// reset that is the Deck change it is.
@@ -702,7 +770,13 @@ impl DeckEdit {
                     .collect();
             for wanted in &difference.entries {
                 let key = wanted.key();
-                let quantity = wanted.after.max(0);
+                let quantity = if wanted.legacy {
+                    let current = held.get(&key).map_or(0, |entry| entry.quantity);
+                    current + wanted.after - wanted.before
+                } else {
+                    wanted.after
+                }
+                .max(0);
                 match held.get(&key) {
                     Some(entry) if entry.quantity == quantity => {}
                     Some(entry) if quantity == 0 => {
@@ -723,7 +797,6 @@ impl DeckEdit {
                                 quantity,
                                 zone: key.zone,
                                 foil: key.foil,
-                                proxy: key.proxy,
                             },
                         )
                         .await?;
@@ -1075,7 +1148,6 @@ impl DeckHistory {
                 DeckCardModel.printing,
                 DeckCardModel.zone,
                 DeckCardModel.foil,
-                DeckCardModel.proxy,
                 DeckCardModel.quantity,
             ),
         )
@@ -1092,13 +1164,12 @@ impl DeckHistory {
             .iter()
             .map(|deck| (deck.into_inner(), DeckDifference::default()))
             .collect();
-        for (deck, printing, zone, foil, proxy, quantity) in entries {
+        for (deck, printing, zone, foil, quantity) in entries {
             differences.entry(deck.0).or_default().entry(
                 DeckEntryKey {
                     printing,
                     zone,
                     foil,
-                    proxy,
                 },
                 0,
                 quantity,
@@ -1297,7 +1368,6 @@ impl DeckHistory {
                 key.printing,
                 key.zone.as_str(),
                 key.foil,
-                key.proxy,
             )
         });
         Ok(Some(DeckPoint {
@@ -1352,7 +1422,11 @@ async fn rewind(
     let mut settings = DeckSettings::from(&read_deck(&mut *tx, deck).await?);
     for later in &changes {
         for entry in &later.difference.entries {
-            entries.insert(entry.key(), entry.before);
+            if entry.legacy {
+                *entries.entry(entry.key()).or_default() -= entry.after - entry.before;
+            } else {
+                entries.insert(entry.key(), entry.before);
+            }
         }
         for field in &later.difference.fields {
             settings.take_before(field);

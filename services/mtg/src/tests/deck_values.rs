@@ -243,18 +243,21 @@ fn the_deck_overview_counts_proxies_for_the_owner_and_editors_only() {
 }
 
 #[test]
-fn the_deck_overview_prices_proxied_lines_like_any_other() {
+fn the_deck_overview_prices_proxied_copies_like_any_other() {
     run(async {
         let mut fixture = Fixture::new().await;
         let mana_crypt = priced("Mana Crypt", "12.00").await;
-        fixture
+        let entry = fixture
             .send(
                 Method::POST,
                 "cards",
-                json!({ "printing": mana_crypt, "quantity": 1, "zone": "Main", "proxy": true }),
+                json!({ "printing": mana_crypt, "quantity": 1, "zone": "Main" }),
             )
             .await
             .ok_json();
+        fixture
+            .proxy(entry["uuid"].as_str().expect("entry uuid"), 1)
+            .await;
 
         let owned = fixture.owner.get(&api("decks")).await.ok_json();
 

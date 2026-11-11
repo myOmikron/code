@@ -22,7 +22,6 @@ use crate::http::handler_frontend::explore::schema::PublicProfileResponse;
 use crate::http::handler_frontend::explore::schema::SearchPublicDecksQuery;
 use crate::http::handler_frontend::explore::schema::SearchPublicDecksResponse;
 use crate::http::handler_frontend::shared::schema::redact_entry;
-use crate::http::handler_frontend::shared::schema::redact_slot;
 use crate::http::handler_frontend::shared::schema::redact_statistics;
 use crate::http::handler_frontend::tournaments::schema::TournamentSummaryResponse;
 use crate::models::account::Account;
@@ -108,7 +107,7 @@ pub async fn get_public_deck(
 
 /// Every card of a public deck, with the catalog data and the tags on it
 ///
-/// The listing the owner reads, minus the proxy flags, see [`redact_slot`].
+/// The listing the owner reads.
 #[get("/decks/{deck}/cards")]
 pub async fn list_public_deck_cards(
     Path(deck_uuid): Path<DeckUuid>,
@@ -120,7 +119,6 @@ pub async fn list_public_deck_cards(
         .await?
         .into_iter()
         .map(DeckCardResponse::from)
-        .map(redact_slot)
         .collect();
     // The owner's tags, so the reader can group by them as the owner does.
     let tags = DeckTag::get_usable(&mut tx, deck.owner, deck.uuid)

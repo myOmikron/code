@@ -128,8 +128,6 @@ pub struct SourcingSlotResponse {
     pub zone: DeckZone,
     /// Whether the list asks for foils
     pub foil: bool,
-    /// Whether the slot is a stand-in — it asks for no cardboard
-    pub proxy: bool,
     /// What the catalog knows, `None` for a printing it has not caught up with
     pub card: Option<SourcedPrintingResponse>,
 }
@@ -306,7 +304,6 @@ impl From<SourcingSlot> for SourcingSlotResponse {
             quantity: slot.quantity,
             zone: slot.zone,
             foil: slot.foil,
-            proxy: slot.proxy,
             card: slot.card.map(SourcedPrintingResponse::from),
         }
     }
@@ -807,8 +804,6 @@ pub struct DeckCardResponse {
     pub zone: DeckZone,
     /// Whether the copies in this slot are the foil ones
     pub foil: bool,
-    /// Whether the copies in this slot are stand-ins rather than the real cards
-    pub proxy: bool,
     /// The card, as far as the catalog knows it
     pub card: Option<DeckCardCatalogResponse>,
     /// The tags put on this slot
@@ -851,9 +846,6 @@ pub struct AddDeckCardRequest {
     /// Whether the copies are the foil ones, `null` for the ordinary ones
     #[serde(default)]
     pub foil: Option<bool>,
-    /// Whether the copies are stand-ins rather than the real cards, `null` for the ordinary ones
-    #[serde(default)]
-    pub proxy: Option<bool>,
 }
 
 /// Request to change some of a slot's fields, leaving the rest alone
@@ -871,9 +863,6 @@ pub struct UpdateDeckCardRequest {
     /// Whether the copies in this slot are the foil ones
     #[serde(default)]
     pub foil: Option<bool>,
-    /// Whether the copies in this slot are stand-ins rather than the real cards
-    #[serde(default)]
-    pub proxy: Option<bool>,
 }
 
 /// Copies of a Deck entry to give up for another card in the same zone
@@ -886,9 +875,6 @@ pub struct SwapDeckCardRequest {
     /// Whether the incoming copies are the foil ones, `null` for the ordinary ones
     #[serde(default)]
     pub foil: Option<bool>,
-    /// Whether the incoming copies are stand-ins rather than the real cards, `null` for the ordinary ones
-    #[serde(default)]
-    pub proxy: Option<bool>,
 }
 
 /// A decklist to write into a deck
@@ -1142,7 +1128,6 @@ impl From<ListedSlot> for DeckCardResponse {
             quantity: slot.quantity,
             zone: slot.zone,
             foil: slot.foil,
-            proxy: slot.proxy,
             card: slot.card.map(DeckCardCatalogResponse::from),
             tags: slot.tags,
         }
