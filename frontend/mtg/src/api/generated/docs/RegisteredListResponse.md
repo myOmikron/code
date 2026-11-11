@@ -12,7 +12,7 @@ Name | Type
 `allow_extra_commanders` | boolean
 `allowed_color_identity` | string
 `bracket` | number
-`cards` | [Array&lt;DeckCardResponse&gt;](DeckCardResponse.md)
+`cards` | [Array&lt;RegisteredCardResponse&gt;](RegisteredCardResponse.md)
 `deck` | string
 `deck_size` | number
 `format` | string

@@ -1,4 +1,13 @@
-import { Badge, Button, Dialog, DialogActions, DialogBody, DialogDescription, DialogTitle, Subheading } from "components";
+import {
+    Badge,
+    Button,
+    Dialog,
+    DialogActions,
+    DialogBody,
+    DialogDescription,
+    DialogTitle,
+    Subheading,
+} from "components";
 import { useTranslation } from "react-i18next";
 import { type RegisteredListResponse, DeckZone } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";

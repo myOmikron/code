@@ -6290,6 +6290,51 @@ export interface RegisterDeckRequest {
     shared?: boolean | null;
 }
 /**
+ * One Deck entry of a Registered deck's list
+ * @export
+ * @interface RegisteredCardResponse
+ */
+export interface RegisteredCardResponse {
+    /**
+     * The card, as far as the catalog knows it
+     */
+    card?: DeckCardCatalogResponse | null;
+    /**
+     * Whether the copies in this slot are the foil ones
+     */
+    foil: boolean;
+    /**
+     * Scryfall's id of the printing
+     */
+    printing: string;
+    /**
+     * How many of its copies are Proxies: those in the deck's Physical deck while the Registered deck follows the deck, those frozen with the copy once pinned, 0 for a deck without a Physical deck
+     */
+    proxies: number;
+    /**
+     * Whether the copies in this slot are stand-ins rather than the real cards
+     */
+    proxy: boolean;
+    /**
+     * How many copies this slot holds
+     */
+    quantity: number;
+    /**
+     * The tags put on this slot
+     */
+    tags: Array<string>;
+    /**
+     * Primary key
+     */
+    uuid: string;
+    /**
+     * Which zone the slot sits in
+     */
+    zone: DeckZone;
+}
+
+
+/**
  * The deck a Participant plays in a Tournament
  * @export
  * @interface RegisteredDeckResponse
@@ -6353,7 +6398,7 @@ export interface RegisteredListResponse {
     /**
      * Its Deck entries, joined against the card catalog
      */
-    cards: Array<DeckCardResponse>;
+    cards: Array<RegisteredCardResponse>;
     /**
      * The deck it was made from, `null` once that deck is deleted
      */

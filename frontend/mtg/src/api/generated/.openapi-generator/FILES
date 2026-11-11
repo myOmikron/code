@@ -294,6 +294,7 @@ docs/ReadDeckUrlResponse.md
 docs/RecoverAccountRequest.md
 docs/RegisterDeckErrors.md
 docs/RegisterDeckRequest.md
+docs/RegisteredCardResponse.md
 docs/RegisteredDeckResponse.md
 docs/RegisteredListResponse.md
 docs/RegisteredListsResponse.md

@@ -24094,6 +24094,77 @@
                     "deck"
                 ]
             },
+            "RegisteredCardResponse": {
+                "description": "One Deck entry of a Registered deck's list",
+                "type": "object",
+                "properties": {
+                    "card": {
+                        "nullable": true,
+                        "description": "The card, as far as the catalog knows it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckCardCatalogResponse"
+                            }
+                        ]
+                    },
+                    "foil": {
+                        "description": "Whether the copies in this slot are the foil ones",
+                        "type": "boolean"
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "proxies": {
+                        "description": "How many of its copies are Proxies: those in the deck's Physical deck while the Registered deck follows the deck, those frozen with the copy once pinned, 0 for a deck without a Physical deck",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "proxy": {
+                        "description": "Whether the copies in this slot are stand-ins rather than the real cards",
+                        "type": "boolean"
+                    },
+                    "quantity": {
+                        "description": "How many copies this slot holds",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "tags": {
+                        "description": "The tags put on this slot",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckTagUuid"
+                        }
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckCardUuid"
+                            }
+                        ]
+                    },
+                    "zone": {
+                        "description": "Which zone the slot sits in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckZone"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "foil",
+                    "printing",
+                    "proxies",
+                    "proxy",
+                    "quantity",
+                    "tags",
+                    "uuid",
+                    "zone"
+                ]
+            },
             "RegisteredDeckResponse": {
                 "description": "The deck a Participant plays in a Tournament",
                 "type": "object",
@@ -24177,7 +24248,7 @@
                         "description": "Its Deck entries, joined against the card catalog",
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/DeckCardResponse"
+                            "$ref": "#/components/schemas/RegisteredCardResponse"
                         }
                     },
                     "deck": {
