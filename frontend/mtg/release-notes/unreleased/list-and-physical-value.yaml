@@ -1,0 +1,3 @@
+kind: improved
+de: "Ein Deck zeigt jetzt seinen Listenwert, alle Karten der Liste samt Proxies, und seinen Physischen Wert, nur die echten Karten im Physischen Deck. Im Reiter „Beschaffen“ siehst du dazu, was das Ersetzen aller Proxies kosten würde, und Decks mit Proxies sind im Kopf und in der Deckübersicht markiert."
+en: "A deck now shows its List value, every card of the list including Proxies, and its Physical value, only the real cards in the Physical deck. The Sourcing tab also shows what replacing all Proxies would cost, and decks with Proxies are marked in their header and in the deck overview."

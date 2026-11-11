@@ -209,8 +209,8 @@ describe("deckStats by tag", () => {
     });
 });
 
-describe("deckStats and proxies", () => {
-    it("counts a proxy's cardboard but not its price, in the total or by tag", () => {
+describe("deckStats and the List value", () => {
+    it("prices a proxied line like any other, in the List value and by tag", () => {
         const withProxy = [
             ...CARDS,
             slot(
@@ -225,10 +225,11 @@ describe("deckStats and proxies", () => {
         const stats = deckStats(withProxy, ["U", "G"], [RAMP, WINCON]);
 
         expect(stats.totalCards).toBe(without.totalCards + 1);
-        expect(stats.marketValue).toBeCloseTo(without.marketValue);
-        expect(stats.pricedCards).toBe(without.pricedCards);
+        expect(stats.marketValue).toBeCloseTo(without.marketValue + 1);
+        expect(stats.pricedCards).toBe(without.pricedCards + 1);
+        expect(stats.topCards.map((card) => card.uuid)).toContain("proxy-ring");
         expect(stats.tagStats.find((tag) => tag.key === RAMP.uuid)?.value).toBeCloseTo(
-            without.tagStats.find((tag) => tag.key === RAMP.uuid)?.value ?? 0,
+            (without.tagStats.find((tag) => tag.key === RAMP.uuid)?.value ?? 0) + 1,
         );
     });
 });

@@ -255,8 +255,10 @@ pub struct DeckCommander {
 pub struct DeckSummary {
     /// How many cards sit in the deck proper
     pub cards: i64,
-    /// What those cards are worth in euro cents
+    /// What those cards are worth in euro cents, Proxies or not
     pub price_eur: i64,
+    /// How many Proxies lie in the deck's Physical deck
+    pub proxies: i64,
     /// The commanders, in the order they were put in
     pub commanders: Vec<DeckCommander>,
 }
@@ -264,9 +266,10 @@ pub struct DeckSummary {
 impl DeckSummary {
     /// Read the summary of every deck of an account, keyed by the deck
     ///
-    /// Two statements for the whole list rather than two per deck: the numbers
-    /// are one grouped read, and the commanders are a second one because a deck
-    /// can have two of them.
+    /// Three statements for the whole list rather than three per deck: the
+    /// numbers are one grouped read, the commanders a second one because a
+    /// deck can have two of them, and the Proxies a third because they lie in
+    /// the Physical deck rather than on the list.
     #[instrument(name = "DeckSummary::read_for_account", skip(tx))]
     pub async fn read_for_account(
         tx: &mut Transaction,
@@ -277,8 +280,8 @@ impl DeckSummary {
 
     /// Read the summary of every deck other Accounts named `account` on, keyed by the deck
     ///
-    /// The price counts proxies like real cards, so it tells a Collaborator no
-    /// more about the owner's shelf than the redacted proxy flag does.
+    /// It counts the Proxies of every deck; hiding them from a Viewer is the
+    /// caller's job, which knows the Collaborator's level.
     #[instrument(name = "DeckSummary::read_shared_with", skip(tx))]
     pub async fn read_shared_with(
         tx: &mut Transaction,
@@ -305,16 +308,6 @@ impl SummaryScope {
             Self::SharedWith => "JOIN deck_collaborator k ON k.deck = d.uuid WHERE k.account = $1",
         }
     }
-
-    /// What one slot adds to the deck's price
-    fn price(self) -> &'static str {
-        match self {
-            Self::Owned => {
-                "CASE WHEN c.proxy THEN 0 ELSE c.quantity * COALESCE(p.price_eur, 0) END"
-            }
-            Self::SharedWith => "c.quantity * COALESCE(p.price_eur, 0)",
-        }
-    }
 }
 
 /// Read the summaries of the decks `scope` selects for `account`
@@ -326,13 +319,12 @@ async fn read_summaries(
     let counts = format!(
         "SELECT c.deck AS deck, \
                 COALESCE(SUM(c.quantity), 0)::bigint AS cards, \
-                COALESCE(SUM({price}), 0)::bigint AS price \
+                COALESCE(SUM(c.quantity * COALESCE(p.price_eur, 0)), 0)::bigint AS price \
          FROM deckcard c \
          JOIN deck d ON d.uuid = c.deck \
          LEFT JOIN printing p ON p.id = c.printing \
          {decks} AND c.zone IN ('Main', 'Commander') \
          GROUP BY c.deck",
-        price = scope.price(),
         decks = scope.decks(),
     );
 
@@ -349,9 +341,30 @@ async fn read_summaries(
             DeckSummary {
                 cards: row.get("cards").map_err(decode)?,
                 price_eur: row.get("price").map_err(decode)?,
+                proxies: 0,
                 commanders: Vec::new(),
             },
         );
+    }
+
+    let proxies = format!(
+        "SELECT o.deck AS deck, COALESCE(SUM(e.quantity), 0)::bigint AS proxies \
+         FROM collection_entry e \
+         JOIN collection o ON o.uuid = e.collection \
+         JOIN deck d ON d.uuid = o.deck \
+         {decks} AND e.proxy \
+         GROUP BY o.deck",
+        decks = scope.decks(),
+    );
+
+    let rows = (&mut *tx)
+        .execute::<All>(proxies, vec![Value::Uuid(account.into_inner())])
+        .await?;
+
+    for row in rows {
+        let decode = |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
+        let deck = DeckUuid::from_uuid(row.get("deck").map_err(decode)?);
+        summaries.entry(deck).or_default().proxies = row.get("proxies").map_err(decode)?;
     }
 
     let commanders = format!(

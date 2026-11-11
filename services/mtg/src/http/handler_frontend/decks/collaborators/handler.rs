@@ -75,9 +75,12 @@ pub async fn get_decks_shared_with_me(
             .map(|shared| {
                 let summary = summaries.remove(&shared.deck.uuid);
                 let overview = DeckOverviewResponse::new(shared.deck, summary);
+                let role = shared.level.role();
+                let sees_physical_deck = role.permits(DeckOperation::ReadPhysicalValue.class());
                 SharedWithMeDeckResponse {
                     overview: DeckOverviewResponse {
-                        deck: overview.deck.seen_as(Some(shared.level.role())),
+                        deck: overview.deck.seen_as(Some(role)),
+                        proxies: overview.proxies.filter(|_| sees_physical_deck),
                         ..overview
                     },
                     owner_username: shared.owner_username.as_str().to_string(),

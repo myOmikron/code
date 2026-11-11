@@ -73,6 +73,7 @@ import type {
     DeckSourcingResponse,
     DeckTagResponse,
     DeckUndoResponse,
+    DeckValuesResponse,
     DeleteAccountRequest,
     EndTournamentRound200Response,
     EntrySort,
@@ -970,6 +971,13 @@ export interface GetDeckPointRequest {
 }
 
 export interface GetDeckSourcingRequest {
+    /**
+     * 
+     */
+    deck: string;
+}
+
+export interface GetDeckValuesRequest {
     /**
      * 
      */
@@ -6527,6 +6535,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getDeckSourcing(requestParameters: GetDeckSourcingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckSourcingResponse> {
         const response = await this.getDeckSourcingRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getDeckValues without sending the request
+     */
+    async getDeckValuesRequestOpts(requestParameters: GetDeckValuesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling getDeckValues().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/values`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * What the deck\'s list costs, what its Physical deck is worth and what replacing its Proxies would cost  An Editor reads it too, as it reads the Deviation; a Viewer sees nothing of the Physical deck.
+     * What the deck\'s list costs, what its Physical deck is worth and what
+     */
+    async getDeckValuesRaw(requestParameters: GetDeckValuesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckValuesResponse>> {
+        const requestOptions = await this.getDeckValuesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * What the deck\'s list costs, what its Physical deck is worth and what replacing its Proxies would cost  An Editor reads it too, as it reads the Deviation; a Viewer sees nothing of the Physical deck.
+     * What the deck\'s list costs, what its Physical deck is worth and what
+     */
+    async getDeckValues(requestParameters: GetDeckValuesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckValuesResponse> {
+        const response = await this.getDeckValuesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

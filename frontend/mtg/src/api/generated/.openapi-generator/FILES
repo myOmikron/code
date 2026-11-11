@@ -121,6 +121,7 @@ docs/DeckSourcingResponse.md
 docs/DeckTagResponse.md
 docs/DeckTargets.md
 docs/DeckUndoResponse.md
+docs/DeckValuesResponse.md
 docs/DeckZone.md
 docs/DefaultApi.md
 docs/DeleteAccountErrors.md
@@ -267,6 +268,7 @@ docs/PairedRoundResponse.md
 docs/ParticipantDeckResponse.md
 docs/ParticipantResponse.md
 docs/PendingOidcLogin.md
+docs/PhysicalDeckValueResponse.md
 docs/PriceDayResponse.md
 docs/PriceHistoryResponse.md
 docs/PricePointResponse.md

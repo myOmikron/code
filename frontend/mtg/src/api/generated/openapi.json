@@ -5056,6 +5056,68 @@
                 }
             }
         },
+        "/api/frontend/v1/decks/{deck}/values": {
+            "get": {
+                "summary": "What the deck's list costs, what its Physical deck is worth and what",
+                "description": "What the deck's list costs, what its Physical deck is worth and what\nreplacing its Proxies would cost\n\nAn Editor reads it too, as it reads the Deviation; a Viewer sees nothing of\nthe Physical deck.",
+                "operationId": "get_deck_values",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckValuesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/decks/{deck}/sourcing/take": {
             "post": {
                 "summary": "Move copies out of a collection and into the Physical deck",
@@ -18754,7 +18816,13 @@
                         ]
                     },
                     "price_eur_cents": {
-                        "description": "What those cards are worth in euro cents",
+                        "description": "What those cards are worth in euro cents, Proxies or not",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "proxies": {
+                        "nullable": true,
+                        "description": "How many Proxies lie in the deck's Physical deck, `null` for a Viewer",
                         "type": "integer",
                         "format": "int64"
                     }
@@ -19283,6 +19351,29 @@
                 "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
                 "type": "string",
                 "format": "uuid"
+            },
+            "DeckValuesResponse": {
+                "description": "What a deck is worth, in euro cents",
+                "type": "object",
+                "properties": {
+                    "list_value_cents": {
+                        "description": "The List value: every copy the main deck, command zone, companion and sideboard ask for at its printing's price, Proxies or not",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "physical": {
+                        "nullable": true,
+                        "description": "What the Physical deck holds, `null` for a deck without one",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/PhysicalDeckValueResponse"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "list_value_cents"
+                ]
             },
             "DeckZone": {
                 "description": "The zone a [`DeckCard`] sits in",
@@ -23230,6 +23321,32 @@
                 "required": [
                     "email",
                     "provider"
+                ]
+            },
+            "PhysicalDeckValueResponse": {
+                "description": "What the Physical deck of a deck holds",
+                "type": "object",
+                "properties": {
+                    "physical_value_cents": {
+                        "description": "The Physical value: the real cards at their own printing's price, in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "proxies": {
+                        "description": "How many Proxies lie in it",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "proxy_replacement_cents": {
+                        "description": "What buying the printings the Proxies stand for would cost, in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "physical_value_cents",
+                    "proxies",
+                    "proxy_replacement_cents"
                 ]
             },
             "PriceDayResponse": {

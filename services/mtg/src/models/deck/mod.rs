@@ -60,6 +60,7 @@ pub mod listing;
 pub mod proxies;
 pub mod sourcing;
 pub mod tag;
+pub mod value;
 
 /// How many card slots go into one `INSERT`
 ///
