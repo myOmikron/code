@@ -1,7 +1,7 @@
 [Migration]
 Hash = "4763407539168757753"
 Initial = false
-Dependency = 72
+Dependency = 74
 Replaces = []
 
 [[Migration.Operations]]

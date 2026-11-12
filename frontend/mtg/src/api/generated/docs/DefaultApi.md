@@ -28,6 +28,7 @@ All URIs are relative to *http://localhost*
 | [**adminReopenBugReport**](DefaultApi.md#adminreopenbugreport) | **POST** /api/frontend/v1/admin/bug-reports/{number}/reopen | Open a done Bug report again |
 | [**adminSetBugReportNote**](DefaultApi.md#adminsetbugreportnoteoperation) | **PUT** /api/frontend/v1/admin/bug-reports/{number}/note | Set the Admins\&#39; internal note on a Bug report, an empty note removes it |
 | [**adminSetRole**](DefaultApi.md#adminsetroleoperation) | **PUT** /api/frontend/v1/admin/accounts/{uuid}/role | Change an Account\&#39;s Role |
+| [**adminStartImpersonation**](DefaultApi.md#adminstartimpersonationoperation) | **POST** /api/frontend/v1/admin/accounts/{uuid}/impersonation | Start an Impersonation of a Member Account |
 | [**adminUnlockAccount**](DefaultApi.md#adminunlockaccountoperation) | **POST** /api/frontend/v1/admin/accounts/{uuid}/unlock | Lift an Account\&#39;s Lock |
 | [**arrangeTournamentRound**](DefaultApi.md#arrangetournamentround) | **PUT** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/layout | Lay out a previewed Round by hand, as an Organizer |
 | [**assignCollectionEntryTag**](DefaultApi.md#assigncollectionentrytag) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Put a card-wide tag on a stack |
@@ -66,6 +67,7 @@ All URIs are relative to *http://localhost*
 | [**disputeTournamentMatchResult**](DefaultApi.md#disputetournamentmatchresult) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/dispute | Dispute the Result another Participant reported for one\&#39;s own Match |
 | [**dropOutOfTournament**](DefaultApi.md#dropoutoftournament) | **POST** /api/frontend/v1/tournaments/{tournament}/drop | Drop the logged-in Account out of a Tournament it plays in |
 | [**dropTournamentParticipant**](DefaultApi.md#droptournamentparticipant) | **POST** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/drop | Drop a Participant, as an Organizer |
+| [**endImpersonation**](DefaultApi.md#endimpersonation) | **DELETE** /api/frontend/v1/accounts/me/impersonation | End the session\&#39;s Impersonation, returning it to the impersonating Admin |
 | [**endTournamentRound**](DefaultApi.md#endtournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/end | End a running Round once every Match has its Result, as an Organizer |
 | [**fileScannerSession**](DefaultApi.md#filescannersessionoperation) | **POST** /api/frontend/v1/scanner-sessions/{session}/file | Atomically file every staged stack and empty the session |
 | [**fillDeckCollection**](DefaultApi.md#filldeckcollectionoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/fill | Declare that the deck holds what its list asks for |
@@ -97,6 +99,7 @@ All URIs are relative to *http://localhost*
 | [**getMatchLifeConflict**](DefaultApi.md#getmatchlifeconflict) | **GET** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/conflicts/{conflict} | Reads one recovered branch without applying it to the Match. |
 | [**getMatchLifeHistory**](DefaultApi.md#getmatchlifehistory) | **GET** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history | Observe uploaded history without claiming the recording device. |
 | [**getMpcfillCardbacks**](DefaultApi.md#getmpcfillcardbacks) | **GET** /api/frontend/v1/mpcfill/cardbacks | The card backs MPCFill offers |
+| [**getMpcfillFavorites**](DefaultApi.md#getmpcfillfavorites) | **GET** /api/frontend/v1/mpcfill/favorites | Everything the account starred |
 | [**getMyTournamentDeck**](DefaultApi.md#getmytournamentdeck) | **GET** /api/frontend/v1/tournaments/{tournament}/deck | The logged-in Account\&#39;s own Registered deck in a Tournament it plays in |
 | [**getMyTournamentMatch**](DefaultApi.md#getmytournamentmatch) | **GET** /api/frontend/v1/tournaments/{tournament}/my-match | The reader\&#39;s Match in the running Round of a Tournament, with the round timer |
 | [**getMyTournaments**](DefaultApi.md#getmytournaments) | **GET** /api/frontend/v1/tournaments/mine | The Tournaments the logged-in Account organizes and the ones it plays in |
@@ -148,7 +151,7 @@ All URIs are relative to *http://localhost*
 | [**listWatchListCopies**](DefaultApi.md#listwatchlistcopies) | **GET** /api/frontend/v1/watch-lists/{list}/entries/{entry}/copies | Where the copies of one watched card are |
 | [**listWatchListEntries**](DefaultApi.md#listwatchlistentries) | **GET** /api/frontend/v1/watch-lists/{list}/entries | Everything one watch list page is drawn from |
 | [**logout**](DefaultApi.md#logout) | **GET** /api/frontend/v1/auth/logout | Log out, dropping the session |
-| [**me**](DefaultApi.md#me) | **GET** /api/frontend/v1/accounts/me | The account the current session belongs to |
+| [**me**](DefaultApi.md#me) | **GET** /api/frontend/v1/accounts/me | The account the current session acts as |
 | [**mergeCollectionEntries**](DefaultApi.md#mergecollectionentriesoperation) | **POST** /api/frontend/v1/collections/{collection}/entries/merge | Combine stacks of the same cards into one |
 | [**offerTournamentHandover**](DefaultApi.md#offertournamenthandover) | **PUT** /api/frontend/v1/tournaments/{tournament}/handover | Offer a Tournament to an Account by its username, as its Owner |
 | [**pairTournamentRound**](DefaultApi.md#pairtournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds | Pair the next Round as a preview, as an Organizer |
@@ -169,6 +172,7 @@ All URIs are relative to *http://localhost*
 | [**renameAccount**](DefaultApi.md#renameaccountoperation) | **PUT** /api/frontend/v1/accounts/me/username | Rename the logged-in account |
 | [**renamePasskey**](DefaultApi.md#renamepasskeyoperation) | **PUT** /api/frontend/v1/accounts/passkeys/{uuid} | Rename one of the logged-in account\&#39;s passkeys |
 | [**replaceDeckProxy**](DefaultApi.md#replacedeckproxyoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/replace-proxy | Replace Proxies with real copies out of a collection |
+| [**replaceMpcfillFavorite**](DefaultApi.md#replacempcfillfavorite) | **PUT** /api/frontend/v1/mpcfill/favorites/images/{favorite}/replacement | Move a star to the file that replaced its image |
 | [**reportTournamentMatchResult**](DefaultApi.md#reporttournamentmatchresult) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/report | Report the Result of one\&#39;s own Match, as its Participant |
 | [**resetDeck**](DefaultApi.md#resetdeck) | **POST** /api/frontend/v1/decks/{deck}/history/{change}/reset | Bring the deck back to how it was right after one of its Deck changes |
 | [**resolvePrintings**](DefaultApi.md#resolveprintingsoperation) | **POST** /api/frontend/v1/printings/resolve | Place cards in the catalog |
@@ -186,6 +190,7 @@ All URIs are relative to *http://localhost*
 | [**setDeckColors**](DefaultApi.md#setdeckcolorsoperation) | **PUT** /api/frontend/v1/decks/{deck}/colors | Overrule which colours the deck may play |
 | [**setDeckFolder**](DefaultApi.md#setdeckfolderoperation) | **POST** /api/frontend/v1/decks/{deck}/folder | File a deck into one of the account\&#39;s folders |
 | [**setDeckRuleZero**](DefaultApi.md#setdeckrulezerooperation) | **PUT** /api/frontend/v1/decks/{deck}/rule-zero | Record the house rules the deck is played under, colours included |
+| [**setMpcfillFavoriteDrives**](DefaultApi.md#setmpcfillfavoritedrives) | **PUT** /api/frontend/v1/mpcfill/favorites/drives | Set the starred drives, first one first |
 | [**setMyTournamentListSharing**](DefaultApi.md#setmytournamentlistsharing) | **PUT** /api/frontend/v1/tournaments/{tournament}/deck/sharing | Choose whether others may see the logged-in Account\&#39;s list once the |
 | [**setPushSettings**](DefaultApi.md#setpushsettingsoperation) | **PUT** /api/frontend/v1/accounts/me/push | Turn tournament pushes on or off for every device of the logged-in account |
 | [**setTournamentMatchResult**](DefaultApi.md#settournamentmatchresult) | **PUT** /api/frontend/v1/tournaments/{tournament}/matches/{match}/result | Set or correct the Result of a Match, as an Organizer |
@@ -199,6 +204,7 @@ All URIs are relative to *http://localhost*
 | [**signUpForTournament**](DefaultApi.md#signupfortournament) | **POST** /api/frontend/v1/tournaments/{tournament}/sign-up | Sign the logged-in Account up for a Tournament it sees by its id |
 | [**signup**](DefaultApi.md#signupoperation) | **POST** /api/frontend/v1/auth/signup | Sign up for a new account |
 | [**splitCollectionEntry**](DefaultApi.md#splitcollectionentryoperation) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/split | Move copies out of a stack into a new one |
+| [**starMpcfillImage**](DefaultApi.md#starmpcfillimage) | **PUT** /api/frontend/v1/mpcfill/favorites/images | Star an image for a face, or star it again as the newest |
 | [**startAddPasskey**](DefaultApi.md#startaddpasskey) | **POST** /api/frontend/v1/accounts/passkeys/start | Start registering another passkey for the logged-in account |
 | [**startLogin**](DefaultApi.md#startloginoperation) | **POST** /api/frontend/v1/auth/login/start | Start a passkey login for a given username |
 | [**startOidcLogin**](DefaultApi.md#startoidcloginoperation) | **POST** /api/frontend/v1/auth/oidc/start | Start an OIDC login, for signing up and logging in alike |
@@ -213,6 +219,7 @@ All URIs are relative to *http://localhost*
 | [**unassignCollectionEntryTag**](DefaultApi.md#unassigncollectionentrytag) | **DELETE** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Take a card-wide tag off a stack, see [&#x60;assign_collection_entry_tag&#x60;] |
 | [**unassignDeckCardTag**](DefaultApi.md#unassigndeckcardtag) | **DELETE** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Take a tag off a card |
 | [**undoDeckChange**](DefaultApi.md#undodeckchange) | **POST** /api/frontend/v1/decks/{deck}/history/undo | Take back the latest Deck change that is not undone yet |
+| [**unstarMpcfillImage**](DefaultApi.md#unstarmpcfillimage) | **DELETE** /api/frontend/v1/mpcfill/favorites/images/{favorite} | Take the star off an image |
 | [**unsubscribePushDevice**](DefaultApi.md#unsubscribepushdevice) | **POST** /api/frontend/v1/accounts/me/push/devices/unsubscribe | Unsubscribe one of the logged-in account\&#39;s devices; a device that is none of its is left alone |
 | [**updateCollection**](DefaultApi.md#updatecollectionoperation) | **PUT** /api/frontend/v1/collections/{collection} |  |
 | [**updateCollectionEntry**](DefaultApi.md#updatecollectionentryoperation) | **PATCH** /api/frontend/v1/collections/{collection}/entries/{entry} | Change a stack: its count, condition, finish, signature, price, date or printing |
@@ -1939,6 +1946,79 @@ example().catch(console.error);
 ### Return type
 
 [**FormErrorResponseForAdminSetRoleErrors**](FormErrorResponseForAdminSetRoleErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## adminStartImpersonation
+
+> FormErrorResponseForAdminStartImpersonationErrors adminStartImpersonation(uuid, AdminStartImpersonationRequest)
+
+Start an Impersonation of a Member Account
+
+Start an Impersonation of a Member Account  From the session\&#39;s next request on, it acts as the Account until the Admin ends the Impersonation, logs out, or it expires. Refused for the Admin\&#39;s own Account and for another Admin; a locked Account can be impersonated.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AdminStartImpersonationOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    uuid: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // AdminStartImpersonationRequest (optional)
+    AdminStartImpersonationRequest: ...,
+  } satisfies AdminStartImpersonationOperationRequest;
+
+  try {
+    const data = await api.adminStartImpersonation(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uuid** | `string` |  | [Defaults to `undefined`] |
+| **AdminStartImpersonationRequest** | [AdminStartImpersonationRequest](AdminStartImpersonationRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForAdminStartImpersonationErrors**](FormErrorResponseForAdminStartImpersonationErrors.md)
 
 ### Authorization
 
@@ -4680,6 +4760,68 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## endImpersonation
+
+> FormErrorResponseForEndImpersonationErrors endImpersonation()
+
+End the session\&#39;s Impersonation, returning it to the impersonating Admin
+
+End the session\&#39;s Impersonation, returning it to the impersonating Admin  Writes the end entry of the Admin log.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { EndImpersonationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.endImpersonation();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**FormErrorResponseForEndImpersonationErrors**](FormErrorResponseForEndImpersonationErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## endTournamentRound
 
 > EndTournamentRound200Response endTournamentRound(tournament, number)
@@ -6779,6 +6921,68 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**MpcFillCardbacksResponse**](MpcFillCardbacksResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getMpcfillFavorites
+
+> MpcFillFavoritesResponse getMpcfillFavorites()
+
+Everything the account starred
+
+Everything the account starred
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetMpcfillFavoritesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getMpcfillFavorites();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**MpcFillFavoritesResponse**](MpcFillFavoritesResponse.md)
 
 ### Authorization
 
@@ -10359,7 +10563,7 @@ No authorization required
 
 Log out, dropping the session
 
-Log out, dropping the session
+Log out, dropping the session  During an Impersonation the end entry of the Admin log is written first.
 
 ### Example
 
@@ -10419,9 +10623,9 @@ No authorization required
 
 > Me200Response me()
 
-The account the current session belongs to
+The account the current session acts as
 
-The account the current session belongs to  The one route a locked Account\&#39;s session still reaches: it answers with the &#x60;locked&#x60; flag, never the Lock reason, and logs the session out.
+The account the current session acts as  During an Impersonation that is the impersonated Account, with the Impersonation reported alongside. The one route a locked Account\&#39;s session still reaches: it answers with the &#x60;locked&#x60; flag, never the Lock reason, and logs the session out.
 
 ### Example
 
@@ -11925,6 +12129,79 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## replaceMpcfillFavorite
+
+> any replaceMpcfillFavorite(favorite, ReplaceMpcFillFavoriteRequest)
+
+Move a star to the file that replaced its image
+
+Move a star to the file that replaced its image
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ReplaceMpcfillFavoriteRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    favorite: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // ReplaceMpcFillFavoriteRequest (optional)
+    ReplaceMpcFillFavoriteRequest: ...,
+  } satisfies ReplaceMpcfillFavoriteRequest;
+
+  try {
+    const data = await api.replaceMpcfillFavorite(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **favorite** | `string` |  | [Defaults to `undefined`] |
+| **ReplaceMpcFillFavoriteRequest** | [ReplaceMpcFillFavoriteRequest](ReplaceMpcFillFavoriteRequest.md) |  | [Optional] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## reportTournamentMatchResult
 
 > FormErrorResponseForReportResultErrors reportTournamentMatchResult(tournament, match, ReportResultRequest)
@@ -13181,6 +13458,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## setMpcfillFavoriteDrives
+
+> any setMpcfillFavoriteDrives(SetMpcFillFavoriteDrivesRequest)
+
+Set the starred drives, first one first
+
+Set the starred drives, first one first
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SetMpcfillFavoriteDrivesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // SetMpcFillFavoriteDrivesRequest (optional)
+    SetMpcFillFavoriteDrivesRequest: ...,
+  } satisfies SetMpcfillFavoriteDrivesRequest;
+
+  try {
+    const data = await api.setMpcfillFavoriteDrives(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **SetMpcFillFavoriteDrivesRequest** | [SetMpcFillFavoriteDrivesRequest](SetMpcFillFavoriteDrivesRequest.md) |  | [Optional] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## setMyTournamentListSharing
 
 > FormErrorResponseForSetListSharingErrors setMyTournamentListSharing(tournament, SetListSharingRequest)
@@ -14111,6 +14458,76 @@ example().catch(console.error);
 ### Return type
 
 [**SplitCollectionEntryResponse**](SplitCollectionEntryResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## starMpcfillImage
+
+> MpcFillFavoriteResponse starMpcfillImage(StarMpcFillImageRequest)
+
+Star an image for a face, or star it again as the newest
+
+Star an image for a face, or star it again as the newest
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { StarMpcfillImageRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // StarMpcFillImageRequest (optional)
+    StarMpcFillImageRequest: ...,
+  } satisfies StarMpcfillImageRequest;
+
+  try {
+    const data = await api.starMpcfillImage(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **StarMpcFillImageRequest** | [StarMpcFillImageRequest](StarMpcFillImageRequest.md) |  | [Optional] |
+
+### Return type
+
+[**MpcFillFavoriteResponse**](MpcFillFavoriteResponse.md)
 
 ### Authorization
 
@@ -15119,6 +15536,76 @@ example().catch(console.error);
 ### Return type
 
 [**DeckUndoResponse**](DeckUndoResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## unstarMpcfillImage
+
+> any unstarMpcfillImage(favorite)
+
+Take the star off an image
+
+Take the star off an image
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UnstarMpcfillImageRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    favorite: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies UnstarMpcfillImageRequest;
+
+  try {
+    const data = await api.unstarMpcfillImage(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **favorite** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+**any**
 
 ### Authorization
 

@@ -560,7 +560,7 @@ export interface AdminLockAccountRequest {
  * What an Admin did to an Account, with what the action needs to be read
  * @export
  */
-export type AdminLogAction = AdminLogActionOneOf | AdminLogActionOneOf1 | AdminLogActionOneOf2 | AdminLogActionOneOf3 | AdminLogActionOneOf4;
+export type AdminLogAction = AdminLogActionOneOf | AdminLogActionOneOf1 | AdminLogActionOneOf2 | AdminLogActionOneOf3 | AdminLogActionOneOf4 | AdminLogActionOneOf5 | AdminLogActionOneOf6;
 /**
  * Locked the Account
  * @export
@@ -689,6 +689,56 @@ export const AdminLogActionOneOf4KindEnum = {
     Rename: 'Rename',
 } as const;
 export type AdminLogActionOneOf4KindEnum = typeof AdminLogActionOneOf4KindEnum[keyof typeof AdminLogActionOneOf4KindEnum];
+
+/**
+ * Started an Impersonation of the Account
+ * @export
+ * @interface AdminLogActionOneOf5
+ */
+export interface AdminLogActionOneOf5 {
+    /**
+     * When the Impersonation ends at the latest
+     */
+    expires_at: string;
+    /**
+     * 
+     */
+    kind: AdminLogActionOneOf5KindEnum;
+    /**
+     * Why the Admin impersonates the Account
+     */
+    reason: string;
+}
+
+
+/**
+ * @export
+ */
+export const AdminLogActionOneOf5KindEnum = {
+    ImpersonationStart: 'ImpersonationStart',
+} as const;
+export type AdminLogActionOneOf5KindEnum = typeof AdminLogActionOneOf5KindEnum[keyof typeof AdminLogActionOneOf5KindEnum];
+
+/**
+ * Ended an Impersonation of the Account, explicitly or by logging out
+ * @export
+ * @interface AdminLogActionOneOf6
+ */
+export interface AdminLogActionOneOf6 {
+    /**
+     * 
+     */
+    kind: AdminLogActionOneOf6KindEnum;
+}
+
+
+/**
+ * @export
+ */
+export const AdminLogActionOneOf6KindEnum = {
+    ImpersonationEnd: 'ImpersonationEnd',
+} as const;
+export type AdminLogActionOneOf6KindEnum = typeof AdminLogActionOneOf6KindEnum[keyof typeof AdminLogActionOneOf6KindEnum];
 
 /**
  * One entry of the Admin log
@@ -847,6 +897,36 @@ export interface AdminSetRoleRequest {
 }
 
 
+/**
+ * Why an Impersonation could not be started
+ * @export
+ * @interface AdminStartImpersonationErrors
+ */
+export interface AdminStartImpersonationErrors {
+    /**
+     * The Account is an Admin, which nobody impersonates
+     */
+    admin_account: boolean;
+    /**
+     * The Account is the Admin's own
+     */
+    own_account: boolean;
+    /**
+     * No reason was given
+     */
+    reason_missing: boolean;
+}
+/**
+ * Request to start an Impersonation of an Account
+ * @export
+ * @interface AdminStartImpersonationRequest
+ */
+export interface AdminStartImpersonationRequest {
+    /**
+     * The Impersonation reason, shown to Admins only
+     */
+    reason: string;
+}
 /**
  * The newest Statistics snapshot and the ones of the last 30 days
  * @export
@@ -3082,6 +3162,17 @@ export interface DropErrors {
     tournament_over: boolean;
 }
 /**
+ * Why an Impersonation could not be ended
+ * @export
+ * @interface EndImpersonationErrors
+ */
+export interface EndImpersonationErrors {
+    /**
+     * The session is in no Impersonation
+     */
+    not_impersonating: boolean;
+}
+/**
  * @type EndTournamentRound200Response
  * 
  * @export
@@ -3716,6 +3807,23 @@ export interface FormErrorResponseForAdminSetRoleErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForAdminStartImpersonationErrors
+ */
+export interface FormErrorResponseForAdminStartImpersonationErrors {
+    /**
+     * The actual error struct
+     */
+    error: AdminStartImpersonationErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForAdminUnlockAccountErrors
  */
 export interface FormErrorResponseForAdminUnlockAccountErrors {
@@ -3842,6 +3950,23 @@ export interface FormErrorResponseForDropErrors {
      * The actual error struct
      */
     error: DropErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForEndImpersonationErrors
+ */
+export interface FormErrorResponseForEndImpersonationErrors {
+    /**
+     * The actual error struct
+     */
+    error: EndImpersonationErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      */
@@ -5259,6 +5384,25 @@ export interface MeErrors {
     locked: boolean;
 }
 /**
+ * An Admin's Impersonation of the Account `accounts/me` answers with
+ * @export
+ * @interface MeImpersonation
+ */
+export interface MeImpersonation {
+    /**
+     * The impersonating Admin's username
+     */
+    admin_username: string;
+    /**
+     * When the Impersonation ends at the latest
+     */
+    expires_at: string;
+    /**
+     * The impersonated Account's username
+     */
+    username: string;
+}
+/**
  * The account the current session belongs to
  * @export
  * @interface MeResponse
@@ -5267,9 +5411,13 @@ export interface MeResponse {
     /**
      * Whether the account logs in through an OpenID provider (an External Account)
      * 
-     * An External Account has no Passkeys and cannot add one.
+     * An External Account has no Passkeys and cannot add one. During an Impersonation it describes the impersonating Admin's login.
      */
     external: boolean;
+    /**
+     * The Impersonation the session is in, absent outside of one
+     */
+    impersonation?: MeImpersonation | null;
     /**
      * What the account may do, decides whether the admin dashboard is offered
      */
@@ -5321,6 +5469,63 @@ export interface MpcFillCardbacksResponse {
      * The backs, in the order MPCFill ranks them
      */
     cardbacks: Array<MpcFillImageResponse>;
+}
+/**
+ * An MPCFill image as it was found when it was starred
+ * @export
+ * @interface MpcFillFavoriteImage
+ */
+export interface MpcFillFavoriteImage {
+    /**
+     * The Google Drive file id
+     */
+    drive_id: string;
+    /**
+     * The file's name in its drive
+     */
+    file_name: string;
+    /**
+     * The drive it lies in
+     */
+    source: string;
+}
+/**
+ * An image the account starred
+ * @export
+ * @interface MpcFillFavoriteResponse
+ */
+export interface MpcFillFavoriteResponse {
+    /**
+     * The card face it was starred for, `None` for a cardback
+     */
+    face?: string | null;
+    /**
+     * The image
+     */
+    image: MpcFillFavoriteImage;
+    /**
+     * When it was starred
+     */
+    starred_at: string;
+    /**
+     * Primary key
+     */
+    uuid: string;
+}
+/**
+ * Everything the account starred
+ * @export
+ * @interface MpcFillFavoritesResponse
+ */
+export interface MpcFillFavoritesResponse {
+    /**
+     * The starred drives, first one first
+     */
+    drives: Array<string>;
+    /**
+     * The starred images, newest first
+     */
+    images: Array<MpcFillFavoriteResponse>;
 }
 /**
  * One image of one card
@@ -6658,6 +6863,17 @@ export interface ReplaceDeckProxyRequest {
     quantity: number;
 }
 /**
+ * Request to move a star to the file that replaced its image
+ * @export
+ * @interface ReplaceMpcFillFavoriteRequest
+ */
+export interface ReplaceMpcFillFavoriteRequest {
+    /**
+     * The file that replaced it
+     */
+    image: MpcFillFavoriteImage;
+}
+/**
  * Why a Participant's report was refused
  * @export
  * @interface ReportResultErrors
@@ -7597,6 +7813,17 @@ export interface SetListSharingRequest {
     shared: boolean;
 }
 /**
+ * Request to set the starred drives
+ * @export
+ * @interface SetMpcFillFavoriteDrivesRequest
+ */
+export interface SetMpcFillFavoriteDrivesRequest {
+    /**
+     * The drives' names, first one first
+     */
+    sources: Array<string>;
+}
+/**
  * Why a Participant could not be marked paid or unpaid
  * @export
  * @interface SetPaidErrors
@@ -8295,6 +8522,21 @@ export interface StandingsResponse {
      * The Ruleset's Tiebreakers after Match points, the most significant first
      */
     tiebreakers: Array<Tiebreaker>;
+}
+/**
+ * Request to star an image
+ * @export
+ * @interface StarMpcFillImageRequest
+ */
+export interface StarMpcFillImageRequest {
+    /**
+     * The card face it is starred for, `None` for a cardback
+     */
+    face?: string | null;
+    /**
+     * The image
+     */
+    image: MpcFillFavoriteImage;
 }
 /**
  * Response to a started add-passkey ceremony
