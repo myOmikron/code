@@ -246,7 +246,7 @@ services:
       - vol-neo4j-logs:/logs
 
   nats:
-    image: nats:2.15.1
+    image: nats:2.15.3
     restart: unless-stopped
     # JetStream state on disk: the MAIL stream is a durable work queue,
     # queued mails must survive a restart.
