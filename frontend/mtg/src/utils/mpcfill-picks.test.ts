@@ -13,7 +13,7 @@ import type { ProxyCard } from "src/utils/proxy-print";
  * @returns the card
  */
 function card(name: string, back: string | null = null): ProxyCard {
-    return { key: name, name, set: "LEB", number: "1", front: null, back, copies: 1, basic: false, proxy: false };
+    return { key: name, name, set: "LEB", number: "1", front: null, back, copies: 1, basic: false };
 }
 
 /**
