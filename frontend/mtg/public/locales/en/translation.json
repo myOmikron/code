@@ -136,6 +136,8 @@
         "condition-near-mint": "Near Mint",
         "condition-played": "Played",
         "condition-poor": "Poor",
+        "contains-proxies_one": "Contains 1 Proxy",
+        "contains-proxies_other": "Contains {{count}} Proxies",
         "deleted-account": "Deleted account",
         "english": "English",
         "finish-etched": "Etched",

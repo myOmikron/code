@@ -101,20 +101,25 @@ pub enum DeckOperation {
     RotateShareToken,
     /// File the deck into a folder
     SetFolder,
-    /// Start keeping the deck's own collection
-    AttachCollection,
-    /// Stop keeping the deck's own collection
-    DetachCollection,
     /// Read where the deck's cards could come from
     ReadSourcing,
-    /// Read where the list and the deck's own collection disagree
-    ReadDrift,
-    /// Move copies out of a collection and into the deck
+    /// Read the Deviation between the list and the Physical deck
+    ReadDeviation,
+    /// Read what the Physical deck is worth and how many Proxies it holds
+    ReadPhysicalValue,
+    /// Read what lies in the Physical deck, real cards and Proxies
+    ReadPhysicalDeck,
+    /// Move copies out of a collection and into the Physical deck
     TakeCards,
-    /// Declare that the deck holds what its list asks for
+    /// Record copies bought straight into the Physical deck
     FillCollection,
-    /// Sort copies out of the deck back into a collection
+    /// Put Proxies into the Physical deck, or replace them with real cards
+    ChangeProxies,
+    /// Sort copies out of the Physical deck back into a collection, or take
+    /// it apart
     ReturnCards,
+    /// Throw a stack out of the Physical deck and out of the account
+    DiscardCards,
     /// Delete the deck
     DeleteDeck,
     /// Read the Deck history
@@ -147,16 +152,19 @@ impl DeckOperation {
             | Self::AssignTag
             | Self::UnassignTag => DeckClass::Edit,
 
+            Self::ReadDeviation | Self::ReadPhysicalValue | Self::ReadPhysicalDeck => {
+                DeckClass::Edit
+            }
+
             Self::SetVisibility
             | Self::RotateShareToken
             | Self::SetFolder
-            | Self::AttachCollection
-            | Self::DetachCollection
             | Self::ReadSourcing
-            | Self::ReadDrift
             | Self::TakeCards
             | Self::FillCollection
+            | Self::ChangeProxies
             | Self::ReturnCards
+            | Self::DiscardCards
             | Self::DeleteDeck
             | Self::ReadHistory
             | Self::ChangeHistory
@@ -192,18 +200,6 @@ impl DeckGrant {
     /// The caller's role on the deck
     pub fn role(&self) -> DeckRole {
         self.role
-    }
-
-    /// The proxy flag the caller's request may set, `None` to leave it alone
-    ///
-    /// Whether a copy is a proxy is about the owner's shelf, so only the owner
-    /// sets it. A Collaborator's request leaves it as it is, and a Deck entry it
-    /// opens is no proxy.
-    pub fn proxy(&self, requested: Option<bool>) -> Option<bool> {
-        match self.role {
-            DeckRole::Owner => requested,
-            DeckRole::Editor | DeckRole::Viewer => None,
-        }
     }
 
     /// Whether the caller may create, change, delete or assign global tags
@@ -282,13 +278,12 @@ mod tests {
             DeckOperation::SetVisibility,
             DeckOperation::RotateShareToken,
             DeckOperation::SetFolder,
-            DeckOperation::AttachCollection,
-            DeckOperation::DetachCollection,
             DeckOperation::ReadSourcing,
-            DeckOperation::ReadDrift,
             DeckOperation::TakeCards,
             DeckOperation::FillCollection,
+            DeckOperation::ChangeProxies,
             DeckOperation::ReturnCards,
+            DeckOperation::DiscardCards,
             DeckOperation::DeleteDeck,
             DeckOperation::ReadHistory,
             DeckOperation::ChangeHistory,
@@ -317,6 +312,17 @@ mod tests {
     }
 
     #[test]
+    fn an_editor_reads_the_physical_deck_a_viewer_does_not() {
+        for operation in [
+            DeckOperation::ReadDeviation,
+            DeckOperation::ReadPhysicalValue,
+            DeckOperation::ReadPhysicalDeck,
+        ] {
+            assert_eq!(operation.class(), DeckClass::Edit, "{operation:?}");
+        }
+    }
+
+    #[test]
     fn tags_are_edited() {
         for operation in [
             DeckOperation::CreateTag,
@@ -334,15 +340,6 @@ mod tests {
             deck: DeckUuid::from_uuid(uuid::Uuid::new_v4()),
             owner: AccountUuid::new(uuid::Uuid::new_v4()),
             role,
-        }
-    }
-
-    #[test]
-    fn only_the_owner_sets_the_proxy_flag() {
-        for requested in [None, Some(false), Some(true)] {
-            assert_eq!(grant(DeckRole::Owner).proxy(requested), requested);
-            assert_eq!(grant(DeckRole::Editor).proxy(requested), None);
-            assert_eq!(grant(DeckRole::Viewer).proxy(requested), None);
         }
     }
 

@@ -1,15 +1,9 @@
-import {
-    ArchiveBoxIcon,
-    ArrowUturnLeftIcon,
-    ClipboardDocumentCheckIcon,
-    ShoppingCartIcon,
-} from "@heroicons/react/20/solid";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { ArrowUturnLeftIcon, ClipboardDocumentCheckIcon, ShoppingCartIcon } from "@heroicons/react/20/solid";
+import { createFileRoute, useLoaderData, useRouter } from "@tanstack/react-router";
 import {
     Button,
     ConfirmDialog,
     Divider,
-    EmptyState,
     Label,
     StackedList,
     Subheading,
@@ -18,31 +12,28 @@ import {
     Text,
     notify,
 } from "components";
-import { PrimaryButton } from "src/components/primary-button";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import type { SourcedStackResponse, SourcingCandidateResponse, SourcingSlotResponse } from "src/api/generated";
+import type { SourcedStackResponse, SourcingCandidateResponse } from "src/api/generated";
 import { CollectionMarker } from "src/components/collection-marker";
 import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
-import { DeckDriftPanel } from "src/components/deck-drift-panel";
 import { DeckInventoryRow } from "src/components/deck-inventory-row";
+import { DeckProxyRow } from "src/components/deck-proxy-row";
 import { DeckSourcingSlot } from "src/components/deck-sourcing-slot";
 import { DeckWantsDialog } from "src/components/deck-wants-dialog";
-import { countSlot, groupByOrigin } from "src/utils/deck-sourcing";
+import { countSlot, groupByOrigin, missingCost, proxyReplacements } from "src/utils/deck-sourcing";
 import type { SourcingMatch } from "src/utils/deck-sourcing";
 import { formatCurrency } from "src/utils/format";
 
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/sourcing")({
-    // All three at once: they do not depend on each other, and awaited in turn
-    // they would put three round trips between the tap and the page.
     loader: async ({ params }) => {
-        const [sourcing, collections, drift] = await Promise.all([
+        const [sourcing, collections, values] = await Promise.all([
             Api.decks.sourcing.read(params.deckUuid),
             Api.collections.list(),
-            Api.decks.drift(params.deckUuid),
+            Api.decks.values(params.deckUuid),
         ]);
-        return { sourcing, collections, drift };
+        return { sourcing, collections, values };
     },
     component: RouteComponent,
 });
@@ -59,7 +50,8 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/sourcing")({
 function RouteComponent() {
     const [t] = useTranslation("collection");
     const { deckUuid } = Route.useParams();
-    const { sourcing, collections, drift } = Route.useLoaderData();
+    const { sourcing, collections, values } = Route.useLoaderData();
+    const { deck } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
     const router = useRouter();
     // Both on to start with: the strict reading is the one that tells the truth
     // about the deck as it is written down, and loosening it is a deliberate
@@ -74,7 +66,9 @@ function RouteComponent() {
     const [deleting, setDeleting] = useState<SourcedStackResponse | null>(null);
     const [unfolded, setUnfolded] = useState<string | null>(null);
 
-    const shelf = collections.filter((collection) => collection.collection.deck == null);
+    const shelf = collections;
+    const real = sourcing.filed.filter((stack) => !stack.proxy);
+    const proxies = proxyReplacements(sourcing.filed, sourcing.candidates);
     const wanted = new Set(
         sourcing.slots.flatMap((slot) => (slot.card?.oracle_id != null ? [slot.card.oracle_id] : [])),
     );
@@ -97,11 +91,7 @@ function RouteComponent() {
         missing: count.missing,
         available: Math.min(count.available, Math.max(0, count.needed - count.filed)),
     }));
-    const bill = counted.reduce((sum, row) => {
-        const card = row.slot.card;
-        const price = row.slot.foil ? (card?.price_eur_foil_cents ?? card?.price_eur_cents) : card?.price_eur_cents;
-        return sum + (price ?? 0) * row.count.missing;
-    }, 0);
+    const bill = missingCost(counted);
 
     /**
      * Reloads the page after a move, so both sides of it are the server's word
@@ -109,20 +99,6 @@ function RouteComponent() {
      * @returns a promise resolving once the loader has finished
      */
     const refresh = () => router.invalidate();
-
-    /**
-     * Starts keeping the cards that are physically in this deck
-     */
-    async function attach() {
-        setBusy(true);
-        try {
-            await Api.decks.collection.attach(deckUuid);
-            notify.success(t("toast.deck-collection-created"));
-            await refresh();
-        } finally {
-            setBusy(false);
-        }
-    }
 
     /**
      * Says that the deck already holds what its list asks for
@@ -141,20 +117,70 @@ function RouteComponent() {
     }
 
     /**
-     * Moves copies out of a collection and into the deck
+     * Moves copies out of a collection and into the Physical deck
      *
-     * The slot goes along: sourcing another edition than the list names is what
-     * the deck is really sleeved with, so the list follows the cardboard.
+     * The list leads: another edition than the list names stays a Deviation
+     * until somebody changes the list or swaps the card.
      *
-     * @param slot the slot they are being sourced for
      * @param candidate the stack they come out of
      * @param quantity how many to take
      */
-    async function take(slot: SourcingSlotResponse, candidate: SourcingCandidateResponse, quantity: number) {
+    async function take(candidate: SourcingCandidateResponse, quantity: number) {
         setBusy(true);
         try {
-            await Api.decks.sourcing.take(deckUuid, candidate.uuid, quantity, slot.uuid);
+            await Api.decks.sourcing.take(deckUuid, candidate.uuid, quantity);
             notify.success(t("toast.cards-taken", { count: quantity }));
+            await refresh();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
+     * Puts Proxies into the Physical deck for a line of the list
+     *
+     * @param slot the line they stand in for
+     * @param quantity how many to put in
+     */
+    async function putProxies(slot: string, quantity: number) {
+        setBusy(true);
+        try {
+            await Api.decks.sourcing.putProxies(deckUuid, slot, quantity);
+            notify.success(t("toast.proxies-put-in", { count: quantity }));
+            await refresh();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
+     * Replaces Proxies with real copies out of a collection
+     *
+     * @param proxy the Proxy stack
+     * @param candidate the stack the real copies come out of
+     * @param quantity how many Proxies to replace
+     */
+    async function replaceProxy(proxy: SourcedStackResponse, candidate: SourcingCandidateResponse, quantity: number) {
+        setBusy(true);
+        try {
+            await Api.decks.sourcing.replaceProxy(deckUuid, proxy.uuid, candidate.uuid, quantity);
+            notify.success(t("toast.proxies-replaced", { count: quantity }));
+            await refresh();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
+     * Throws a Proxy stack away
+     *
+     * @param proxy the Proxy stack
+     */
+    async function discardProxies(proxy: SourcedStackResponse) {
+        setBusy(true);
+        try {
+            await Api.decks.sourcing.returnCards(deckUuid, proxy.uuid, proxy.quantity);
+            notify.success(t("toast.proxies-discarded", { count: proxy.quantity }));
             await refresh();
         } finally {
             setBusy(false);
@@ -171,10 +197,9 @@ function RouteComponent() {
      * @param stack the stack to delete
      */
     async function destroy(stack: SourcedStackResponse) {
-        if (sourcing.collection == null) return;
         setBusy(true);
         try {
-            await Api.collections.entries.delete(sourcing.collection.uuid, stack.uuid);
+            await Api.decks.sourcing.discard(deckUuid, stack.uuid);
             setDeleting(null);
             notify.success(t("toast.cards-deleted", { count: stack.quantity }));
             await refresh();
@@ -200,34 +225,28 @@ function RouteComponent() {
         }
     }
 
-    if (sourcing.collection == null) {
-        return (
-            <div className={"flex flex-col gap-6"}>
-                <EmptyState
-                    icon={<ArchiveBoxIcon />}
-                    title={t("heading.no-deck-collection")}
-                    description={t("description.no-deck-collection")}
-                />
-                <div className={"flex justify-center"}>
-                    <PrimaryButton disabled={busy} onClick={() => void attach()}>
-                        {t("button.keep-deck-collection")}
-                    </PrimaryButton>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div className={"flex flex-col gap-8"}>
-            {/* Above both lists, because it is the reason somebody came here
-                from the header: what the two of them disagree about. */}
-            <DeckDriftPanel drift={drift} />
-
             <section className={"flex flex-col gap-4"}>
                 <div className={"flex flex-wrap items-start justify-between gap-3"}>
                     <div className={"flex flex-col gap-1"}>
                         <Subheading>{t("heading.sourcing")}</Subheading>
                         <Text>{t("description.sourcing")}</Text>
+                        <Text className={"flex flex-wrap items-center gap-x-2 gap-y-1"}>
+                            <span className={"tabular-nums"}>
+                                {t("label.list-value", { value: formatCurrency(values.list_value_cents / 100) })}
+                            </span>
+                            {values.physical != null && (
+                                <>
+                                    <span aria-hidden={true}>·</span>
+                                    <span className={"tabular-nums"}>
+                                        {t("label.physical-value", {
+                                            value: formatCurrency(values.physical.physical_value_cents / 100),
+                                        })}
+                                    </span>
+                                </>
+                            )}
+                        </Text>
                         <Text className={"flex flex-wrap items-center gap-x-2 gap-y-1"}>
                             <span className={"tabular-nums"}>{t("label.sourced", { filed, needed })}</span>
                             {missing > 0 && (
@@ -282,14 +301,52 @@ function RouteComponent() {
                                 match={match}
                                 open={unfolded === slot.uuid}
                                 onToggle={() => setUnfolded(unfolded === slot.uuid ? null : slot.uuid)}
-                                onTake={(taken, candidate, quantity) => void take(taken, candidate, quantity)}
+                                onTake={(_, candidate, quantity) => void take(candidate, quantity)}
                                 onBuy={(bought) => void fill(bought.uuid)}
+                                onProxy={(proxied, quantity) => void putProxies(proxied.uuid, quantity)}
                                 busy={busy}
                             />
                         ))}
                     </StackedList>
                 )}
             </section>
+
+            {proxies.length > 0 && (
+                <>
+                    <Divider />
+
+                    <section className={"flex flex-col gap-4"}>
+                        <div className={"flex flex-col gap-1"}>
+                            <Subheading>{t("heading.replace-proxies")}</Subheading>
+                            <Text>{t("description.replace-proxies")}</Text>
+                            {values.physical != null && values.physical.proxy_replacement_cents > 0 && (
+                                <Text className={"tabular-nums"}>
+                                    {t("label.replacement-cost", {
+                                        value: formatCurrency(values.physical.proxy_replacement_cents / 100),
+                                    })}
+                                </Text>
+                            )}
+                        </div>
+                        <StackedList>
+                            {proxies.map((replacement) => (
+                                <DeckProxyRow
+                                    key={replacement.proxy.uuid}
+                                    replacement={replacement}
+                                    open={unfolded === replacement.proxy.uuid}
+                                    onToggle={() =>
+                                        setUnfolded(unfolded === replacement.proxy.uuid ? null : replacement.proxy.uuid)
+                                    }
+                                    onReplace={(proxy, candidate, quantity) =>
+                                        void replaceProxy(proxy, candidate, quantity)
+                                    }
+                                    onDiscard={(proxy) => void discardProxies(proxy)}
+                                    busy={busy}
+                                />
+                            ))}
+                        </StackedList>
+                    </section>
+                </>
+            )}
 
             <Divider />
 
@@ -304,19 +361,19 @@ function RouteComponent() {
                             <ClipboardDocumentCheckIcon />
                             {t("button.fill-from-list")}
                         </Button>
-                        {sourcing.filed.length > 0 && (
+                        {sourcing.physical_deck != null && (
                             <Button outline={true} disabled={busy} onClick={() => setDissolving(true)}>
                                 <ArrowUturnLeftIcon />
-                                {t("button.return-all")}
+                                {t("button.take-apart")}
                             </Button>
                         )}
                     </div>
                 </div>
 
-                {sourcing.filed.length === 0 ? (
-                    <Text>{t("description.deck-collection-empty")}</Text>
+                {real.length === 0 ? (
+                    <Text>{t("description.physical-deck-empty")}</Text>
                 ) : (
-                    groupByOrigin(sourcing.filed).map((group) => (
+                    groupByOrigin(real).map((group) => (
                         <section key={group.origin ?? "none"} className={"flex flex-col gap-2"}>
                             <div className={"flex items-center gap-2"}>
                                 <CollectionMarker
@@ -364,7 +421,7 @@ function RouteComponent() {
             />
 
             <DeckDissolveDialog
-                deck={dissolving ? { uuid: deckUuid, name: sourcing.collection.name } : null}
+                deck={dissolving ? { uuid: deckUuid, name: deck.name } : null}
                 onClose={() => setDissolving(false)}
                 onDissolved={refresh}
             />

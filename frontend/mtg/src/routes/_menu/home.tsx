@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type {
     CollectionOverviewResponse,
+    CollectionTotalsResponse,
     DeckOverviewResponse,
     FormatRulesResponse,
     ListWatchListAlarmsResponse,
@@ -45,6 +46,8 @@ type Personal = {
     decks: Array<DeckOverviewResponse>;
     /** Every collection they keep */
     collections: Array<CollectionOverviewResponse>;
+    /** Every card they own, on the shelf and in their Physical decks */
+    totals: CollectionTotalsResponse;
     /** The price alarms that have gone off */
     alarms: ListWatchListAlarmsResponse;
 };
@@ -85,14 +88,15 @@ export const Route = createFileRoute("/_menu/home")({
  * @returns the reader's decks, collections and alarms
  */
 async function readPersonal(): Promise<Personal> {
-    const [decks, collections, alarms] = await Promise.all([
+    const [decks, collections, totals, alarms] = await Promise.all([
         Api.decks.list(),
         Api.collections.list(),
+        Api.collections.totals(),
         // A badge is not worth the page: without an answer there is simply
         // nothing to mark.
         Api.watchLists.alarms().catch(() => ({ alarms: [], unread: 0 })),
     ]);
-    return { decks, collections, alarms };
+    return { decks, collections, totals, alarms };
 }
 
 /**
@@ -164,8 +168,8 @@ function RouteComponent() {
     const fresh = guestLead === null ? published : published.slice(1);
 
     const alarms = personal?.alarms.alarms ?? [];
-    const cards = personal?.collections.reduce((sum, overview) => sum + overview.cards, 0) ?? 0;
-    const value = personal?.collections.reduce((sum, overview) => sum + overview.price_eur_cents, 0) ?? 0;
+    const cards = personal?.totals.cards ?? 0;
+    const value = personal?.totals.price_eur_cents ?? 0;
 
     return (
         <div className={"flex flex-col gap-8"}>

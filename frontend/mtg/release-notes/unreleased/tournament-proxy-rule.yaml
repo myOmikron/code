@@ -1,0 +1,3 @@
+kind: new
+de: "Organisatoren legen für ein Turnier eine Proxy-Regel fest: Proxies erlaubt oder keine Proxies. Enthält ein angemeldetes Deck dann Proxies, sehen die Organisatoren eine Warnung und der Spieler einen deutlichen Hinweis; Anmeldung, Check-in und Auslosung laufen trotzdem."
+en: "Organizers can set a Proxy rule for a Tournament: Proxies allowed or no Proxies. If a registered deck then holds Proxies, the organizers see a warning and its player a clear notice; registration, check-in and pairing go ahead anyway."

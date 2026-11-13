@@ -78,6 +78,15 @@ pub struct CollectionOverviewResponse {
     pub arts: Vec<String>,
 }
 
+/// Everything an account owns, on the shelf and in its Physical decks, Proxies aside
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CollectionTotalsResponse {
+    /// How many copies the account owns
+    pub cards: i64,
+    /// What those copies are worth in euro cents
+    pub price_eur_cents: i64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CreateCollectionRequest {
     pub name: MaxStr<255>,

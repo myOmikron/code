@@ -173,6 +173,14 @@ pub struct CollectionEntryModel {
     #[rorm(index, on_update = "Cascade", on_delete = "SetNull")]
     pub origin: Option<ForeignModel<CollectionModel>>,
 
+    /// Whether the cards are Proxies: stand-ins for the printing, not owned
+    ///
+    /// Part of what makes a stack interchangeable. Only ever set in a deck's
+    /// Physical deck, never together with an origin, and left out wherever
+    /// cards are counted, valued or offered as stock.
+    #[rorm(default = false)]
+    pub proxy: bool,
+
     /// The point in time the entry was created
     #[rorm(auto_create_time)]
     pub created_at: OffsetDateTime,
@@ -202,4 +210,6 @@ pub struct CollectionEntryInsertPatch {
     pub acquired_at: Option<Date>,
     /// The collection the cards were taken out of
     pub origin: Option<ForeignModel<CollectionModel>>,
+    /// Whether the cards are Proxies
+    pub proxy: bool,
 }

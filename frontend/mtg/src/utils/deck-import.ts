@@ -85,17 +85,16 @@ export async function importRows(
 /**
  * Say the deck physically holds what its list now asks for
  *
- * The deck gets a collection of its own if it keeps none yet — attaching is
- * idempotent — and every slot is topped up to its count in the finish it asks
- * for. Only the shortfall is filed, so a deck that was already sourced out of
- * a collection keeps the copies it has, origin and all.
+ * Every slot is topped up to its count in the finish it asks for, which gives
+ * the deck its Physical deck if it has none yet. Only the shortfall is filed,
+ * so a deck that was already sourced out of a collection keeps the copies it
+ * has, origin and all.
  *
  * @param deckUuid the deck that was just written
  *
  * @returns how many copies were filed
  */
 async function fileIntoCollection(deckUuid: string): Promise<number> {
-    await Api.decks.collection.attach(deckUuid);
     const { filed } = await Api.decks.sourcing.fill(deckUuid);
     return filed;
 }

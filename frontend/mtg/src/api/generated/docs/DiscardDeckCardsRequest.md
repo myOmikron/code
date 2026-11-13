@@ -1,14 +1,13 @@
 
-# ReturnAllDeckCardsResponse
+# DiscardDeckCardsRequest
 
-What sorting a deck back moved
+Request to throw a stack out of the Physical deck
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`left` | number
-`returned` | number
+`entry` | string
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

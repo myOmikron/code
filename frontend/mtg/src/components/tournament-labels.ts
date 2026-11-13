@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import {
     BestOf,
     CheckIn,
+    ProxyRule,
     RoundState,
     Ruleset,
     Tiebreaker,
@@ -116,6 +117,22 @@ export function useTournamentLabels() {
                     return t("label.check-in-required");
                 case CheckIn.RequiredWithDeck:
                     return t("label.check-in-required-with-deck");
+            }
+        },
+
+        /**
+         * What a Proxy rule is called
+         *
+         * @param proxyRule the rule
+         *
+         * @returns its name
+         */
+        proxyRule: (proxyRule: ProxyRule): string => {
+            switch (proxyRule) {
+                case ProxyRule.ProxiesAllowed:
+                    return t("label.proxy-rule-proxies-allowed");
+                case ProxyRule.NoProxies:
+                    return t("label.proxy-rule-no-proxies");
             }
         },
 

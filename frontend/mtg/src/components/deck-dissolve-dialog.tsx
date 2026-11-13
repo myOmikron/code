@@ -35,7 +35,7 @@ export type DeckDissolveDialogProps = {
 };
 
 /**
- * Taking a deck apart, back into the collections the cards came out of.
+ * Taking a Physical deck apart, back into the collections the cards came out of.
  *
  * The list is grouped by where things belong rather than by card: what somebody
  * standing at a shelf needs to know is which collection to open next, and how much
@@ -60,19 +60,19 @@ export function DeckDissolveDialog({ deck, onClose, onDissolved }: DeckDissolveD
         void (async () => {
             const [sourcing, collections] = await Promise.all([Api.decks.sourcing.read(uuid), Api.collections.list()]);
             if (dropped) return;
-            const shelf = collections.filter((collection) => collection.collection.deck == null);
             setFiled(sourcing.filed);
-            setBoxes(shelf);
-            setTarget(shelf[0]?.collection.uuid ?? "");
+            setBoxes(collections);
+            setTarget(collections[0]?.collection.uuid ?? "");
         })();
         return () => {
             dropped = true;
         };
     }, [uuid]);
 
-    const groups = groupByOrigin(filed);
-    const homeless = filed.filter((stack) => stack.origin == null);
-    const copies = filed.reduce((sum, stack) => sum + stack.quantity, 0);
+    const real = filed.filter((stack) => !stack.proxy);
+    const groups = groupByOrigin(real);
+    const homeless = real.filter((stack) => stack.origin == null);
+    const copies = copiesIn(real);
 
     /**
      * Sorts everything back and closes
@@ -81,7 +81,7 @@ export function DeckDissolveDialog({ deck, onClose, onDissolved }: DeckDissolveD
         if (uuid === null) return;
         setBusy(true);
         try {
-            const moved = await Api.decks.sourcing.returnAll(uuid, homeless.length > 0 ? target : null);
+            const moved = await Api.decks.sourcing.takeApart(uuid, homeless.length > 0 ? target : null);
             notify.success(t("toast.cards-returned", { count: moved.returned }));
             onClose();
             await onDissolved();
@@ -97,8 +97,8 @@ export function DeckDissolveDialog({ deck, onClose, onDissolved }: DeckDissolveD
                 {t("description.dissolve-deck", { name: deck?.name ?? "", count: copies })}
             </DialogDescription>
             <DialogBody>
-                {filed.length === 0 ? (
-                    <Text>{t("description.deck-collection-empty")}</Text>
+                {real.length === 0 ? (
+                    <Text>{t("description.physical-deck-empty")}</Text>
                 ) : (
                     <div className={"flex flex-col gap-5"}>
                         <ul className={"flex flex-col gap-2"}>
@@ -153,9 +153,12 @@ export function DeckDissolveDialog({ deck, onClose, onDissolved }: DeckDissolveD
                 <Button plain={true} onClick={onClose}>
                     {tg("button.cancel")}
                 </Button>
-                <PrimaryButton disabled={busy || filed.length === 0} onClick={() => void dissolve()}>
+                <PrimaryButton
+                    disabled={busy || (homeless.length > 0 && collections.length === 0)}
+                    onClick={() => void dissolve()}
+                >
                     <ArrowUturnLeftIcon />
-                    {t("button.return-all")}
+                    {t("button.take-apart")}
                 </PrimaryButton>
             </DialogActions>
         </Dialog>

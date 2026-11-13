@@ -96,7 +96,7 @@ impl WatchedCopy {
              JOIN collection_entry e ON e.collection = c.uuid \
              LEFT JOIN printing ep ON ep.id = e.printing \
              LEFT JOIN deck d ON d.uuid = c.deck \
-             WHERE w.uuid = $2 AND w.watch_list = $3 \
+             WHERE w.uuid = $2 AND w.watch_list = $3 AND NOT e.proxy \
                AND {SAME_CARD} AND {SAME_FINISH} AND {STACK_LANGUAGE} \
              ORDER BY (c.deck IS NOT NULL), c.name ASC, ep.set_code ASC, \
                       ep.collector_number_sort ASC, e.uuid ASC"

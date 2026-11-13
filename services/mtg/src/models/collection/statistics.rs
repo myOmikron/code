@@ -381,7 +381,7 @@ impl CollectionStatistics {
                     p.price_eur, p.price_eur_foil, p.reserved \
              FROM collection_entry e \
              LEFT JOIN printing p ON p.id = e.printing \
-             WHERE e.collection = $1"
+             WHERE e.collection = $1 AND NOT e.proxy"
             .to_string();
 
         let rows = (&mut *tx)

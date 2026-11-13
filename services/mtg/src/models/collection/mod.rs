@@ -162,7 +162,11 @@ pub struct CollectionUpdate {
 }
 
 impl Collection {
-    /// Fetch every collection an account owns, alphabetically
+    /// Fetch every collection on an account's shelf, alphabetically
+    ///
+    /// A deck's Physical deck is stored as a collection too, but it is part of
+    /// the deck: it is left out here, so it shows up in no collection list and
+    /// in no choice of collections.
     ///
     /// The primary key breaks ties, so the order is total and does not shift
     /// between calls — without it Postgres is free to hand back a renamed row
@@ -173,7 +177,10 @@ impl Collection {
         account: AccountUuid,
     ) -> Result<Vec<Collection>, rorm::Error> {
         let collections = rorm::query(&mut *tx, CollectionModel)
-            .condition(CollectionModel.owner.equals(account.into_inner()))
+            .condition(rorm::and![
+                CollectionModel.owner.equals(account.into_inner()),
+                CollectionModel.deck.equals(None::<Uuid>),
+            ])
             .order_asc(CollectionModel.name)
             .order_asc(CollectionModel.uuid)
             .all()
@@ -239,6 +246,39 @@ impl Collection {
             Some(_) => CollectionAccess::Granted(()),
             None => CollectionAccess::Denied,
         })
+    }
+
+    /// Whether `account` may file, change, split, merge and delete stacks in
+    /// the collection
+    ///
+    /// Only in a collection on the shelf: a Physical deck changes through its
+    /// deck alone, so its real cards keep their origin and its Proxies stay Proxies.
+    #[instrument(name = "Collection::may_change_entries", skip(tx))]
+    pub async fn may_change_entries(
+        tx: &mut Transaction,
+        uuid: CollectionUuid,
+        account: AccountUuid,
+    ) -> Result<CollectionAccess, rorm::Error> {
+        Ok(if Self::is_on_shelf(&mut *tx, uuid, account).await? {
+            CollectionAccess::Granted(())
+        } else {
+            CollectionAccess::Denied
+        })
+    }
+
+    /// Whether the collection is one on `account`'s shelf, not a deck's
+    /// Physical deck
+    #[instrument(name = "Collection::is_on_shelf", skip(tx))]
+    pub async fn is_on_shelf(
+        tx: &mut Transaction,
+        uuid: CollectionUuid,
+        account: AccountUuid,
+    ) -> Result<bool, rorm::Error> {
+        let found = rorm::query(&mut *tx, CollectionModel.uuid)
+            .condition(owned_standalone_by(uuid, account))
+            .optional()
+            .await?;
+        Ok(found.is_some())
     }
 
     /// Fetch a collection by the secret in its share link
@@ -429,6 +469,8 @@ pub struct CollectionEntry {
     pub acquired_at: Option<Date>,
     /// The collection the cards were taken out of, `None` if they were always here
     pub origin: Option<CollectionUuid>,
+    /// Whether the cards are Proxies, which only a Physical deck holds
+    pub proxy: bool,
     /// The point in time the entry was created
     pub created_at: OffsetDateTime,
 }
@@ -553,6 +595,17 @@ pub enum MoveOutcome {
     TooFewCopies,
 }
 
+/// Outcome of throwing Proxies away
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DiscardOutcome {
+    /// The Proxies are gone
+    Discarded,
+    /// No such Proxy stack in this collection
+    Denied,
+    /// The stack does not hold that many
+    TooFewCopies,
+}
+
 /// Outcome of merging stacks into one
 #[derive(Debug, Clone)]
 pub enum MergeOutcome {
@@ -642,6 +695,7 @@ impl CollectionEntry {
                 // been as far as this app is concerned. Only a move out of
                 // another collection carries an origin.
                 origin: None,
+                proxy: false,
             })
             .collect();
         let uuids = patches
@@ -764,6 +818,7 @@ impl CollectionEntry {
                 origin: source
                     .origin
                     .map(|origin| ForeignModelByField(origin.into_inner())),
+                proxy: source.proxy,
             })
             .await?;
 
@@ -837,6 +892,7 @@ impl CollectionEntry {
                 || entry.condition != survivor.condition
                 || entry.finish != survivor.finish
                 || entry.signed != survivor.signed
+                || entry.proxy != survivor.proxy
         }) {
             return Ok(MergeOutcome::Incompatible);
         }
@@ -924,6 +980,7 @@ impl CollectionEntry {
                 CollectionEntryModel
                     .origin
                     .equals(origin.map(|origin| origin.0)),
+                CollectionEntryModel.proxy.equals(false),
             ])
             .all()
             .await?;
@@ -948,6 +1005,7 @@ impl CollectionEntry {
                     purchase_price_cents: insert.purchase_price_cents,
                     acquired_at: insert.acquired_at,
                     origin: origin.map(|origin| ForeignModelByField(origin.0)),
+                    proxy: false,
                 })
                 .await?;
             return Ok(CollectionEntry::from(created));
@@ -1020,7 +1078,10 @@ impl CollectionEntry {
             ])
             .optional()
             .await?;
-        let Some(source) = source.map(CollectionEntry::from) else {
+        let Some(source) = source
+            .map(CollectionEntry::from)
+            .filter(|source| !source.proxy)
+        else {
             return Ok(MoveOutcome::Denied);
         };
         if quantity < 1 || quantity > source.quantity {
@@ -1062,6 +1123,96 @@ impl CollectionEntry {
             }),
             filed,
         })
+    }
+
+    /// File Proxies of a printing into a deck's Physical deck
+    ///
+    /// They join the Proxy stack of the same printing and finish if there is
+    /// one. A Proxy is not owned, so it carries no origin, no price and no
+    /// date. The caller has to have established that `collection` is a
+    /// Physical deck of an account it may administer.
+    #[instrument(name = "CollectionEntry::file_proxies", skip(tx))]
+    pub async fn file_proxies(
+        tx: &mut Transaction,
+        collection: CollectionUuid,
+        printing: Uuid,
+        finish: CardFinish,
+        quantity: i32,
+    ) -> Result<CollectionEntry, rorm::Error> {
+        let existing = rorm::query(&mut *tx, CollectionEntryModel)
+            .condition(rorm::and![
+                CollectionEntryModel.collection.equals(collection.0),
+                CollectionEntryModel.printing.equals(printing),
+                CollectionEntryModel.finish.equals(finish),
+                CollectionEntryModel.proxy.equals(true),
+            ])
+            .order_asc(CollectionEntryModel.uuid)
+            .optional()
+            .await?;
+
+        let Some(into) = existing.map(CollectionEntry::from) else {
+            let created = rorm::insert(&mut *tx, CollectionEntryModel)
+                .single(&CollectionEntryInsertPatch {
+                    uuid: Uuid::now_v7(),
+                    collection: ForeignModelByField(collection.0),
+                    printing,
+                    quantity,
+                    condition: CardCondition::NearMint,
+                    finish,
+                    signed: false,
+                    purchase_price_cents: None,
+                    acquired_at: None,
+                    origin: None,
+                    proxy: true,
+                })
+                .await?;
+            return Ok(CollectionEntry::from(created));
+        };
+
+        let quantity = into.quantity + quantity;
+        rorm::update(&mut *tx, CollectionEntryModel)
+            .set(CollectionEntryModel.quantity, quantity)
+            .condition(CollectionEntryModel.uuid.equals(into.uuid.0))
+            .await?;
+        Ok(CollectionEntry { quantity, ..into })
+    }
+
+    /// Throw `quantity` Proxies of a Proxy stack away
+    ///
+    /// A Proxy has nowhere to go back to, so leaving the Physical deck is the
+    /// end of it. Scoped by collection like [`CollectionEntry::update`]; a
+    /// stack of real cards is [`CollectionAccess::Denied`] here, those are
+    /// moved, never thrown away.
+    #[instrument(name = "CollectionEntry::discard_proxies", skip(tx))]
+    pub async fn discard_proxies(
+        tx: &mut Transaction,
+        collection: CollectionUuid,
+        uuid: CollectionEntryUuid,
+        quantity: i32,
+    ) -> Result<DiscardOutcome, rorm::Error> {
+        let Some(stack) = Self::get(&mut *tx, collection, uuid)
+            .await?
+            .filter(|stack| stack.proxy)
+        else {
+            return Ok(DiscardOutcome::Denied);
+        };
+        if quantity < 1 || quantity > stack.quantity {
+            return Ok(DiscardOutcome::TooFewCopies);
+        }
+
+        let remaining = stack.quantity - quantity;
+        if remaining == 0 {
+            rorm::delete(&mut *tx, CollectionEntryModel)
+                .condition(CollectionEntryModel.uuid.equals(uuid.0))
+                .await?;
+        } else {
+            rorm::update(&mut *tx, CollectionEntryModel)
+                .set(CollectionEntryModel.quantity, remaining)
+                .condition(CollectionEntryModel.uuid.equals(uuid.0))
+                .await?;
+        }
+
+        Ok(DiscardOutcome::Discarded)
     }
 
     /// Delete an entry
@@ -1117,6 +1268,7 @@ impl From<CollectionEntryModel> for CollectionEntry {
             purchase_price_cents: value.purchase_price_cents,
             acquired_at: value.acquired_at,
             origin: value.origin.map(CollectionUuid::new_from_field),
+            proxy: value.proxy,
             created_at: value.created_at,
         }
     }

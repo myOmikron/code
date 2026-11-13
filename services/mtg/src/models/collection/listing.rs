@@ -82,7 +82,7 @@ impl OnLoan {
              JOIN collection c ON c.uuid = e.collection \
              JOIN deck d ON d.uuid = c.deck \
              LEFT JOIN printing p ON p.id = e.printing \
-             WHERE e.origin = $1 \
+             WHERE e.origin = $1 AND NOT e.proxy \
              ORDER BY d.name ASC, p.name ASC"
             .to_string();
 
@@ -150,6 +150,47 @@ pub struct CollectionSummary {
     pub arts: Vec<String>,
 }
 
+/// Everything an account owns, on the shelf and in its Physical decks
+///
+/// Real cards in a Physical deck are still the account's cards; Proxies are not
+/// cards and never count.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct CollectionTotals {
+    /// How many copies the account owns
+    pub cards: i64,
+    /// What those copies are worth in euro cents, by the same [`UNIT_PRICE`] as a collection
+    pub price_eur: i64,
+}
+
+impl CollectionTotals {
+    /// Read the totals of an account
+    ///
+    /// Counted from the `collection_stock` rollup, which holds one row per
+    /// printing and finish the account owns and never a Proxy.
+    #[instrument(name = "CollectionTotals::read_for_account", skip(tx))]
+    pub async fn read_for_account(
+        tx: &mut Transaction,
+        account: AccountUuid,
+    ) -> Result<CollectionTotals, rorm::Error> {
+        let statement = format!(
+            "SELECT COALESCE(SUM(e.free + e.sleeved), 0)::bigint AS cards, \
+                    COALESCE(SUM((e.free + e.sleeved) * COALESCE({UNIT_PRICE}, 0)), 0)::bigint AS price \
+             FROM collection_stock e \
+             LEFT JOIN printing p ON p.id = e.printing \
+             WHERE e.owner = $1"
+        );
+
+        let row = (&mut *tx)
+            .execute::<One>(statement, vec![Value::Uuid(account.into_inner())])
+            .await?;
+        let decode = |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
+        Ok(CollectionTotals {
+            cards: row.get("cards").map_err(decode)?,
+            price_eur: row.get("price").map_err(decode)?,
+        })
+    }
+}
+
 /// How many pieces of artwork a collection hands to the overview
 ///
 /// Two, because that is what a tile can show side by side; the deck list splits
@@ -185,7 +226,7 @@ impl CollectionSummary {
              FROM collection_entry e \
              JOIN collection c ON c.uuid = e.collection \
              LEFT JOIN printing p ON p.id = e.printing \
-             WHERE c.owner = $1 \
+             WHERE c.owner = $1 AND NOT e.proxy \
              GROUP BY e.collection"
         );
 
@@ -233,7 +274,7 @@ impl CollectionSummary {
                     FROM collection_entry e \
                     JOIN collection c ON c.uuid = e.collection \
                     JOIN printing p ON p.id = e.printing \
-                    WHERE c.owner = $1 \
+                    WHERE c.owner = $1 AND NOT e.proxy \
                       AND COALESCE(p.image_normal, p.image_small) IS NOT NULL \
                  ) ranked \
                  WHERE rank <= $2 \
@@ -526,6 +567,7 @@ impl<'query> Filters<'query> {
         };
 
         filters.push("e.collection = ", Value::Uuid(collection.into_inner()));
+        filters.clauses.push("NOT e.proxy".to_string());
 
         if let Some(pattern) = pattern {
             filters.push("p.name_sort LIKE ", Value::String(pattern));

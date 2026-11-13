@@ -44,6 +44,7 @@ import { DeckDialog } from "src/components/deck-dialog";
 import { DeckDeleteDialog } from "src/components/deck-delete-dialog";
 import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
 import { DeckLeaveDialog } from "src/components/deck-leave-dialog";
+import { DeckProxyMarker } from "src/components/deck-proxy-marker";
 import { DeckRuleZeroDialog } from "src/components/deck-rule-zero-dialog";
 import { ExportDeckDialog } from "src/components/export-deck-dialog";
 import { ImportDeckDialog } from "src/components/import-deck-dialog";
@@ -52,8 +53,9 @@ import { RequireAccount } from "src/components/require-account";
 import { useChromeBare } from "src/context/chrome-context";
 import { ShareDialog } from "src/components/share-dialog";
 import { folderLabel } from "src/utils/deck-folders";
+import { formatCurrency } from "src/utils/format";
 import { commanderColors, letters, ruleZeroCount } from "src/utils/deck-rules";
-import { driftCopies } from "src/utils/deck-drift";
+import { deviationCount } from "src/utils/deck-deviation";
 import { deckCardsRoute, deckRights } from "src/utils/deck-rights";
 
 /** How the mini buttons above the tabs are framed */
@@ -61,11 +63,12 @@ const ACTION_RING = "ring-1 ring-zinc-950/10 dark:ring-white/15";
 
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
     loader: async ({ params }) => {
-        const [deck, offered, shelves, drift] = await Promise.all([
+        const [deck, offered, shelves, deviation, values] = await Promise.all([
             Api.decks.get(params.deckUuid),
             Api.decks.formats(),
             Api.folders.list(),
-            Api.decks.driftIfOwner(params.deckUuid),
+            Api.decks.deviation(params.deckUuid),
+            Api.decks.valuesIfShown(params.deckUuid),
         ]);
         if (deck.role == null) {
             throw redirect({ to: "/global/decks/$deckUuid/cards", params, replace: true });
@@ -86,7 +89,8 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
                     ? offered.brackets
                     : [],
             folders: shelves.folders,
-            drift,
+            deviation,
+            values,
         };
     },
     component: RouteComponent,
@@ -99,7 +103,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
  */
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
-    const { deck, formats, brackets, folders, drift } = Route.useLoaderData();
+    const { deck, formats, brackets, folders, deviation, values } = Route.useLoaderData();
     const bare = useChromeBare();
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
@@ -115,14 +119,11 @@ function RouteComponent() {
     const [dissolving, setDissolving] = useState(false);
     const [editingRuleZero, setEditingRuleZero] = useState(false);
     const [commanderIdentity, setCommanderIdentity] = useState<Array<string>>([]);
-    const [hasProxies, setHasProxies] = useState(false);
 
     const rights = deckRights(deck.role);
     const deviations = ruleZeroCount(deck);
-    // What the list and the deck's own collection disagree about. Said in the
-    // header rather than on the sourcing tab alone: somebody swapping a
-    // printing while building is exactly the person who will not open that tab.
-    const drifted = drift === null ? 0 : driftCopies(drift);
+    const deviated = deviation === null ? 0 : deviationCount(deviation);
+    const lacking = deviation !== null && deviation.entries.some((line) => line.missing > 0);
     const rules = formats.find((format) => format.slug === deck.format);
 
     // This layout never loads the card list, but the Rule 0 picker should
@@ -144,22 +145,6 @@ function RouteComponent() {
             gone = true;
         };
     }, [editingRuleZero, deckUuid, deck.allowed_color_identity]);
-
-    // Whether the export dropdown offers "Print proxy slots" beside the plain
-    // "Print proxies" — a fetch of its own, since nothing else on this layout
-    // reads the card list unconditionally.
-    useEffect(() => {
-        let gone = false;
-        Api.decks.cards
-            .list(deckUuid)
-            .then(({ cards }) => {
-                if (!gone) setHasProxies(cards.some((card) => card.proxy));
-            })
-            .catch(() => undefined);
-        return () => {
-            gone = true;
-        };
-    }, [deckUuid]);
 
     useEffect(() => {
         if (sharing || !rights.owner) return;
@@ -257,20 +242,42 @@ function RouteComponent() {
                                         ? t("label.rule-zero")
                                         : t("label.rule-zero-count", { count: deviations })}
                                 </BadgeButton>
-                                {drifted > 0 && (
+                                {deviated > 0 && (
                                     <BadgeButton
                                         color={"amber"}
                                         className={ACTION_RING}
                                         onClick={() =>
                                             void navigate({
-                                                to: "/decks/$deckUuid/sourcing",
+                                                to: "/decks/$deckUuid/cards",
                                                 params: { deckUuid },
                                             })
                                         }
                                     >
                                         <ExclamationTriangleIcon className={"size-3.5"} />
-                                        {t("label.drift", { count: drifted })}
+                                        {t("label.deviation", { count: deviated })}
                                     </BadgeButton>
+                                )}
+                                <DeckProxyMarker count={values?.physical?.proxies} />
+                                {values != null && (
+                                    <Badge color={"zinc"}>
+                                        <span className={"tabular-nums"}>
+                                            {t("label.header-list-value", {
+                                                value: formatCurrency(values.list_value_cents / 100),
+                                            })}
+                                        </span>
+                                        {values.physical != null && (
+                                            <>
+                                                <span aria-hidden={true}>·</span>
+                                                <span className={"tabular-nums"}>
+                                                    {t("label.header-physical-value", {
+                                                        value: formatCurrency(
+                                                            values.physical.physical_value_cents / 100,
+                                                        ),
+                                                    })}
+                                                </span>
+                                            </>
+                                        )}
+                                    </Badge>
                                 )}
                                 {rights.owner ? (
                                     <BadgeButton
@@ -336,33 +343,33 @@ function RouteComponent() {
                                     <DropdownLabel>{t("button.print-proxies")}</DropdownLabel>
                                     <DropdownDescription>{t("description.print-proxies")}</DropdownDescription>
                                 </DropdownItem>
-                                {hasProxies && (
+                                {lacking && (
                                     <DropdownItem
                                         onClick={() =>
                                             void navigate({
                                                 to: "/game-utils/proxy-printer",
-                                                search: { deck: deckUuid, proxies: true },
+                                                search: { deck: deckUuid, missing: true },
                                             })
                                         }
                                     >
                                         <DocumentDuplicateIcon />
-                                        <DropdownLabel>{t("button.print-proxy-slots")}</DropdownLabel>
-                                        <DropdownDescription>{t("description.print-proxy-slots")}</DropdownDescription>
+                                        <DropdownLabel>{t("button.print-missing")}</DropdownLabel>
+                                        <DropdownDescription>{t("description.print-missing")}</DropdownDescription>
                                     </DropdownItem>
                                 )}
                                 <DropdownItem
                                     onClick={() =>
                                         void navigate({
                                             to: "/game-utils/mpc-fill",
-                                            search: hasProxies ? { deck: deckUuid, proxies: true } : { deck: deckUuid },
+                                            search: lacking ? { deck: deckUuid, missing: true } : { deck: deckUuid },
                                         })
                                     }
                                 >
                                     <CubeIcon />
                                     <DropdownLabel>{t("button.order-mpc-fill")}</DropdownLabel>
                                     <DropdownDescription>
-                                        {hasProxies
-                                            ? t("description.order-mpc-fill-proxies")
+                                        {lacking
+                                            ? t("description.order-mpc-fill-missing")
                                             : t("description.order-mpc-fill")}
                                     </DropdownDescription>
                                 </DropdownItem>
@@ -424,6 +431,11 @@ function RouteComponent() {
                             {rights.owner && (
                                 <Tab href={"/decks/$deckUuid/sourcing"} params={{ deckUuid }}>
                                     {t("label.sourcing")}
+                                </Tab>
+                            )}
+                            {!rights.owner && deviation !== null && deviation.has_physical_deck && (
+                                <Tab href={"/decks/$deckUuid/physical-deck"} params={{ deckUuid }}>
+                                    {t("label.physical-deck")}
                                 </Tab>
                             )}
                             <Tab href={"/decks/$deckUuid/statistics"} params={{ deckUuid }}>

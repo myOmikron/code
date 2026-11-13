@@ -1,0 +1,3 @@
+kind: improved
+de: "Ein Deck zu löschen löscht nie deine Karten: Die echten Karten im Physischen Deck wandern vorher zurück in ihre Sammlungen. Die Summen auf der Sammlungsseite zählen die Karten in deinen Physischen Decks mit, Proxies nie."
+en: "Deleting a deck never deletes your cards: the real cards in its Physical deck go back into their collections first. The totals on the collections page count the cards in your Physical decks too, never Proxies."

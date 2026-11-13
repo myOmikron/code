@@ -141,19 +141,6 @@ export function copiesOf(groups: Array<ProxyGroup>, key: string): number {
 }
 
 /**
- * The list as it stands with only its proxies
- *
- * A deck without any stays on it, empty, so it can still be seen and taken off.
- *
- * @param groups the list
- *
- * @returns the list with every other card filtered out
- */
-export function onlyProxyCards(groups: Array<ProxyGroup>): Array<ProxyGroup> {
-    return groups.map((group) => ({ ...group, cards: group.cards.filter((card) => card.proxy) }));
-}
-
-/**
  * Whether the groups are shown under headings
  *
  * @param groups the list

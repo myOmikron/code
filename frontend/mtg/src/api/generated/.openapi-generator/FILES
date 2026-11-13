@@ -86,6 +86,7 @@ docs/CollectionEntryResponse.md
 docs/CollectionOverviewResponse.md
 docs/CollectionResponse.md
 docs/CollectionStatisticsResponse.md
+docs/CollectionTotalsResponse.md
 docs/ComboRule.md
 docs/CommanderRule.md
 docs/CommanderRuleOneOf.md
@@ -106,8 +107,7 @@ docs/DeckChangeKind.md
 docs/DeckChangeResponse.md
 docs/DeckCollaboratorResponse.md
 docs/DeckCommanderResponse.md
-docs/DeckDriftResponse.md
-docs/DeckDriftRowResponse.md
+docs/DeckDeviationResponse.md
 docs/DeckEntryChangeResponse.md
 docs/DeckFolderKind.md
 docs/DeckFolderResponse.md
@@ -126,12 +126,15 @@ docs/DeckSourcingResponse.md
 docs/DeckTagResponse.md
 docs/DeckTargets.md
 docs/DeckUndoResponse.md
+docs/DeckValuesResponse.md
 docs/DeckZone.md
 docs/DefaultApi.md
 docs/DeleteAccountErrors.md
 docs/DeleteAccountRequest.md
 docs/DeletePasskeyErrors.md
 docs/DeletionMode.md
+docs/DeviationCopiesResponse.md
+docs/DiscardDeckCardsRequest.md
 docs/DisputeResultErrors.md
 docs/DropErrors.md
 docs/EndImpersonationErrors.md
@@ -204,6 +207,7 @@ docs/GetPendingOidcLoginResponse.md
 docs/ImportDeckCardsRequest.md
 docs/ImportDeckCardsResponse.md
 docs/ImportMode.md
+docs/LineDeviationResponse.md
 docs/ListCardsResponse.md
 docs/ListCollectionEntriesResponse.md
 docs/ListDeckCardsResponse.md
@@ -277,12 +281,16 @@ docs/PairedRoundResponse.md
 docs/ParticipantDeckResponse.md
 docs/ParticipantResponse.md
 docs/PendingOidcLogin.md
+docs/PhysicalDeckResponse.md
+docs/PhysicalDeckValueResponse.md
+docs/PhysicalStackResponse.md
 docs/PriceDayResponse.md
 docs/PriceHistoryResponse.md
 docs/PricePointResponse.md
 docs/PrintingLanguageResponse.md
 docs/PrintingLanguagesResponse.md
 docs/PrintingLookupRequest.md
+docs/ProxyRule.md
 docs/PublicCollectionResponse.md
 docs/PublicDeckResponse.md
 docs/PublicDeckSort.md
@@ -294,6 +302,7 @@ docs/PushSettingsResponse.md
 docs/PutDeckCollaborator200Response.md
 docs/PutDeckCollaboratorErrors.md
 docs/PutDeckCollaboratorRequest.md
+docs/PutDeckProxiesRequest.md
 docs/RarityCountsResponse.md
 docs/ReadDeckCardResponse.md
 docs/ReadDeckUrlRequest.md
@@ -301,6 +310,7 @@ docs/ReadDeckUrlResponse.md
 docs/RecoverAccountRequest.md
 docs/RegisterDeckErrors.md
 docs/RegisterDeckRequest.md
+docs/RegisteredCardResponse.md
 docs/RegisteredDeckResponse.md
 docs/RegisteredListResponse.md
 docs/RegisteredListsResponse.md
@@ -311,6 +321,7 @@ docs/RenameAccountRequest.md
 docs/RenameAccountResponse.md
 docs/RenamePasskeyErrors.md
 docs/RenamePasskeyRequest.md
+docs/ReplaceDeckProxyRequest.md
 docs/ReplaceMpcFillFavoriteRequest.md
 docs/ReportResultErrors.md
 docs/ReportResultRequest.md
@@ -319,8 +330,6 @@ docs/ResolvePrintingsResponse.md
 docs/ResolvedPrintingResponse.md
 docs/ResultResponse.md
 docs/ResultState.md
-docs/ReturnAllDeckCardsRequest.md
-docs/ReturnAllDeckCardsResponse.md
 docs/ReturnDeckCardsRequest.md
 docs/Role.md
 docs/RoleBansResponse.md
@@ -409,6 +418,8 @@ docs/SubscribePushDeviceErrors.md
 docs/SubscribePushDeviceRequest.md
 docs/SwapDeckCardRequest.md
 docs/SyncRunOutcome.md
+docs/TakeApartPhysicalDeckRequest.md
+docs/TakeApartPhysicalDeckResponse.md
 docs/TakeDeckCardsRequest.md
 docs/ThemeLevel.md
 docs/ThemePrefs.md

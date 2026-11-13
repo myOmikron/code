@@ -64,6 +64,7 @@ export function tournamentRequest(values: TournamentWizardValues): TournamentSet
         entered_afterwards: values.enteredAfterwards,
         entry_fee: fee === null ? null : { amount: fee, currency: values.entryFee.currency },
         check_in: values.checkIn,
+        proxy_rule: values.proxyRule,
     };
 }
 

@@ -271,10 +271,7 @@ function PointEntries({ entries }: PointEntriesProps) {
                     </Strong>
                     <ul className={"flex flex-col gap-1"}>
                         {entries.map((entry) => (
-                            <li
-                                key={`${entry.printing}-${entry.foil}-${entry.proxy}`}
-                                className={"flex flex-wrap items-center gap-2"}
-                            >
+                            <li key={`${entry.printing}-${entry.foil}`} className={"flex flex-wrap items-center gap-2"}>
                                 <Text>
                                     {t("label.history-point-line", {
                                         quantity: entry.quantity,
@@ -282,7 +279,6 @@ function PointEntries({ entries }: PointEntriesProps) {
                                     })}
                                 </Text>
                                 {entry.foil && <Badge color={"amber"}>{t("label.foil")}</Badge>}
-                                {entry.proxy && <Badge color={"zinc"}>{t("label.proxy")}</Badge>}
                             </li>
                         ))}
                     </ul>

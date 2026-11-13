@@ -17,7 +17,7 @@
 export type SourcingMatch = {
     /** Whether only the very printing the deck lists counts as a copy */
     exactPrinting: boolean;
-    /** Whether a foil slot only counts foils, and a plain slot only plain ones */
+    /** Whether a foil slot only counts foils, and a plain slot only plain ones; etched copies count for neither */
     matchFinish: boolean;
 };
 
@@ -32,8 +32,6 @@ export type SourcingSlotLike = {
     quantity: number;
     /** Whether the list asks for foils */
     foil: boolean;
-    /** Whether the slot is a stand-in — it asks for no cardboard */
-    proxy?: boolean;
     /** What the catalog knows, absent for a printing it has not caught up with */
     card?: { oracle_id?: string | null } | null;
 };
@@ -78,7 +76,7 @@ export type SourcingCount = {
 export function fills(slot: SourcingSlotLike, stack: SourcingStackLike, match: SourcingMatch): boolean {
     if (!samePrinting(slot, stack, match.exactPrinting)) return false;
     if (!match.matchFinish) return true;
-    return slot.foil === (stack.finish === "Foil");
+    return stack.finish === (slot.foil ? "Foil" : "Nonfoil");
 }
 
 /**
@@ -117,10 +115,7 @@ export function countSlot(
         needed: slot.quantity,
         filed: inDeck,
         available,
-        // A proxy stands in for cardboard nobody has to go find, so it has
-        // nothing missing — the "to buy" count and the "Bought it" offer both
-        // read off this.
-        missing: slot.proxy === true ? 0 : Math.max(0, slot.quantity - inDeck - available),
+        missing: Math.max(0, slot.quantity - inDeck - available),
         otherPrinting: match.exactPrinting ? withAnyPrinting - available : 0,
         otherFinish: match.matchFinish ? withAnyFinish - available : 0,
     };
@@ -143,6 +138,92 @@ function samePrinting(slot: SourcingSlotLike, stack: SourcingStackLike, exact: b
     // id is all either side has.
     if (wanted == null || held == null) return slot.printing === stack.printing;
     return wanted === held;
+}
+
+/** What the catalog knows about a printing's price, absent for a printing it has not caught up with */
+export type PricedCard = {
+    /** Groups every printing of the same card */
+    oracle_id?: string | null;
+    /** What a plain copy costs, in cents */
+    price_eur_cents?: number | null;
+    /** What a foil copy costs, in cents */
+    price_eur_foil_cents?: number | null;
+} | null;
+
+/**
+ * What one copy of a printing costs
+ *
+ * A foil or etched copy is priced as a foil, falling back to the plain price, the way a
+ * collection's value is.
+ *
+ * @param card what the catalog knows about the printing
+ * @param foil whether the copy is a foil or an etched one
+ *
+ * @returns the price in cents, `null` without one
+ */
+function unitPrice(card: PricedCard | undefined, foil: boolean): number | null {
+    const price = foil ? (card?.price_eur_foil_cents ?? card?.price_eur_cents) : card?.price_eur_cents;
+    return price ?? null;
+}
+
+/**
+ * What buying every copy still missing from the deck would cost
+ *
+ * Each line at the price of the printing and finish the list asks for; a line
+ * the catalog has no price for adds nothing.
+ *
+ * @param rows every line of the list with its count under the current match
+ *
+ * @returns the cost in cents
+ */
+export function missingCost(
+    rows: Array<{ slot: SourcingSlotLike & { card?: PricedCard }; count: Pick<SourcingCount, "missing"> }>,
+): number {
+    return rows.reduce((sum, { slot, count }) => sum + (unitPrice(slot.card, slot.foil) ?? 0) * count.missing, 0);
+}
+
+/** The least a stack in the Physical deck has to say to be offered for replacing */
+export type ProxyStackLike = SourcingStackLike & {
+    /** Whether the stack holds Proxies rather than real cards */
+    proxy: boolean;
+    /** What the catalog knows about the printing the Proxies stand for */
+    card?: PricedCard;
+};
+
+/** One Proxy stack and what could take its place */
+export type ProxyReplacement<P, C> = {
+    /** The Proxies */
+    proxy: P;
+    /** Copies of the card in the owner's collections, any printing or finish */
+    candidates: Array<C>;
+    /** What buying the printings the Proxies stand for would cost, in cents; `null` without a price */
+    cost: number | null;
+};
+
+/**
+ * Pairs every Proxy stack in the Physical deck with the owner's copies of its card and the price
+ * of buying it
+ *
+ * @param filed every stack lying in the Physical deck
+ * @param candidates every stack elsewhere in the account
+ *
+ * @returns one entry per Proxy stack, in the order they were filed
+ */
+export function proxyReplacements<P extends ProxyStackLike, C extends SourcingStackLike>(
+    filed: Array<P>,
+    candidates: Array<C>,
+): Array<ProxyReplacement<P, C>> {
+    return filed
+        .filter((stack) => stack.proxy)
+        .map((proxy) => {
+            const slot: SourcingSlotLike = { ...proxy, foil: proxy.finish === "Foil" };
+            const price = unitPrice(proxy.card, proxy.finish !== "Nonfoil");
+            return {
+                proxy,
+                candidates: candidates.filter((candidate) => fills(slot, candidate, ANY_MATCH)),
+                cost: price == null ? null : price * proxy.quantity,
+            };
+        });
 }
 
 /** The least a filed stack has to say to be put in reading order */

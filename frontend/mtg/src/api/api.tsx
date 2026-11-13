@@ -65,6 +65,9 @@ import {
 /** Hyphen separated uuid */
 export type UUID = string;
 
+/** Where a scanner session's cards go: a collection (`null` for the session's own choice) or a deck's Physical deck */
+export type FilingTarget = { collection: UUID | null } | { deck: UUID };
+
 const configuration = new Configuration({
     basePath: window.location.origin,
     middleware: [DIAGNOSTICS.middleware],
@@ -202,6 +205,7 @@ export const Api = {
     },
     collections: {
         list: async () => handleError(defaultApi.getAllCollections()),
+        totals: async () => handleError(defaultApi.getCollectionTotals()),
         get: async (uuid: UUID) => handleError(defaultApi.getCollection({ collection: uuid })),
         getIfThere: async (uuid: UUID) => orGone(defaultApi.getCollection({ collection: uuid })),
         create: async (req: CreateCollectionRequest) =>
@@ -348,24 +352,16 @@ export const Api = {
         // A filed deck keeps its cards either way.
         setFolder: async (uuid: UUID, folder: UUID | null) =>
             handleError(defaultApi.setDeckFolder({ deck: uuid, SetDeckFolderRequest: { folder } })),
-        collection: {
-            // Start keeping the cards that are physically in the deck. Idempotent.
-            attach: async (deck: UUID) => handleError(defaultApi.attachDeckCollection({ deck })),
-            // Only while nothing is filed in it.
-            detach: async (deck: UUID) => handleError(defaultApi.detachDeckCollection({ deck })),
-        },
-        // Where the deck list and the cardboard filed under it disagree. Its
-        // own request because the deck's header asks it on every tab, and the
-        // sourcing answer would drag the whole account's shelf along.
-        drift: async (deck: UUID) => handleError(defaultApi.getDeckCollectionDrift({ deck })),
-        driftIfOwner: async (deck: UUID) => orGone(defaultApi.getDeckCollectionDrift({ deck })),
+        deviation: async (deck: UUID) => orGone(defaultApi.getDeckDeviation({ deck })),
+        physicalDeck: async (deck: UUID) => handleError(defaultApi.getPhysicalDeck({ deck })),
+        values: async (deck: UUID) => handleError(defaultApi.getDeckValues({ deck })),
+        valuesIfShown: async (deck: UUID) => orGone(defaultApi.getDeckValues({ deck })),
         sourcing: {
             // What the deck asks for, what is in it, and where the rest could
             // come from — three flat lists the client matches up itself.
             read: async (deck: UUID) => handleError(defaultApi.getDeckSourcing({ deck })),
-            // Move copies out of a box and into the deck, remembering the box.
-            take: async (deck: UUID, entry: UUID, quantity: number, slot: UUID | null = null) =>
-                handleError(defaultApi.takeDeckCards({ deck, TakeDeckCardsRequest: { entry, quantity, slot } })),
+            take: async (deck: UUID, entry: UUID, quantity: number) =>
+                handleError(defaultApi.takeDeckCards({ deck, TakeDeckCardsRequest: { entry, quantity } })),
             // The way back. `target` is only needed for cards that remember no
             // origin, which is what was bought straight into the deck.
             returnCards: async (deck: UUID, entry: UUID, quantity: number, target: UUID | null = null) =>
@@ -374,9 +370,14 @@ export const Api = {
             // deck imported from elsewhere gets its cards without a shopping trip.
             fill: async (deck: UUID, slot: UUID | null = null) =>
                 handleError(defaultApi.fillDeckCollection({ deck, FillDeckCollectionRequest: { slot } })),
-            // Taking the whole deck apart.
-            returnAll: async (deck: UUID, target: UUID | null = null) =>
-                handleError(defaultApi.returnAllDeckCards({ deck, ReturnAllDeckCardsRequest: { target } })),
+            takeApart: async (deck: UUID, target: UUID | null = null) =>
+                handleError(defaultApi.takeApartPhysicalDeck({ deck, TakeApartPhysicalDeckRequest: { target } })),
+            discard: async (deck: UUID, entry: UUID) =>
+                handleError(defaultApi.discardDeckCards({ deck, DiscardDeckCardsRequest: { entry } })),
+            putProxies: async (deck: UUID, slot: UUID, quantity: number) =>
+                handleError(defaultApi.putDeckProxies({ deck, PutDeckProxiesRequest: { slot, quantity } })),
+            replaceProxy: async (deck: UUID, proxy: UUID, entry: UUID, quantity: number) =>
+                handleError(defaultApi.replaceDeckProxy({ deck, ReplaceDeckProxyRequest: { proxy, entry, quantity } })),
         },
         cards: {
             // The whole deck in one answer, catalog data and tags included.
@@ -492,10 +493,8 @@ export const Api = {
             handleError(defaultApi.updateScannerSession({ session, UpdateScannerSessionRequest: req })),
         // Takes the staging area with it, never the cards already filed.
         delete: async (session: UUID) => handleError(defaultApi.deleteScannerSession({ session })),
-        // Files every staged stack into a collection and empties the session,
-        // both inside one transaction. `null` uses the session's own choice.
-        file: async (session: UUID, collection: UUID | null) =>
-            handleError(defaultApi.fileScannerSession({ session, FileScannerSessionRequest: { collection } })),
+        file: async (session: UUID, target: FilingTarget) =>
+            handleError(defaultApi.fileScannerSession({ session, FileScannerSessionRequest: target })),
         entries: {
             add: async (session: UUID, req: AddScannerSessionEntryRequest) =>
                 handleError(defaultApi.addScannerSessionEntry({ session, AddScannerSessionEntryRequest: req })),

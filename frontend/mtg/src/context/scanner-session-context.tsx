@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Api } from "src/api/api";
-import type { UUID } from "src/api/api";
+import type { FilingTarget, UUID } from "src/api/api";
 import type {
     CardFinish,
     CreateScannerSessionRequest,
@@ -46,8 +46,8 @@ type ScannerSessionsValue = {
     deleteEntry: (entry: UUID) => Promise<void>;
     /** Points the open session at a collection, opening one when there is none */
     aimAt: (collection: UUID, name: string) => Promise<void>;
-    /** Files everything staged into a collection and empties the session */
-    file: (collection: UUID | null) => Promise<{ copies: number; stacks: number } | null>;
+    /** Files everything staged into a collection or a deck's Physical deck and empties the session */
+    file: (target: FilingTarget) => Promise<{ copies: number; stacks: number } | null>;
 };
 
 const ScannerSessionsContext = createContext<ScannerSessionsValue | null>(null);
@@ -295,9 +295,9 @@ export function ScannerSessionsProvider({ children }: { children: ReactNode }) {
     );
 
     const file = useCallback(
-        async (collection: UUID | null) => {
+        async (target: FilingTarget) => {
             if (!active) return null;
-            const filed = await Api.scannerSessions.file(active.uuid, collection);
+            const filed = await Api.scannerSessions.file(active.uuid, target);
             setEntries([]);
             await open(active.uuid);
             return { copies: filed.copies, stacks: filed.stacks };

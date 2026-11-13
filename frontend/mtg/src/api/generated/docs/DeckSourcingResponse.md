@@ -8,8 +8,8 @@ Everything the sourcing view is drawn from
 Name | Type
 ------------ | -------------
 `candidates` | [Array&lt;SourcingCandidateResponse&gt;](SourcingCandidateResponse.md)
-`collection` | [CollectionResponse](CollectionResponse.md)
 `filed` | [Array&lt;SourcedStackResponse&gt;](SourcedStackResponse.md)
+`physical_deck` | string
 `slots` | [Array&lt;SourcingSlotResponse&gt;](SourcingSlotResponse.md)
 
 

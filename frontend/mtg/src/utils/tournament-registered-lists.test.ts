@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type {
     BracketRulesResponse,
-    DeckCardResponse,
+    RegisteredCardResponse,
     RegisteredListResponse,
     FormatRulesResponse,
 } from "src/api/generated";
@@ -50,7 +50,7 @@ const CORE: BracketRulesResponse = {
  *
  * @returns the slot
  */
-function slot(name: string, legal: Array<string>, gameChanger = false): DeckCardResponse {
+function slot(name: string, legal: Array<string>, gameChanger = false): RegisteredCardResponse {
     return {
         card: {
             oracle_id: `${name}-oracle`,
@@ -59,14 +59,14 @@ function slot(name: string, legal: Array<string>, gameChanger = false): DeckCard
             color_identity: "",
             legal_formats: legal,
             game_changer: gameChanger,
-        } as DeckCardResponse["card"],
+        } as RegisteredCardResponse["card"],
         foil: false,
-        proxy: false,
+        proxies: 0,
         printing: `${name}-printing`,
         quantity: 4,
         tags: [],
         uuid: `${name}-slot`,
-        zone: "Main" as DeckCardResponse["zone"],
+        zone: "Main" as RegisteredCardResponse["zone"],
     };
 }
 
@@ -92,6 +92,7 @@ function list(overrides: Partial<RegisteredListResponse> = {}): RegisteredListRe
         shared: false,
         pinned: true,
         cards: [slot("Lightning Bolt", ["modern", "pauper"])],
+        breaks_proxy_rule: false,
         ...overrides,
     };
 }
@@ -148,5 +149,32 @@ describe("registeredListWarnings", () => {
         const warnings = registeredListWarnings(deck, "commander", [COMMANDER], [CORE]);
 
         expect(warnings).toContainEqual({ kind: "bracket", bracket: 2, rules: ["game-changers"] });
+    });
+
+    it("warns about the Proxies of a deck that breaks the Proxy rule", () => {
+        const proxied = list({
+            breaks_proxy_rule: true,
+            cards: [
+                { ...slot("Lightning Bolt", ["modern"]), proxies: 2 },
+                { ...slot("Lava Spike", ["modern"]), proxies: 1 },
+            ],
+        });
+
+        expect(registeredListWarnings(proxied, "modern", [MODERN], [])).toEqual([{ kind: "proxies", proxies: 3 }]);
+    });
+
+    it("says nothing about Proxies the Proxy rule allows", () => {
+        const proxied = list({ cards: [{ ...slot("Lightning Bolt", ["modern"]), proxies: 2 }] });
+
+        expect(registeredListWarnings(proxied, "modern", [MODERN], [])).toEqual([]);
+    });
+
+    it("holds a Limited Tournament's decks to its Proxy rule", () => {
+        const proxied = list({
+            breaks_proxy_rule: true,
+            cards: [{ ...slot("Hymn", ["pauper"]), proxies: 1 }],
+        });
+
+        expect(registeredListWarnings(proxied, "draft", [MODERN], [])).toEqual([{ kind: "proxies", proxies: 1 }]);
     });
 });

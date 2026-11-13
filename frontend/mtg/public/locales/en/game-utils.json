@@ -77,7 +77,7 @@
         "no-art-hint": "The drives hold no image for this card. You can upload one at MPCFill — or the card stays out of the order file.",
         "nothing-picked": "No card on the list yet.",
         "nothing-to-order": "No card has art yet — without that, nothing goes into the file.",
-        "only-proxies": "Keeps only the cards a deck marks as proxies.",
+        "only-missing": "Takes from a deck only the cards its Physical deck lacks.",
         "order-too-large": "More than {{cards}} cards do not fit into one order — split the list up.",
         "paste-into-mpc-fill": "Paste it into MPCFill under “Add Cards → Text” and submit.",
         "pick-art_one": "1 image in the drives.",
@@ -141,7 +141,7 @@
         "life": "{{count}} life",
         "more-tools-soon": "More tools coming",
         "navigation": "Game utils navigation",
-        "only-proxies": "Proxy slots only",
+        "only-missing": "Missing cards only",
         "on-the-list": "On the list",
         "player": "Player {{number}}",
         "player-short": "P{{number}}",
@@ -183,7 +183,9 @@
     },
     "toast": {
         "art-not-searched": "MPCFill did not answer",
+        "deck-nothing-missing": "{{name}} lacks no card",
         "deck-nothing-to-add": "Nothing to add from {{name}}",
+        "deck-without-physical-deck": "{{name}} has no Physical deck, so all its cards were added",
         "list-copied": "List copied",
         "list-not-copied": "Could not copy the list",
         "favorite-not-saved": "Favorite not saved"

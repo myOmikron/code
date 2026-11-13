@@ -12,7 +12,6 @@ Name | Type
 `foil` | boolean
 `name` | string
 `printing` | string
-`proxy` | boolean
 `zone` | [DeckZone](DeckZone.md)
 
 

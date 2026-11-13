@@ -11,7 +11,7 @@
  * both come out as, and the ordering list in `mpcfill.ts` reads the same rows.
  */
 
-import type { DeckCardResponse } from "src/api/generated";
+import type { DeckCardResponse, DeckDeviationResponse } from "src/api/generated";
 
 /** A sheet of A4, in millimetres */
 export const SHEET = { width: 210, height: 297 };
@@ -57,8 +57,6 @@ export type ProxyCard = {
     copies: number;
     /** Whether it is a basic land, which a sheet is rarely printed for */
     basic: boolean;
-    /** Whether it counts as a proxy: marked so in its deck, or picked by hand */
-    proxy: boolean;
 };
 
 /** One picture on the paper */
@@ -175,17 +173,63 @@ export function isBasicLand(typeLine: string | null | undefined): boolean {
  * @returns the cards, in the order the deck lists them
  */
 export function deckProxyCards(cards: Array<DeckCardResponse>): Array<ProxyCard> {
-    return cards
-        .filter((slot) => slot.zone === "Main" || slot.zone === "Commander")
-        .map((slot) => ({
-            key: slot.uuid,
-            name: slot.card?.name ?? "",
-            set: slot.card?.set_code ?? "",
-            number: slot.card?.collector_number ?? "",
-            front: printableImage(slot.card?.image_normal),
-            back: printableImage(slot.card?.image_back_normal),
-            copies: Math.min(MAX_COPIES, slot.quantity),
-            basic: isBasicLand(slot.card?.type_line),
-            proxy: slot.proxy,
-        }));
+    return cards.filter(isPrinted).map((slot) => proxyCardOf(slot, slot.quantity));
+}
+
+/**
+ * The copies of a deck its Physical deck does not hold, to be proxied
+ *
+ * Read off each Deck entry's missing copies in the Deviation rather than worked
+ * out again here, so the tools and the deck page never disagree about what is
+ * missing. The same lines as {@link deckProxyCards} take part.
+ *
+ * @param cards the deck's lines
+ * @param deviation where the deck list and the Physical deck disagree
+ *
+ * @returns the missing copies in the order the deck lists them, `null` for a
+ * deck without a Physical deck, which has no missing copies to tell
+ */
+export function missingProxyCards(
+    cards: Array<DeckCardResponse>,
+    deviation: DeckDeviationResponse,
+): Array<ProxyCard> | null {
+    if (!deviation.has_physical_deck) return null;
+
+    const missing = new Map(deviation.entries.map((line) => [line.entry, line.missing]));
+    return cards.filter(isPrinted).flatMap((slot) => {
+        const copies = Math.min(slot.quantity, missing.get(slot.uuid) ?? 0);
+        return copies === 0 ? [] : [proxyCardOf(slot, copies)];
+    });
+}
+
+/**
+ * Whether a deck's line is one a proxy run is made from
+ *
+ * @param slot the line
+ *
+ * @returns whether it sits in the deck proper
+ */
+function isPrinted(slot: DeckCardResponse): boolean {
+    return slot.zone === "Main" || slot.zone === "Commander";
+}
+
+/**
+ * A deck's line as a card to proxy
+ *
+ * @param slot the line
+ * @param copies how many of its copies to proxy
+ *
+ * @returns the card
+ */
+function proxyCardOf(slot: DeckCardResponse, copies: number): ProxyCard {
+    return {
+        key: slot.uuid,
+        name: slot.card?.name ?? "",
+        set: slot.card?.set_code ?? "",
+        number: slot.card?.collector_number ?? "",
+        front: printableImage(slot.card?.image_normal),
+        back: printableImage(slot.card?.image_back_normal),
+        copies: Math.min(MAX_COPIES, copies),
+        basic: isBasicLand(slot.card?.type_line),
+    };
 }

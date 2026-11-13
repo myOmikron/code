@@ -1,0 +1,3 @@
+kind: improved
+de: "Karten der Deckliste werden nicht mehr als Proxy markiert: Proxies liegen jetzt im Physischen Deck. Deine bisher als Proxy markierten Karten sind dort als Proxies einsortiert, und eine Proxy-Zeile ist mit der gleichen echten Zeile zusammengelegt."
+en: "Cards on the decklist are no longer marked as proxies: Proxies now lie in the Physical deck. The cards you had marked as proxies are filed there as Proxies, and a proxy line is merged with the same real line."

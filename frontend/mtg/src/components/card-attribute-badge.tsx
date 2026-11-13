@@ -1,4 +1,4 @@
-import { DocumentDuplicateIcon, SparklesIcon } from "@heroicons/react/20/solid";
+import { SparklesIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import type { BadgeProps } from "components";
 import { Badge } from "components";
@@ -139,34 +139,6 @@ export function FoilMark({ finish, className }: FoilMarkProps) {
         <SparklesIcon
             aria-label={finishLabel(tg, finish)}
             className={clsx("inline-block size-4 shrink-0 text-amber-500 dark:text-amber-400", className)}
-        />
-    );
-}
-
-/**
- * The properties for {@link ProxyMark}
- */
-export type ProxyMarkProps = {
-    /** Whether the slot is a stand-in, nothing is drawn otherwise */
-    proxy: boolean | null | undefined;
-    /** Additional CSS classes */
-    className?: string;
-};
-
-/**
- * The little duplicate glyph that says a slot is a proxy, see {@link FoilMark}
- *
- * @returns the mark, or nothing for a genuine card
- */
-export function ProxyMark({ proxy, className }: ProxyMarkProps) {
-    const [tg] = useTranslation();
-
-    if (!proxy) return null;
-
-    return (
-        <DocumentDuplicateIcon
-            aria-label={tg("label.proxy")}
-            className={clsx("inline-block size-4 shrink-0 text-purple-500 dark:text-purple-400", className)}
         />
     );
 }

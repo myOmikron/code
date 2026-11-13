@@ -66,7 +66,7 @@ impl StockDrift {
                        COALESCE(SUM(e.quantity) FILTER (WHERE c.deck IS NOT NULL), 0) AS sleeved \
                 FROM collection_entry e \
                 JOIN collection c ON c.uuid = e.collection \
-                GROUP BY c.owner, e.printing, e.finish \
+                WHERE NOT e.proxy GROUP BY c.owner, e.printing, e.finish \
             ) \
             SELECT COALESCE(s.owner, t.owner) AS owner, \
                    COALESCE(s.printing, t.printing) AS printing, \
@@ -163,7 +163,7 @@ pub async fn rebuild(tx: &mut Transaction) -> Result<u64, rorm::Error> {
                         COALESCE(SUM(e.quantity) FILTER (WHERE c.deck IS NOT NULL), 0) AS sleeved \
                  FROM collection_entry e \
                  JOIN collection c ON c.uuid = e.collection \
-                 GROUP BY c.owner, e.printing, e.finish \
+                 WHERE NOT e.proxy GROUP BY c.owner, e.printing, e.finish \
              ) g \
              LEFT JOIN printing p ON p.id = g.printing \
              RETURNING owner"

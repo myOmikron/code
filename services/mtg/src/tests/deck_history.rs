@@ -244,36 +244,32 @@ fn moving_an_entry_onto_an_alike_one_merges_quantity_and_tags() {
 }
 
 #[test]
-fn switching_printing_foil_or_proxy_onto_an_alike_entry_merges() {
+fn switching_printing_or_foil_onto_an_alike_entry_merges() {
     run(async {
         let mut fixture = Fixture::new().await;
         let printing = Uuid::new_v4();
         let other = Uuid::new_v4();
         let target = fixture
-            .add(json!({ "printing": printing, "quantity": 1, "zone": "Main", "foil": true, "proxy": true }))
+            .add(json!({ "printing": printing, "quantity": 1, "zone": "Main", "foil": true }))
             .await;
         let kept = fixture.tag(&target, "Kept").await;
 
         let reprint = fixture
-            .add(json!({ "printing": other, "quantity": 1, "zone": "Main", "foil": true, "proxy": true }))
+            .add(json!({ "printing": other, "quantity": 1, "zone": "Main", "foil": true }))
             .await;
         fixture
             .patch(&reprint, json!({ "printing": printing }))
             .await;
         let nonfoil = fixture
-            .add(json!({ "printing": printing, "quantity": 2, "zone": "Main", "proxy": true }))
+            .add(json!({ "printing": printing, "quantity": 2, "zone": "Main" }))
             .await;
         let carried = fixture.tag(&nonfoil, "Carried").await;
         fixture.patch(&nonfoil, json!({ "foil": true })).await;
-        let real = fixture
-            .add(json!({ "printing": printing, "quantity": 4, "zone": "Main", "foil": true }))
-            .await;
-        fixture.patch(&real, json!({ "proxy": true })).await;
 
         let entries = fixture.entries().await;
         assert_eq!(entries.len(), 1, "{entries:?}");
         assert_eq!(entries[0]["uuid"], target.as_str());
-        assert_eq!(entries[0]["quantity"], 8);
+        assert_eq!(entries[0]["quantity"], 4);
         let mut expected = vec![kept, carried];
         expected.sort();
         assert_eq!(tags(&entries[0]), expected);
@@ -500,45 +496,6 @@ fn the_migration_merges_alike_entries_and_keeps_their_tags() {
         assert!(duplicate.is_err(), "a second alike entry was accepted");
 
         db.close().await;
-    });
-}
-
-#[test]
-fn filling_a_proxy_entry_merges_it_into_the_real_alike_entry() {
-    run(async {
-        let mut fixture = Fixture::new().await;
-        let printing = Uuid::new_v4();
-        fixture
-            .add(json!({ "printing": printing, "quantity": 2, "zone": "Main" }))
-            .await;
-        let proxy = fixture
-            .add(json!({ "printing": printing, "quantity": 1, "zone": "Main", "proxy": true }))
-            .await;
-        let deck = fixture.deck.clone();
-        fixture
-            .owner
-            .json(
-                Method::POST,
-                &api(&format!("decks/{deck}/collection")),
-                &json!(null),
-            )
-            .await
-            .ok_json();
-
-        fixture
-            .owner
-            .json(
-                Method::POST,
-                &api(&format!("decks/{deck}/sourcing/fill")),
-                &json!({ "slot": proxy }),
-            )
-            .await
-            .ok_json();
-
-        let entries = fixture.entries().await;
-        assert_eq!(entries.len(), 1, "{entries:?}");
-        assert_eq!(entries[0]["proxy"], false);
-        assert_eq!(entries[0]["quantity"], 3);
     });
 }
 
@@ -1087,7 +1044,7 @@ fn a_move_merging_into_an_alike_entry_is_one_move() {
 }
 
 #[test]
-fn switching_printing_foil_or_proxy_records_one_switch_each() {
+fn switching_printing_or_foil_records_one_switch_each() {
     run(async {
         let mut fixture = Fixture::new().await;
         let printing = Uuid::new_v4();
@@ -1101,17 +1058,11 @@ fn switching_printing_foil_or_proxy_records_one_switch_each() {
 
         fixture.patch(&entry, json!({ "foil": true })).await;
         assert_eq!(fixture.kinds().await[0], "Switch");
-        fixture.patch(&entry, json!({ "proxy": true })).await;
-        assert_eq!(fixture.kinds().await[0], "Switch");
-        fixture
-            .patch(&entry, json!({ "printing": other, "proxy": false }))
-            .await;
+        fixture.patch(&entry, json!({ "printing": other })).await;
 
         assert_eq!(
             fixture.kinds().await,
-            vec![
-                "Switch", "Switch", "Switch", "Quantity", "Quantity", "Created"
-            ]
+            vec!["Switch", "Switch", "Quantity", "Quantity", "Created"]
         );
         let history = fixture.history("").await;
         let mut merged: Vec<(bool, i64, i64)> = history["changes"][0]["entries"]
@@ -1533,6 +1484,15 @@ impl Fixture {
         self.owner.json(method, &url, &body).await.ok_json()
     }
 
+    /// Where the stacks in the deck's Physical deck are listed
+    async fn physical_deck_entries(&mut self) -> url::Url {
+        let sourcing = self.send_json(Method::GET, "sourcing", Value::Null).await;
+        let collection = sourcing["physical_deck"]
+            .as_str()
+            .expect("the deck has a Physical deck");
+        api(&format!("collections/{collection}/entries"))
+    }
+
     /// A new collection of the owner holding one stack, answering the uuids of both
     async fn stack(&mut self, printing: Uuid, quantity: i32, finish: &str) -> (String, String) {
         let collection = self
@@ -1583,91 +1543,7 @@ impl Fixture {
 }
 
 #[test]
-fn sourcing_another_printing_for_an_entry_records_one_sourcing_change() {
-    run(async {
-        let mut fixture = Fixture::new().await;
-        let listed = Uuid::new_v4();
-        let sourced = Uuid::new_v4();
-        let entry = fixture
-            .add(json!({ "printing": listed, "quantity": 3, "zone": "Main" }))
-            .await;
-        fixture
-            .send_json(Method::POST, "collection", json!(null))
-            .await;
-        let (_, stack) = fixture.stack(sourced, 1, "Foil").await;
-
-        fixture
-            .send_json(
-                Method::POST,
-                "sourcing/take",
-                json!({ "entry": stack, "quantity": 1, "slot": entry }),
-            )
-            .await;
-
-        assert_eq!(
-            fixture.kinds().await,
-            vec!["Sourcing", "Quantity", "Created"]
-        );
-        let history = fixture.history("").await;
-        let mut split: Vec<(bool, bool, i64, i64)> = history["changes"][0]["entries"]
-            .as_array()
-            .expect("entry list")
-            .iter()
-            .map(|entry| {
-                (
-                    entry["printing"] == json!(sourced),
-                    entry["foil"].as_bool().expect("foil"),
-                    entry["before"].as_i64().expect("before"),
-                    entry["after"].as_i64().expect("after"),
-                )
-            })
-            .collect();
-        split.sort();
-        assert_eq!(split, vec![(false, false, 3, 2), (true, true, 0, 1)]);
-    });
-}
-
-#[test]
-fn filling_a_proxy_entry_records_one_sourcing_change() {
-    run(async {
-        let mut fixture = Fixture::new().await;
-        let proxy = fixture
-            .add(
-                json!({ "printing": Uuid::new_v4(), "quantity": 2, "zone": "Main", "proxy": true }),
-            )
-            .await;
-        fixture
-            .send_json(Method::POST, "collection", json!(null))
-            .await;
-
-        fixture
-            .send_json(Method::POST, "sourcing/fill", json!({ "slot": proxy }))
-            .await;
-
-        assert_eq!(
-            fixture.kinds().await,
-            vec!["Sourcing", "Quantity", "Created"]
-        );
-        let history = fixture.history("").await;
-        let mut flags: Vec<(bool, i64, i64)> = history["changes"][0]["entries"]
-            .as_array()
-            .expect("entry list")
-            .iter()
-            .map(|entry| {
-                (
-                    entry["proxy"].as_bool().expect("proxy"),
-                    entry["before"].as_i64().expect("before"),
-                    entry["after"].as_i64().expect("after"),
-                )
-            })
-            .collect();
-        flags.sort();
-        assert_eq!(flags, vec![(false, 0, 2), (true, 2, 0)]);
-    });
-}
-
-#[test]
-fn tags_folder_visibility_sharing_advisor_settings_and_the_deck_collection_record_nothing() {
+fn tags_folder_visibility_sharing_advisor_settings_and_the_physical_deck_record_nothing() {
     run(async {
         let mut fixture = Fixture::new().await;
         let printing = Uuid::new_v4();
@@ -1717,15 +1593,12 @@ fn tags_folder_visibility_sharing_advisor_settings_and_the_deck_collection_recor
             .send_json(Method::PUT, "advisor-settings", settings)
             .await;
 
-        fixture
-            .send_json(Method::POST, "collection", json!(null))
-            .await;
         let (binder, stack) = fixture.stack(printing, 2, "Nonfoil").await;
         fixture
             .send_json(
                 Method::POST,
                 "sourcing/take",
-                json!({ "entry": stack, "quantity": 1, "slot": entry }),
+                json!({ "entry": stack, "quantity": 1 }),
             )
             .await;
         fixture
@@ -1734,12 +1607,9 @@ fn tags_folder_visibility_sharing_advisor_settings_and_the_deck_collection_recor
         fixture
             .send_json(
                 Method::POST,
-                "sourcing/return-all",
+                "sourcing/take-apart",
                 json!({ "target": binder }),
             )
-            .await;
-        fixture
-            .send_json(Method::DELETE, "collection", json!(null))
             .await;
 
         assert_eq!(fixture.kinds().await, before);
@@ -2334,29 +2204,26 @@ fn undo_restores_entries_without_tags_and_merges_keep_theirs() {
 }
 
 #[test]
-fn undoing_sourcing_leaves_the_deck_collection_alone() {
+fn undoing_leaves_the_physical_deck_alone() {
     run(async {
         let mut fixture = Fixture::new().await;
         let listed = Uuid::new_v4();
         let sourced = Uuid::new_v4();
-        let entry = fixture
+        fixture
             .add(json!({ "printing": listed, "quantity": 3, "zone": "Main" }))
             .await;
-        let collection = fixture
-            .send_json(Method::POST, "collection", json!(null))
+        fixture
+            .add(json!({ "printing": Uuid::new_v4(), "quantity": 1, "zone": "Main" }))
             .await;
-        let url = api(&format!(
-            "collections/{}/entries",
-            collection["uuid"].as_str().expect("collection uuid")
-        ));
         let (_, stack) = fixture.stack(sourced, 1, "Foil").await;
         fixture
             .send_json(
                 Method::POST,
                 "sourcing/take",
-                json!({ "entry": stack, "quantity": 1, "slot": entry }),
+                json!({ "entry": stack, "quantity": 1 }),
             )
             .await;
+        let url = fixture.physical_deck_entries().await;
         let filed = fixture.owner.get(&url).await.ok_json();
 
         fixture.undo().await.ok_json();
@@ -2693,7 +2560,7 @@ fn resetting_to_the_decks_creation_empties_it() {
 }
 
 #[test]
-fn a_reset_leaves_the_deck_collection_alone_and_restores_entries_untagged() {
+fn a_reset_leaves_the_physical_deck_alone_and_restores_entries_untagged() {
     run(async {
         let mut fixture = Fixture::new().await;
         let gone = Uuid::new_v4();
@@ -2707,13 +2574,6 @@ fn a_reset_leaves_the_deck_collection_alone_and_restores_entries_untagged() {
             .await;
         let hate = fixture.tag(&stays, "Hate").await;
         let point = fixture.newest().await;
-        let collection = fixture
-            .send_json(Method::POST, "collection", json!(null))
-            .await;
-        let url = api(&format!(
-            "collections/{}/entries",
-            collection["uuid"].as_str().expect("collection uuid")
-        ));
         let (_, stack) = fixture.stack(kept, 1, "Foil").await;
         fixture
             .send_json(
@@ -2722,6 +2582,7 @@ fn a_reset_leaves_the_deck_collection_alone_and_restores_entries_untagged() {
                 json!({ "entry": stack, "quantity": 1 }),
             )
             .await;
+        let url = fixture.physical_deck_entries().await;
         fixture.remove(&removed).await;
         let filed = fixture.owner.get(&url).await.ok_json();
 
@@ -2955,5 +2816,86 @@ fn only_the_owner_names_and_removes_deck_checkpoints() {
         for fixture in [&mut public, &mut unlisted] {
             assert_eq!(fixture.checkpoints().await, vec![json!("Mine")]);
         }
+    });
+}
+
+impl Fixture {
+    /// Stores `change` the way a Deck change touching one Main entry was
+    /// stored while Deck entries carried a proxy flag
+    async fn store_with_proxy_flag(
+        &mut self,
+        change: &str,
+        printing: Uuid,
+        proxy: bool,
+        (before, after): (i32, i32),
+    ) {
+        let difference = json!({
+            "entries": [{
+                "printing": printing,
+                "zone": "Main",
+                "foil": false,
+                "proxy": proxy,
+                "before": before,
+                "after": after,
+            }],
+            "fields": [],
+        })
+        .to_string();
+        let mut tx = Database::global()
+            .start_transaction()
+            .await
+            .expect("start a transaction");
+        (&mut tx)
+            .execute::<All>(
+                "UPDATE deck_change SET difference = convert_to($2, 'UTF8') WHERE uuid = $1"
+                    .to_string(),
+                vec![
+                    SqlValue::Uuid(change.parse().expect("change uuid")),
+                    SqlValue::String(&difference),
+                ],
+            )
+            .await
+            .expect("store the Deck change the old way");
+        tx.commit().await.expect("commit");
+    }
+}
+
+#[test]
+fn deck_changes_stored_with_a_proxy_flag_still_read_undo_and_reset_as_one_entry() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        fixture
+            .add(json!({ "printing": printing, "quantity": 1, "zone": "Main" }))
+            .await;
+        let real = fixture.newest().await;
+        fixture.age_latest().await;
+        let entry = fixture
+            .add(json!({ "printing": printing, "quantity": 2, "zone": "Main" }))
+            .await;
+        let proxied = fixture.newest().await;
+        assert_ne!(real, proxied, "the two adds were recorded as one");
+        fixture
+            .store_with_proxy_flag(&real, printing, false, (0, 1))
+            .await;
+        fixture
+            .store_with_proxy_flag(&proxied, printing, true, (0, 2))
+            .await;
+
+        let history = fixture.history("").await;
+        let stored = &history["changes"][0]["entries"][0];
+        assert_eq!(stored.get("proxy"), None, "{stored}");
+        let at_real = vec![(printing.to_string(), "Main".to_string(), 1)];
+        assert_eq!(fixture.state_at(&real).await.0, at_real);
+
+        fixture.undo().await.ok_json();
+        assert_eq!(lines(&fixture.entries().await), at_real);
+        fixture.redo().await.ok_json();
+        let entries = fixture.entries().await;
+        assert_eq!(entries[0]["uuid"], entry.as_str());
+        assert_eq!(entries[0]["quantity"], 3);
+
+        fixture.reset(&real).await.ok_json();
+        assert_eq!(lines(&fixture.entries().await), at_real);
     });
 }

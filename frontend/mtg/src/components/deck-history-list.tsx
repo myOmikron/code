@@ -325,7 +325,7 @@ function EntryLines({ entries }: EntryLinesProps) {
     return (
         <ul className={"flex flex-col gap-1"}>
             {entries.map((entry) => (
-                <EntryLine key={`${entry.printing}-${entry.zone}-${entry.foil}-${entry.proxy}`} entry={entry} />
+                <EntryLine key={`${entry.printing}-${entry.zone}-${entry.foil}`} entry={entry} />
             ))}
         </ul>
     );
@@ -359,7 +359,6 @@ function EntryLine({ entry }: EntryLineProps) {
                 })}
             </Text>
             {entry.foil && <Badge color={"amber"}>{t("label.foil")}</Badge>}
-            {entry.proxy && <Badge color={"zinc"}>{t("label.proxy")}</Badge>}
             <Text className={"tabular-nums"}>
                 {t("label.history-quantities", { before: entry.before, after: entry.after })}
             </Text>

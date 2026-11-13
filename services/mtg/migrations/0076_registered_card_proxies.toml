@@ -1,0 +1,43 @@
+[Migration]
+Hash = "14046489054775930652"
+Initial = false
+Dependency = 75
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_registered_card"
+
+[Migration.Operations.Field]
+Name = "proxies"
+Type = "int32"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = 0
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 605
+Column = 9
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+UPDATE tournament_registered_card SET proxies = quantity WHERE proxy;
+"""
+
+[[Migration.Operations]]
+Type = "DeleteField"
+Model = "tournament_registered_card"
+Name = "proxy"

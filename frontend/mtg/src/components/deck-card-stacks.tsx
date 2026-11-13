@@ -1,12 +1,14 @@
 import clsx from "clsx";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
-import { GroupHeading, Tile } from "src/components/deck-card-grid";
+import { GroupHeading, Tile, showsTileRow, tileUnder } from "src/components/deck-card-grid";
 import { useDeckLabels } from "src/components/deck-labels";
+import { DeckDeviationContext } from "src/context/deck-deviation-context";
 import { ManaCost } from "src/components/mana-cost";
 import type { DeckTileSize } from "src/components/deck-view-controls";
+import { lineMarks } from "src/utils/deck-deviation";
 import { isMaybeGroup } from "src/utils/deck-grouping";
 import type { DeckGroup, DeckGrouping } from "src/utils/deck-grouping";
 import type { SlotViolation } from "src/utils/deck-rules";
@@ -39,9 +41,6 @@ const PEEK = 16;
 
 /** A card's height in hundredths of its width */
 const HEIGHT = 140;
-
-/** What a tile carries under its artwork: the remark line and the tag strip */
-const STRIP = "1.75rem";
 
 /** What a heading adds to a stack's height, in the same hundredths */
 const HEADING = 40;
@@ -246,6 +245,8 @@ function Stack({
 }: StackProps) {
     const [opened, setOpened] = useState<string | null>(null);
     const frame = useRef<number | null>(null);
+    const deviation = useContext(DeckDeviationContext);
+    const strip = onToggleTag !== undefined || tags.length > 0;
 
     useEffect(
         () => () => {
@@ -258,6 +259,22 @@ function Stack({
     const openIndex = group.cards.findIndex((card) => card.uuid === opened);
     const peek = `${PEEK}cqw`;
     const height = `${HEIGHT}cqw`;
+    /**
+     * What a card of the stack adds under its artwork
+     *
+     * @param card the card, `undefined` for none
+     *
+     * @returns the length
+     */
+    const under = (card: DeckCardResponse | undefined) =>
+        card === undefined
+            ? "0rem"
+            : tileUnder(
+                  showsTileRow(card, strip, lineMarks(deviation.get(card.uuid)).length > 0),
+                  (violations.get(card.uuid) ?? []).length > 0,
+              );
+    const last = under(group.cards[cards - 1]);
+    const lifted = under(group.cards[openIndex]);
 
     /**
      * Opens the card under the pointer, read off the pointer's place in the stack.
@@ -303,9 +320,9 @@ function Stack({
             className={"relative isolate transition-[height] duration-200 ease-out"}
             style={{
                 height:
-                    openIndex === -1
-                        ? `calc(${peek} * ${cards - 1} + ${height} + ${STRIP})`
-                        : `calc(${peek} * ${cards - 2} + ${height} * 2 + ${STRIP} * 2)`,
+                    openIndex === -1 || openIndex === cards - 1
+                        ? `calc(${peek} * ${cards - 1} + ${height} + ${last})`
+                        : `calc(${peek} * ${cards - 2} + ${height} * 2 + ${lifted} + ${last})`,
             }}
             onMouseMove={(event) => {
                 if (!touch) follow(event.currentTarget, event.clientY);
@@ -325,7 +342,7 @@ function Stack({
                         card={card}
                         remarks={violations.get(card.uuid) ?? []}
                         tags={tags}
-                        strip={onToggleTag !== undefined || tags.length > 0}
+                        strip={strip}
                         width={width}
                         onInspect={(picked) => {
                             if (touch && !open) {
@@ -349,7 +366,7 @@ function Stack({
                         style={{
                             top: `calc(${peek} * ${index})`,
                             zIndex: open ? cards + 1 : index,
-                            transform: pushed ? `translateY(calc(${height} - ${peek} + ${STRIP}))` : undefined,
+                            transform: pushed ? `translateY(calc(${height} - ${peek} + ${lifted}))` : undefined,
                         }}
                     />
                 );

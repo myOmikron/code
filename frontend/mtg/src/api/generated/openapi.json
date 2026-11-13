@@ -2966,6 +2966,55 @@
                 }
             }
         },
+        "/api/frontend/v1/collections/totals": {
+            "get": {
+                "summary": "How many cards the account owns and what they are worth",
+                "description": "How many cards the account owns and what they are worth\n\nReal cards in a Physical deck count as the account's cards, though the\nPhysical deck is listed with no collections; Proxies never count.",
+                "operationId": "get_collection_totals",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CollectionTotalsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/collections/{collection}": {
             "get": {
                 "summary": "Fetch a single collection",
@@ -4529,8 +4578,8 @@
                 }
             },
             "delete": {
-                "summary": "Delete a deck and everything in it",
-                "description": "Delete a deck and everything in it",
+                "summary": "Delete a deck, its list and its Physical deck",
+                "description": "Delete a deck, its list and its Physical deck\n\nRefused while the Physical deck holds real cards: deleting a deck never\ndeletes the owner's cards, so it is taken apart first. Proxies go with it.",
                 "operationId": "delete_deck",
                 "parameters": [
                     {
@@ -5066,128 +5115,6 @@
                 }
             }
         },
-        "/api/frontend/v1/decks/{deck}/collection": {
-            "post": {
-                "summary": "Start keeping the cards that are physically in this deck",
-                "description": "Start keeping the cards that are physically in this deck\n\nThe deck gets a collection of its own. Idempotent, so the client can call it\nwithout first asking whether there already is one.",
-                "operationId": "attach_deck_collection",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "deck",
-                        "required": true,
-                        "schema": {
-                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "style": "simple"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/CollectionResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "summary": "Stop keeping them",
-                "description": "Stop keeping them\n\nRefused while cards are still filed in it: they would otherwise leave the\naccount's inventory without anybody saying where they went.",
-                "operationId": "detach_deck_collection",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "deck",
-                        "required": true,
-                        "schema": {
-                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "style": "simple"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "nullable": true
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/frontend/v1/decks/{deck}/sourcing": {
             "get": {
                 "summary": "What the deck asks for, what is in it, and where the rest could come from",
@@ -5250,11 +5177,11 @@
                 }
             }
         },
-        "/api/frontend/v1/decks/{deck}/collection/drift": {
+        "/api/frontend/v1/decks/{deck}/deviation": {
             "get": {
-                "summary": "Where the deck list and the deck's own collection disagree",
-                "description": "Where the deck list and the deck's own collection disagree\n\nRead on its own rather than out of the sourcing answer: the header asks this\non every tab of the deck, and it has no use for the whole account's shelf.",
-                "operationId": "get_deck_collection_drift",
+                "summary": "The Deviation between the deck list and the Physical deck",
+                "description": "The Deviation between the deck list and the Physical deck\n\nRead on its own rather than out of the sourcing answer: the header and the\ncard list ask this on every tab of the deck, and they have no use for the\nwhole account's shelf. An Editor reads it too; the sourcing answer, which\nshows the owner's collections, stays the owner's.",
+                "operationId": "get_deck_deviation",
                 "parameters": [
                     {
                         "in": "path",
@@ -5274,7 +5201,69 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/DeckDriftResponse"
+                                    "$ref": "#/components/schemas/DeckDeviationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/values": {
+            "get": {
+                "summary": "What the deck's list costs, what its Physical deck is worth and what",
+                "description": "What the deck's list costs, what its Physical deck is worth and what\nreplacing its Proxies would cost\n\nAn Editor reads it too, as it reads the Deviation; a Viewer sees nothing of\nthe Physical deck.",
+                "operationId": "get_deck_values",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckValuesResponse"
                                 }
                             }
                         }
@@ -5314,8 +5303,8 @@
         },
         "/api/frontend/v1/decks/{deck}/sourcing/take": {
             "post": {
-                "summary": "Move copies out of a collection and into the deck",
-                "description": "Move copies out of a collection and into the deck\n\nWhere they came from is written down with them, which is what makes taking\nthe deck apart again possible.",
+                "summary": "Move copies out of a collection and into the Physical deck",
+                "description": "Move copies out of a collection and into the Physical deck\n\nWhere they came from is written down with them, which is what makes taking\nthe deck apart again possible. The first card creates the Physical deck.\n\nThe list leads: copies of another printing or finish than a line asks for\ndo not change the line, they are a Deviation.",
                 "operationId": "take_deck_cards",
                 "parameters": [
                     {
@@ -5386,7 +5375,7 @@
         "/api/frontend/v1/decks/{deck}/sourcing/fill": {
             "post": {
                 "summary": "Declare that the deck holds what its list asks for",
-                "description": "Declare that the deck holds what its list asks for\n\nTwo things at once, because they are the same thing at different sizes: the\nway in for a deck that arrived from somewhere else, where the list is already\nright and saying so one card at a time would be an afternoon's work, and the\nanswer to \"I bought that one\" for a single slot.\n\nThe slots are topped up to what they ask for, in the printing and finish they\nname, as near mint and without an origin: nothing was taken out of a\ncollection, so there is nowhere to put it back. Sorting them into one later\nis the same return call with a target.",
+                "description": "Declare that the deck holds what its list asks for\n\nTwo things at once, because they are the same thing at different sizes: the\nway in for a deck that arrived from somewhere else, where the list is already\nright and saying so one card at a time would be an afternoon's work, and the\nanswer to \"I bought that one\" for a single slot.\n\nThe slots are topped up to what they ask for, in the printing and finish they\nname, as near mint and without an origin: nothing was taken out of a\ncollection, so there is nowhere to put it back. Sorting them into one later\nis the same return call with a target. The first card creates the Physical\ndeck. Proxies of a slot's printing and finish count as held, and the list\nis never changed.",
                 "operationId": "fill_deck_collection",
                 "parameters": [
                     {
@@ -5454,10 +5443,152 @@
                 }
             }
         },
+        "/api/frontend/v1/decks/{deck}/sourcing/proxy": {
+            "post": {
+                "summary": "Put Proxies into the Physical deck for a Deck entry",
+                "description": "Put Proxies into the Physical deck for a Deck entry\n\nThey stand for the entry's printing and finish. The first card creates the\nPhysical deck.",
+                "operationId": "put_deck_proxies",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PutDeckProxiesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/sourcing/replace-proxy": {
+            "post": {
+                "summary": "Replace Proxies with real copies out of a collection",
+                "description": "Replace Proxies with real copies out of a collection\n\nOne step: the real copies move in, remembering where they came from, and\nas many Proxies are thrown away. Either both happen or neither does.",
+                "operationId": "replace_deck_proxy",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReplaceDeckProxyRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/decks/{deck}/sourcing/return": {
             "post": {
-                "summary": "Sort copies out of the deck back into a collection",
-                "description": "Sort copies out of the deck back into a collection",
+                "summary": "Sort copies out of the Physical deck back into a collection",
+                "description": "Sort copies out of the Physical deck back into a collection\n\nProxies have nowhere to go back to: returning them throws them away, and\n`target` is not read for them.",
                 "operationId": "return_deck_cards",
                 "parameters": [
                     {
@@ -5525,11 +5656,11 @@
                 }
             }
         },
-        "/api/frontend/v1/decks/{deck}/sourcing/return-all": {
+        "/api/frontend/v1/decks/{deck}/sourcing/take-apart": {
             "post": {
-                "summary": "Sort everything in the deck back where it came from",
-                "description": "Sort everything in the deck back where it came from\n\nThis is what taking a deck apart does. Stacks that remember no origin only\nmove when the client says where they should go; otherwise they stay, and the\nanswer says how many that was.",
-                "operationId": "return_all_deck_cards",
+                "summary": "Take the Physical deck apart",
+                "description": "Take the Physical deck apart\n\nReal cards go back to the collection they came from; those without a usable\norigin (none recorded, or that collection is gone) go into `target`. Refused\nif a single real card has nowhere to go, and then nothing moves. Afterwards\nthe deck has no Physical deck.",
+                "operationId": "take_apart_physical_deck",
                 "parameters": [
                     {
                         "in": "path",
@@ -5547,7 +5678,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ReturnAllDeckCardsRequest"
+                                "$ref": "#/components/schemas/TakeApartPhysicalDeckRequest"
                             }
                         }
                     }
@@ -5558,7 +5689,140 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ReturnAllDeckCardsResponse"
+                                    "$ref": "#/components/schemas/TakeApartPhysicalDeckResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/sourcing/discard": {
+            "post": {
+                "summary": "Throw a stack out of the Physical deck, and so out of the account",
+                "description": "Throw a stack out of the Physical deck, and so out of the account\n\nFor cards that are gone: sold, traded away, lost. A Proxy stack is simply\nthrown away.",
+                "operationId": "discard_deck_cards",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DiscardDeckCardsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/physical-deck": {
+            "get": {
+                "summary": "What lies in the Physical deck: real cards and Proxies",
+                "description": "What lies in the Physical deck: real cards and Proxies\n\nWhat an Editor reads to see what the owner has built. Where the real cards\ncame from is left out, since the owner's collections stay the owner's; an\nempty list for a deck without a Physical deck.",
+                "operationId": "get_physical_deck",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PhysicalDeckResponse"
                                 }
                             }
                         }
@@ -5599,7 +5863,7 @@
         "/api/frontend/v1/decks/{deck}/cards": {
             "get": {
                 "summary": "Every card of a deck, with the catalog data and the tags on it",
-                "description": "Every card of a deck, with the catalog data and the tags on it\n\nThe whole deck in one answer: a hundred slots are not worth paging, and the\nclient groups and sorts them however the list is being looked at. A\nCollaborator gets it the way the Share link shows it, see [`redact_slot`].",
+                "description": "Every card of a deck, with the catalog data and the tags on it\n\nThe whole deck in one answer: a hundred slots are not worth paging, and the\nclient groups and sorts them however the list is being looked at. A\nCollaborator reads the same list the owner does: a Deck entry says nothing\nabout the owner's shelf (ADR 0007).",
                 "operationId": "list_deck_cards",
                 "parameters": [
                     {
@@ -5659,7 +5923,7 @@
             },
             "post": {
                 "summary": "Put a card into a deck",
-                "description": "Put a card into a deck\n\nCopies joining an alike Deck entry (same printing, zone, finish and proxy\nstatus) raise its count instead of opening a second line beside it. The\nanswer is the entry's bookkeeping fields either way; catalog data and tags\ncome from the list endpoint. Only the owner adds proxies, see\n[`DeckGrant::proxy`].",
+                "description": "Put a card into a deck\n\nCopies joining an alike Deck entry (same printing, zone and finish) raise its count instead of opening a second line beside it. The\nanswer is the entry's bookkeeping fields either way; catalog data and tags\ncome from the list endpoint.",
                 "operationId": "add_deck_card",
                 "parameters": [
                     {
@@ -5926,7 +6190,7 @@
             },
             "patch": {
                 "summary": "Change a Deck entry: its count, its zone or the print it sleeves",
-                "description": "Change a Deck entry: its count, its zone or the print it sleeves\n\nAn entry made alike to another one merges into it, and a count of zero\nremoves it. A Collaborator's change leaves the proxy flag as it is, see\n[`DeckGrant::proxy`].",
+                "description": "Change a Deck entry: its count, its zone or the print it sleeves\n\nAn entry made alike to another one merges into it, and a count of zero\nremoves it.",
                 "operationId": "update_deck_card",
                 "parameters": [
                     {
@@ -7542,7 +7806,7 @@
         "/api/frontend/v1/explore/decks/{deck}/cards": {
             "get": {
                 "summary": "Every card of a public deck, with the catalog data and the tags on it",
-                "description": "Every card of a public deck, with the catalog data and the tags on it\n\nThe listing the owner reads, minus the proxy flags, see [`redact_slot`].",
+                "description": "Every card of a public deck, with the catalog data and the tags on it\n\nThe listing the owner reads.",
                 "operationId": "list_public_deck_cards",
                 "parameters": [
                     {
@@ -9366,7 +9630,7 @@
         "/api/frontend/v1/scanner-sessions/{session}/file": {
             "post": {
                 "summary": "Atomically file every staged stack and empty the session",
-                "description": "Atomically file every staged stack and empty the session",
+                "description": "Atomically file every staged stack and empty the session\n\nThe target is a collection or one of the account's own decks, whose\nPhysical deck is created if missing; cards filed into a deck have no origin.\nOnly a collection becomes the session's preferred destination.",
                 "operationId": "file_scanner_session",
                 "parameters": [
                     {
@@ -9802,7 +10066,7 @@
         "/api/frontend/v1/shared/decks/{token}/cards": {
             "get": {
                 "summary": "Every card of a shared deck, with the catalog data and the tags on it",
-                "description": "Every card of a shared deck, with the catalog data and the tags on it\n\nThe listing the owner reads, minus the proxy flags, see [`redact_slot`].",
+                "description": "Every card of a shared deck, with the catalog data and the tags on it\n\nThe listing the owner reads.",
                 "operationId": "list_shared_deck_cards",
                 "parameters": [
                     {
@@ -12376,7 +12640,7 @@
         "/api/frontend/v1/tournaments/{tournament}/deck": {
             "get": {
                 "summary": "The logged-in Account's own Registered deck in a Tournament it plays in",
-                "description": "The logged-in Account's own Registered deck in a Tournament it plays in\n\nSays whether it may still change it itself, which ends when the first Round\nstarts; a late Participant registers its own until it is pinned.",
+                "description": "The logged-in Account's own Registered deck in a Tournament it plays in\n\nSays whether it may still change it itself, which ends when the first Round\nstarts; a late Participant registers its own until it is pinned. Says too\nhow many of its copies are Proxies and whether they break the Tournament's\nProxy rule, which the Participant sees before anyone else's list.",
                 "operationId": "get_my_tournament_deck",
                 "parameters": [
                     {
@@ -15641,11 +15905,6 @@
                         "type": "string",
                         "format": "uuid"
                     },
-                    "proxy": {
-                        "nullable": true,
-                        "description": "Whether the copies are stand-ins rather than the real cards, `null` for the ordinary ones",
-                        "type": "boolean"
-                    },
                     "quantity": {
                         "description": "How many copies to put in",
                         "type": "integer",
@@ -18182,6 +18441,26 @@
                     "years"
                 ]
             },
+            "CollectionTotalsResponse": {
+                "description": "Everything an account owns, on the shelf and in its Physical decks, Proxies aside",
+                "type": "object",
+                "properties": {
+                    "cards": {
+                        "description": "How many copies the account owns",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "price_eur_cents": {
+                        "description": "What those copies are worth in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "cards",
+                    "price_eur_cents"
+                ]
+            },
             "CollectionUuid": {
                 "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
                 "type": "string",
@@ -18757,10 +19036,6 @@
                         "type": "string",
                         "format": "uuid"
                     },
-                    "proxy": {
-                        "description": "Whether the copies in this slot are stand-ins rather than the real cards",
-                        "type": "boolean"
-                    },
                     "quantity": {
                         "description": "How many copies this slot holds",
                         "type": "integer",
@@ -18793,7 +19068,6 @@
                 "required": [
                     "foil",
                     "printing",
-                    "proxy",
                     "quantity",
                     "tags",
                     "uuid",
@@ -18837,7 +19111,7 @@
                         ]
                     },
                     {
-                        "description": "A Deck entry switched to another printing, finish or proxy status",
+                        "description": "A Deck entry switched to another printing or finish",
                         "type": "string",
                         "enum": [
                             "Switch"
@@ -18872,7 +19146,7 @@
                         ]
                     },
                     {
-                        "description": "A Deck entry made to say what was sourced for it: another printing or finish, or no longer a proxy",
+                        "description": "A Deck entry made to say what was sourced for it: another printing or finish",
                         "type": "string",
                         "enum": [
                             "Sourcing"
@@ -19047,92 +19321,33 @@
                     "name"
                 ]
             },
-            "DeckDriftResponse": {
-                "description": "Where the deck list and the cardboard filed under it disagree\n\nEvery list empty means the deck in the box is the deck on the list, which is what lets the header say so without asking a second question.",
+            "DeckDeviationResponse": {
+                "description": "The Deviation between the deck list and its Physical deck\n\nOne line per Deck entry of the main deck, Commander, Companion and sideboard; the maybe board never counts. A deck without a Physical deck has no Deviation: no lines and nothing off the list.",
                 "type": "object",
                 "properties": {
-                    "keeps_collection": {
-                        "description": "Whether the deck keeps a collection at all; nothing drifts while it does not",
+                    "entries": {
+                        "description": "What the Physical deck holds for each counted Deck entry",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/LineDeviationResponse"
+                        }
+                    },
+                    "has_physical_deck": {
+                        "description": "Whether the deck has a Physical deck",
                         "type": "boolean"
                     },
-                    "not_in_deck": {
-                        "description": "Copies lying in the deck whose card the list does not name at all",
+                    "not_on_list": {
+                        "description": "Copies in the deck whose card no counted Deck entry names",
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/DeckDriftRowResponse"
-                        }
-                    },
-                    "other_printing": {
-                        "description": "Copies lying in the deck in a printing or finish the list does not ask for",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/DeckDriftRowResponse"
-                        }
-                    },
-                    "pending": {
-                        "description": "Copies the list asks for that are nowhere in the deck",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/DeckDriftRowResponse"
-                        }
-                    },
-                    "surplus": {
-                        "description": "Copies of a card the list wants, beyond the count it asks for",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/DeckDriftRowResponse"
+                            "$ref": "#/components/schemas/DeviationCopiesResponse"
                         }
                     }
                 },
                 "required": [
-                    "keeps_collection",
-                    "not_in_deck",
-                    "other_printing",
-                    "pending",
-                    "surplus"
-                ]
-            },
-            "DeckDriftRowResponse": {
-                "description": "One card the deck list and the deck's own collection disagree about",
-                "type": "object",
-                "properties": {
-                    "card": {
-                        "nullable": true,
-                        "description": "What the catalog knows about the printing",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/SourcedPrintingResponse"
-                            }
-                        ]
-                    },
-                    "foil": {
-                        "description": "Whether those copies are the foil ones",
-                        "type": "boolean"
-                    },
-                    "printing": {
-                        "description": "Scryfall's id of the printing the row is about",
-                        "type": "string",
-                        "format": "uuid"
-                    },
-                    "quantity": {
-                        "description": "How many copies the disagreement is about",
-                        "type": "integer",
-                        "format": "int32"
-                    },
-                    "wanted": {
-                        "nullable": true,
-                        "description": "The printing the list asks for instead, only on `other_printing` rows",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/SourcedPrintingResponse"
-                            }
-                        ]
-                    }
-                },
-                "required": [
-                    "foil",
-                    "printing",
-                    "quantity"
+                    "entries",
+                    "has_physical_deck",
+                    "not_on_list"
                 ]
             },
             "DeckEntryChangeResponse": {
@@ -19163,10 +19378,6 @@
                         "type": "string",
                         "format": "uuid"
                     },
-                    "proxy": {
-                        "description": "Whether the copies are stand-ins rather than the real cards",
-                        "type": "boolean"
-                    },
                     "zone": {
                         "description": "Which zone the entry sits in",
                         "allOf": [
@@ -19181,7 +19392,6 @@
                     "before",
                     "foil",
                     "printing",
-                    "proxy",
                     "zone"
                 ]
             },
@@ -19313,7 +19523,13 @@
                         ]
                     },
                     "price_eur_cents": {
-                        "description": "What those cards are worth in euro cents",
+                        "description": "The List value in euro cents: the main deck, command zone, companion and sideboard at the price of each printing and finish, Proxies or not",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "proxies": {
+                        "nullable": true,
+                        "description": "How many Proxies lie in the deck's Physical deck, `null` for a Viewer",
                         "type": "integer",
                         "format": "int64"
                     }
@@ -19365,10 +19581,6 @@
                         "type": "string",
                         "format": "uuid"
                     },
-                    "proxy": {
-                        "description": "Whether the copies were stand-ins rather than the real cards",
-                        "type": "boolean"
-                    },
                     "quantity": {
                         "description": "How many copies it held",
                         "type": "integer",
@@ -19386,7 +19598,6 @@
                 "required": [
                     "foil",
                     "printing",
-                    "proxy",
                     "quantity",
                     "zone"
                 ]
@@ -19701,21 +19912,21 @@
                             "$ref": "#/components/schemas/SourcingCandidateResponse"
                         }
                     },
-                    "collection": {
-                        "nullable": true,
-                        "description": "The deck's own collection, `None` while it keeps none",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/CollectionResponse"
-                            }
-                        ]
-                    },
                     "filed": {
-                        "description": "What is filed in the deck's own collection",
+                        "description": "What is in the Physical deck",
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/SourcedStackResponse"
                         }
+                    },
+                    "physical_deck": {
+                        "nullable": true,
+                        "description": "The collection the deck's Physical deck is stored as, `None` while the deck has none",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionUuid"
+                            }
+                        ]
                     },
                     "slots": {
                         "description": "What the list asks for",
@@ -19843,6 +20054,29 @@
                 "type": "string",
                 "format": "uuid"
             },
+            "DeckValuesResponse": {
+                "description": "What a deck is worth, in euro cents",
+                "type": "object",
+                "properties": {
+                    "list_value_cents": {
+                        "description": "The List value: every copy the main deck, command zone, companion and sideboard ask for at its printing's price, Proxies or not",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "physical": {
+                        "nullable": true,
+                        "description": "What the Physical deck holds, `null` for a deck without one",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/PhysicalDeckValueResponse"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "list_value_cents"
+                ]
+            },
             "DeckZone": {
                 "description": "The zone a [`DeckCard`] sits in",
                 "oneOf": [
@@ -19949,6 +20183,66 @@
                             "Full"
                         ]
                     }
+                ]
+            },
+            "DeviationCopiesResponse": {
+                "description": "Copies of one printing and finish lying in the Physical deck",
+                "type": "object",
+                "properties": {
+                    "card": {
+                        "nullable": true,
+                        "description": "What the catalog knows about the printing",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SourcedPrintingResponse"
+                            }
+                        ]
+                    },
+                    "finish": {
+                        "description": "Their finish",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardFinish"
+                            }
+                        ]
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "proxy": {
+                        "description": "Whether they are Proxies",
+                        "type": "boolean"
+                    },
+                    "quantity": {
+                        "description": "How many copies",
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "finish",
+                    "printing",
+                    "proxy",
+                    "quantity"
+                ]
+            },
+            "DiscardDeckCardsRequest": {
+                "description": "Request to throw a stack out of the Physical deck",
+                "type": "object",
+                "properties": {
+                    "entry": {
+                        "description": "The stack in the Physical deck",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionEntryUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "entry"
                 ]
             },
             "DisputeResultErrors": {
@@ -20406,7 +20700,7 @@
                 ]
             },
             "FileScannerSessionRequest": {
-                "description": "File a session's staging area into a collection",
+                "description": "File a session's staging area into a collection or a deck's Physical deck",
                 "type": "object",
                 "properties": {
                     "collection": {
@@ -20417,6 +20711,15 @@
                                 "$ref": "#/components/schemas/CollectionUuid"
                             }
                         ]
+                    },
+                    "deck": {
+                        "nullable": true,
+                        "description": "One of the account's own decks whose Physical deck takes the cards instead of a collection; excludes `collection`",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckUuid"
+                            }
+                        ]
                     }
                 }
             },
@@ -20425,7 +20728,8 @@
                 "type": "object",
                 "properties": {
                     "collection": {
-                        "description": "Destination collection",
+                        "nullable": true,
+                        "description": "Destination collection, `None` when filed into a deck",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/CollectionUuid"
@@ -20437,6 +20741,15 @@
                         "type": "integer",
                         "format": "int64"
                     },
+                    "deck": {
+                        "nullable": true,
+                        "description": "Destination deck, `None` when filed into a collection",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckUuid"
+                            }
+                        ]
+                    },
                     "stacks": {
                         "description": "Distinct stacks filed",
                         "type": "integer",
@@ -20444,13 +20757,12 @@
                     }
                 },
                 "required": [
-                    "collection",
                     "copies",
                     "stacks"
                 ]
             },
             "FillDeckCollectionRequest": {
-                "description": "Request to declare that the deck holds what its list asks for",
+                "description": "Request to record copies bought straight into the Physical deck",
                 "type": "object",
                 "properties": {
                     "slot": {
@@ -20465,7 +20777,7 @@
                 }
             },
             "FillDeckCollectionResponse": {
-                "description": "What filling a deck's collection from its own list came to",
+                "description": "What recording bought copies came to",
                 "type": "object",
                 "properties": {
                     "filed": {
@@ -21775,6 +22087,55 @@
                             "Fill"
                         ]
                     }
+                ]
+            },
+            "LineDeviationResponse": {
+                "description": "What the Physical deck holds for one Deck entry\n\nThe entry lacks `missing` copies, holds `in_deck` of its own printing and finish (`proxies` of them Proxies) and stands in for the rest with `other_printing`; `surplus` copies of its card are one too many.",
+                "type": "object",
+                "properties": {
+                    "entry": {
+                        "description": "The Deck entry",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckCardUuid"
+                            }
+                        ]
+                    },
+                    "in_deck": {
+                        "description": "Copies of the listed printing and finish in the deck, up to the count the entry asks for, Proxies included",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "missing": {
+                        "description": "Copies the entry asks for that nothing in the deck stands in for",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "other_printing": {
+                        "description": "Copies of the same card in another printing or finish, standing in for copies the entry still lacks",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeviationCopiesResponse"
+                        }
+                    },
+                    "proxies": {
+                        "description": "How many of `in_deck` are Proxies",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "surplus": {
+                        "description": "Copies of the entry's card beyond what the list asks for",
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "entry",
+                    "in_deck",
+                    "missing",
+                    "other_printing",
+                    "proxies",
+                    "surplus"
                 ]
             },
             "ListCardsResponse": {
@@ -23452,6 +23813,10 @@
                 "description": "The reader's own Registered deck in a Tournament",
                 "type": "object",
                 "properties": {
+                    "breaks_proxy_rule": {
+                        "description": "Whether its Proxies break the Tournament's Proxy rule, a warning that never blocks",
+                        "type": "boolean"
+                    },
                     "changeable": {
                         "description": "Whether the reader may still register, swap or remove it itself",
                         "type": "boolean"
@@ -23464,10 +23829,17 @@
                                 "$ref": "#/components/schemas/RegisteredDeckResponse"
                             }
                         ]
+                    },
+                    "proxies": {
+                        "description": "How many of its copies are Proxies, 0 without a Registered deck or a Physical deck",
+                        "type": "integer",
+                        "format": "int32"
                     }
                 },
                 "required": [
-                    "changeable"
+                    "breaks_proxy_rule",
+                    "changeable",
+                    "proxies"
                 ]
             },
             "MyTournamentsResponse": {
@@ -23894,6 +24266,109 @@
                     "provider"
                 ]
             },
+            "PhysicalDeckResponse": {
+                "description": "What lies in a Physical deck, as an Editor reads it",
+                "type": "object",
+                "properties": {
+                    "stacks": {
+                        "description": "The stacks, oldest first, empty for a deck without a Physical deck",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PhysicalStackResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "stacks"
+                ]
+            },
+            "PhysicalDeckValueResponse": {
+                "description": "What the Physical deck of a deck holds",
+                "type": "object",
+                "properties": {
+                    "physical_value_cents": {
+                        "description": "The Physical value: the real cards at their own printing's price, in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "proxies": {
+                        "description": "How many Proxies lie in it",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "proxy_replacement_cents": {
+                        "description": "What buying the printings the Proxies stand for would cost, in euro cents",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "physical_value_cents",
+                    "proxies",
+                    "proxy_replacement_cents"
+                ]
+            },
+            "PhysicalStackResponse": {
+                "description": "One stack lying in a Physical deck, without the collection it came from",
+                "type": "object",
+                "properties": {
+                    "card": {
+                        "nullable": true,
+                        "description": "What the catalog knows about the printing",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SourcedPrintingResponse"
+                            }
+                        ]
+                    },
+                    "condition": {
+                        "description": "Condition of the cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardCondition"
+                            }
+                        ]
+                    },
+                    "finish": {
+                        "description": "Finish of the cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CardFinish"
+                            }
+                        ]
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "proxy": {
+                        "description": "Whether the stack holds Proxies rather than real cards",
+                        "type": "boolean"
+                    },
+                    "quantity": {
+                        "description": "How many copies the stack holds",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "uuid": {
+                        "description": "Primary key of the stack",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionEntryUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "condition",
+                    "finish",
+                    "printing",
+                    "proxy",
+                    "quantity",
+                    "uuid"
+                ]
+            },
             "PriceDayResponse": {
                 "description": "What one card cost on one day\n\nAll four are euro cents and all four may be absent: Cardmarket quotes no foil price for a card that was never printed in foil, and no price at all for a product nobody is offering that day.",
                 "type": "object",
@@ -24069,6 +24544,25 @@
                         ]
                     }
                 }
+            },
+            "ProxyRule": {
+                "description": "What a Tournament allows of Proxies in its Registered decks\n\nA Registered deck breaking it is a warning to its Participant and the Organizers that never blocks registration, check-in or pairing. A deck without a Physical deck has no Proxies and so breaks none.",
+                "oneOf": [
+                    {
+                        "description": "Any number of Proxies",
+                        "type": "string",
+                        "enum": [
+                            "ProxiesAllowed"
+                        ]
+                    },
+                    {
+                        "description": "Not a single Proxy",
+                        "type": "string",
+                        "enum": [
+                            "NoProxies"
+                        ]
+                    }
+                ]
             },
             "PublicCollectionResponse": {
                 "description": "A collection somebody put on show\n\nWhat a collection looks like to a stranger: no share token, and no figure in money — see [`redact_entry`] for the same line drawn on its cards.\n\n[`redact_entry`]: crate::http::handler_frontend::shared::schema::redact_entry",
@@ -24421,6 +24915,29 @@
                     "username"
                 ]
             },
+            "PutDeckProxiesRequest": {
+                "description": "Request to put Proxies into the Physical deck for a Deck entry",
+                "type": "object",
+                "properties": {
+                    "quantity": {
+                        "description": "How many Proxies to put in",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "slot": {
+                        "description": "The Deck entry whose printing and finish the Proxies stand for",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckCardUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "quantity",
+                    "slot"
+                ]
+            },
             "RarityCountsResponse": {
                 "description": "Copies per rarity in a collection",
                 "type": "object",
@@ -24616,6 +25133,72 @@
                     "deck"
                 ]
             },
+            "RegisteredCardResponse": {
+                "description": "One Deck entry of a Registered deck's list",
+                "type": "object",
+                "properties": {
+                    "card": {
+                        "nullable": true,
+                        "description": "The card, as far as the catalog knows it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckCardCatalogResponse"
+                            }
+                        ]
+                    },
+                    "foil": {
+                        "description": "Whether the copies in this slot are the foil ones",
+                        "type": "boolean"
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "proxies": {
+                        "description": "How many of its copies are Proxies: those in the deck's Physical deck while the Registered deck follows the deck, those frozen with the copy once pinned, 0 for a deck without a Physical deck",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "quantity": {
+                        "description": "How many copies this slot holds",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "tags": {
+                        "description": "The tags put on this slot",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckTagUuid"
+                        }
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckCardUuid"
+                            }
+                        ]
+                    },
+                    "zone": {
+                        "description": "Which zone the slot sits in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckZone"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "foil",
+                    "printing",
+                    "proxies",
+                    "quantity",
+                    "tags",
+                    "uuid",
+                    "zone"
+                ]
+            },
             "RegisteredDeckResponse": {
                 "description": "The deck a Participant plays in a Tournament",
                 "type": "object",
@@ -24695,11 +25278,15 @@
                         "type": "integer",
                         "format": "int16"
                     },
+                    "breaks_proxy_rule": {
+                        "description": "Whether its Proxies break the Tournament's Proxy rule, a warning that never blocks",
+                        "type": "boolean"
+                    },
                     "cards": {
                         "description": "Its Deck entries, joined against the card catalog",
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/DeckCardResponse"
+                            "$ref": "#/components/schemas/RegisteredCardResponse"
                         }
                     },
                     "deck": {
@@ -24746,6 +25333,7 @@
                     "allow_banned",
                     "allow_duplicates",
                     "allow_extra_commanders",
+                    "breaks_proxy_rule",
                     "cards",
                     "format",
                     "name",
@@ -24904,6 +25492,38 @@
                 },
                 "required": [
                     "label"
+                ]
+            },
+            "ReplaceDeckProxyRequest": {
+                "description": "Request to replace Proxies in the Physical deck with real copies out of a collection",
+                "type": "object",
+                "properties": {
+                    "entry": {
+                        "description": "The stack in a collection the real copies come from",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionEntryUuid"
+                            }
+                        ]
+                    },
+                    "proxy": {
+                        "description": "The Proxy stack in the Physical deck",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionEntryUuid"
+                            }
+                        ]
+                    },
+                    "quantity": {
+                        "description": "How many Proxies to replace",
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "entry",
+                    "proxy",
+                    "quantity"
                 ]
             },
             "ReplaceMpcFillFavoriteRequest": {
@@ -25151,49 +25771,12 @@
                     }
                 ]
             },
-            "ReturnAllDeckCardsRequest": {
-                "description": "Request to sort everything in the deck back where it came from",
-                "type": "object",
-                "properties": {
-                    "target": {
-                        "nullable": true,
-                        "description": "Where stacks without an origin go, `None` to leave those in the deck",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/CollectionUuid"
-                            }
-                        ]
-                    }
-                }
-            },
-            "ReturnAllDeckCardsResponse": {
-                "description": "What sorting a deck back moved",
-                "type": "object",
-                "properties": {
-                    "left": {
-                        "description": "How many stayed, because nobody said where they belong",
-                        "type": "integer",
-                        "minimum": 0.0,
-                        "format": "uint32"
-                    },
-                    "returned": {
-                        "description": "How many stacks were sorted back",
-                        "type": "integer",
-                        "minimum": 0.0,
-                        "format": "uint32"
-                    }
-                },
-                "required": [
-                    "left",
-                    "returned"
-                ]
-            },
             "ReturnDeckCardsRequest": {
-                "description": "Request to sort copies out of the deck back into a collection",
+                "description": "Request to sort copies out of the Physical deck back into a collection on the shelf",
                 "type": "object",
                 "properties": {
                     "entry": {
-                        "description": "The stack in the deck to take them from",
+                        "description": "The stack in the Physical deck to take them from",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/CollectionEntryUuid"
@@ -26907,7 +27490,7 @@
                     },
                     "origin": {
                         "nullable": true,
-                        "description": "The collection they were taken out of, `None` if they were bought into it",
+                        "description": "The collection they were taken out of, `None` if they were bought into it or are Proxies",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/CollectionUuid"
@@ -26934,6 +27517,10 @@
                         "type": "string",
                         "format": "uuid"
                     },
+                    "proxy": {
+                        "description": "Whether the stack holds Proxies rather than real cards",
+                        "type": "boolean"
+                    },
                     "quantity": {
                         "description": "How many copies the stack holds",
                         "type": "integer",
@@ -26952,6 +27539,7 @@
                     "condition",
                     "finish",
                     "printing",
+                    "proxy",
                     "quantity",
                     "uuid"
                 ]
@@ -27067,10 +27655,6 @@
                         "type": "string",
                         "format": "uuid"
                     },
-                    "proxy": {
-                        "description": "Whether the slot is a stand-in — it asks for no cardboard",
-                        "type": "boolean"
-                    },
                     "quantity": {
                         "description": "How many copies it asks for",
                         "type": "integer",
@@ -27096,7 +27680,6 @@
                 "required": [
                     "foil",
                     "printing",
-                    "proxy",
                     "quantity",
                     "uuid",
                     "zone"
@@ -27545,11 +28128,6 @@
                         "type": "string",
                         "format": "uuid"
                     },
-                    "proxy": {
-                        "nullable": true,
-                        "description": "Whether the incoming copies are stand-ins rather than the real cards, `null` for the ordinary ones",
-                        "type": "boolean"
-                    },
                     "quantity": {
                         "description": "How many copies leave the entry and how many of the other card come in",
                         "type": "integer",
@@ -27587,8 +28165,38 @@
                     }
                 ]
             },
+            "TakeApartPhysicalDeckRequest": {
+                "description": "Request to take the Physical deck apart",
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "nullable": true,
+                        "description": "Where real cards without a usable origin go; needed only when there are such cards",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollectionUuid"
+                            }
+                        ]
+                    }
+                }
+            },
+            "TakeApartPhysicalDeckResponse": {
+                "description": "What taking the Physical deck apart moved",
+                "type": "object",
+                "properties": {
+                    "returned": {
+                        "description": "How many real cards went back into collections",
+                        "type": "integer",
+                        "minimum": 0.0,
+                        "format": "uint32"
+                    }
+                },
+                "required": [
+                    "returned"
+                ]
+            },
             "TakeDeckCardsRequest": {
-                "description": "Request to move copies out of a collection and into the deck",
+                "description": "Request to move copies out of a collection and into the Physical deck",
                 "type": "object",
                 "properties": {
                     "entry": {
@@ -27603,15 +28211,6 @@
                         "description": "How many copies to take",
                         "type": "integer",
                         "format": "int32"
-                    },
-                    "slot": {
-                        "nullable": true,
-                        "description": "The slot they are being sourced for, which then follows the printing",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/DeckCardUuid"
-                            }
-                        ]
                     }
                 },
                 "required": [
@@ -28265,6 +28864,14 @@
                         "type": "integer",
                         "format": "int32"
                     },
+                    "proxy_rule": {
+                        "description": "What the Tournament allows of Proxies in its Registered decks",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ProxyRule"
+                            }
+                        ]
+                    },
                     "round_minutes": {
                         "nullable": true,
                         "description": "How many minutes the round timer gives a Round, `null` for no timer",
@@ -28354,6 +28961,7 @@
                     "commander_damage",
                     "entered_afterwards",
                     "name",
+                    "proxy_rule",
                     "ruleset",
                     "self_sign_up",
                     "starts_at",
@@ -28517,6 +29125,15 @@
                         "description": "How many Participants self sign-up admits at most, two or more; `null` for no limit",
                         "type": "integer",
                         "format": "int32"
+                    },
+                    "proxy_rule": {
+                        "description": "What the Tournament allows of Proxies in its Registered decks, `ProxiesAllowed` when left out\n\nBreaking it is only a warning, so it may change at any time.",
+                        "default": "ProxiesAllowed",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ProxyRule"
+                            }
+                        ]
                     },
                     "round_minutes": {
                         "nullable": true,
@@ -28841,11 +29458,6 @@
                         "description": "Scryfall's id of the printing — send this to sleeve a different print",
                         "type": "string",
                         "format": "uuid"
-                    },
-                    "proxy": {
-                        "nullable": true,
-                        "description": "Whether the copies in this slot are stand-ins rather than the real cards",
-                        "type": "boolean"
                     },
                     "quantity": {
                         "nullable": true,

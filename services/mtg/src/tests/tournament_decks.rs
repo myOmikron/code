@@ -6,6 +6,7 @@ use galvyn::core::Module;
 use galvyn::core::re_exports::axum::http::Method;
 use galvyn::core::re_exports::axum::http::StatusCode;
 use galvyn::rorm::Database;
+use galvyn::rorm::DatabaseConfiguration;
 use serde_json::Value;
 use serde_json::json;
 use url::Url;
@@ -19,12 +20,18 @@ use crate::tests::harness::TestClient;
 use crate::tests::harness::TestResponse;
 use crate::tests::harness::api;
 use crate::tests::harness::create_account;
+use crate::tests::harness::migrate;
+use crate::tests::harness::migrated_database;
 use crate::tests::harness::run;
+use crate::tests::tournament_rounds::seated;
 use crate::tests::tournaments::create;
 use crate::tests::tournaments::settings;
 
 /// The name the Tournaments of these tests go by
 const TOURNAMENT_NAME: &str = "Friday Night Commander";
+
+/// The last migration before copied Deck entries counted their Proxies
+const BEFORE_PROXY_COUNTS: u16 = 73;
 
 /// A player: an Account with a deck, a Participant of the [`Event`]
 struct Player {
@@ -110,6 +117,8 @@ struct Event {
     owner: TestClient,
     /// The Tournament's uuid
     tournament: String,
+    /// The settings it was created with, to change one of them
+    settings: Value,
     /// The two players
     players: [Player; 2],
 }
@@ -131,6 +140,7 @@ impl Event {
         Self {
             owner,
             tournament,
+            settings: request,
             players: [first, second],
         }
     }
@@ -980,5 +990,296 @@ fn a_shared_list_stays_visible_after_its_deck_was_deleted() {
         assert_eq!(lists["decks"][0]["deck"], Value::Null, "{lists}");
         assert_eq!(lists["decks"][0]["name"], "Burn", "{lists}");
         assert_eq!(lists["decks"][0]["cards"][0]["quantity"], 3, "{lists}");
+    });
+}
+
+/// Put `quantity` Proxies for the first Deck entry of `deck` into its Physical deck
+async fn put_proxies(client: &mut TestClient, deck: &str, quantity: i32) {
+    let cards = client
+        .get(&api(&format!("decks/{deck}/cards")))
+        .await
+        .ok_json();
+    let entry = cards["cards"][0]["uuid"].as_str().expect("entry uuid");
+    client
+        .json(
+            Method::POST,
+            &api(&format!("decks/{deck}/sourcing/proxy")),
+            &json!({ "slot": entry, "quantity": quantity }),
+        )
+        .await
+        .ok_json();
+}
+
+/// The Proxy count of each line of player `index`'s Registered deck, as the Owner reads it
+async fn proxies(event: &mut Event, index: usize) -> Vec<Value> {
+    let url = event.url("registered-lists");
+    let lists = registered_lists(&mut event.owner, &url).await;
+    let participant = event.players[index].participant.as_str();
+    lists["decks"]
+        .as_array()
+        .expect("a list of decks")
+        .iter()
+        .find(|deck| deck["participant"] == participant)
+        .expect("the player's list")["cards"]
+        .as_array()
+        .expect("a list of cards")
+        .iter()
+        .map(|card| card["proxies"].clone())
+        .collect()
+}
+
+#[test]
+fn a_following_registered_deck_counts_the_proxies_of_the_physical_deck() {
+    run(async {
+        let mut event = Event::new().await;
+        event.register_own(0).await;
+        let deck = event.players[0].deck.clone();
+
+        put_proxies(&mut event.players[0].client, &deck, 2).await;
+        assert_eq!(proxies(&mut event, 0).await, vec![json!(2)]);
+
+        put_proxies(&mut event.players[0].client, &deck, 1).await;
+        assert_eq!(proxies(&mut event, 0).await, vec![json!(3)]);
+    });
+}
+
+#[test]
+fn the_migration_turns_frozen_proxy_entries_into_a_proxy_count() {
+    run(async {
+        let driver = migrated_database(Some(BEFORE_PROXY_COUNTS)).await;
+        let db = Database::connect(DatabaseConfiguration::new(driver.clone()))
+            .await
+            .expect("connect to the test database");
+        let mut conn = db.as_pool().acquire().await.expect("a connection");
+        sqlx::query("SET session_replication_role = replica")
+            .execute(&mut *conn)
+            .await
+            .expect("switch off the foreign keys");
+        let registered = Uuid::now_v7();
+        for (proxy, quantity) in [(true, 3), (false, 2)] {
+            sqlx::query(
+                "INSERT INTO tournament_registered_card \
+                 (uuid, registered_deck, printing, quantity, zone, foil, proxy) \
+                 VALUES ($1, $2, $3, $4, 'Main', false, $5)",
+            )
+            .bind(Uuid::now_v7())
+            .bind(registered)
+            .bind(Uuid::now_v7())
+            .bind(quantity)
+            .bind(proxy)
+            .execute(&mut *conn)
+            .await
+            .expect("insert a copied entry");
+        }
+        drop(conn);
+
+        migrate(&driver, None).await;
+
+        let mut counts: Vec<(i32, i32)> = sqlx::query_as(
+            "SELECT quantity, proxies FROM tournament_registered_card WHERE registered_deck = $1",
+        )
+        .bind(registered)
+        .fetch_all(db.as_pool())
+        .await
+        .expect("read the copied entries");
+        counts.sort_unstable();
+        assert_eq!(counts, vec![(2, 0), (3, 3)]);
+    });
+}
+
+#[test]
+fn a_deck_without_a_physical_deck_has_no_proxies() {
+    run(async {
+        let mut event = Event::new().await;
+        event.register_own(0).await;
+        assert_eq!(proxies(&mut event, 0).await, vec![json!(0)]);
+
+        event.start().await;
+        assert_eq!(proxies(&mut event, 0).await, vec![json!(0)]);
+    });
+}
+
+#[test]
+fn the_copy_keeps_the_proxy_count_it_was_pinned_with() {
+    run(async {
+        let mut event = Event::new().await;
+        event.register_own(0).await;
+        let deck = event.players[0].deck.clone();
+        put_proxies(&mut event.players[0].client, &deck, 1).await;
+
+        event.start().await;
+        put_proxies(&mut event.players[0].client, &deck, 2).await;
+
+        assert_eq!(proxies(&mut event, 0).await, vec![json!(1)]);
+    });
+}
+
+#[test]
+fn a_shared_list_shows_its_proxies_to_others_once_the_tournament_is_finished() {
+    run(async {
+        let mut event = Event::new().await;
+        let deck = event.players[0].deck.clone();
+        event.register_sharing(0, &deck, true).await;
+        put_proxies(&mut event.players[0].client, &deck, 2).await;
+        let url = event.url("registered-lists");
+        assert!(listed(&mut event.players[1].client, &url).await.is_empty());
+
+        event.finish().await;
+
+        let lists = registered_lists(&mut event.players[1].client, &url).await;
+        assert_eq!(lists["decks"][0]["cards"][0]["proxies"], 2, "{lists}");
+    });
+}
+
+impl Event {
+    /// Give the Tournament the Proxy rule `rule` as the Owner
+    async fn set_proxy_rule(&mut self, rule: &str) {
+        self.settings["proxy_rule"] = json!(rule);
+        let url = api(&format!("tournaments/{}", self.tournament));
+        let settings = self.settings.clone();
+        self.owner
+            .json(Method::PUT, &url, &settings)
+            .await
+            .ok_json();
+    }
+
+    /// The Tournament as the Owner reads it
+    async fn tournament(&mut self) -> Value {
+        let url = api(&format!("tournaments/{}", self.tournament));
+        self.owner.get(&url).await.ok_json()
+    }
+}
+
+#[test]
+fn proxies_are_allowed_until_an_organizer_says_otherwise() {
+    run(async {
+        let mut event = Event::new().await;
+        assert_eq!(event.tournament().await["proxy_rule"], "ProxiesAllowed");
+
+        event.set_proxy_rule("NoProxies").await;
+        assert_eq!(event.tournament().await["proxy_rule"], "NoProxies");
+
+        event.set_proxy_rule("ProxiesAllowed").await;
+        assert_eq!(event.tournament().await["proxy_rule"], "ProxiesAllowed");
+    });
+}
+
+/// Whether player `index`'s Registered deck breaks the Proxy rule, as the Owner reads the lists
+async fn breaks_proxy_rule(event: &mut Event, index: usize) -> Value {
+    let url = event.url("registered-lists");
+    let lists = registered_lists(&mut event.owner, &url).await;
+    let participant = event.players[index].participant.as_str();
+    lists["decks"]
+        .as_array()
+        .expect("a list of decks")
+        .iter()
+        .find(|deck| deck["participant"] == participant)
+        .expect("the player's list")["breaks_proxy_rule"]
+        .clone()
+}
+
+#[test]
+fn organizers_see_which_registered_decks_break_the_proxy_rule() {
+    run(async {
+        let mut event = Event::new().await;
+        event.register_own(0).await;
+        event.register_own(1).await;
+        let deck = event.players[0].deck.clone();
+        put_proxies(&mut event.players[0].client, &deck, 1).await;
+        assert_eq!(breaks_proxy_rule(&mut event, 0).await, false);
+
+        event.set_proxy_rule("NoProxies").await;
+
+        assert_eq!(breaks_proxy_rule(&mut event, 0).await, true);
+        assert_eq!(breaks_proxy_rule(&mut event, 1).await, false);
+    });
+}
+
+#[test]
+fn a_participant_sees_its_own_deck_break_the_proxy_rule_before_the_tournament_is_finished() {
+    run(async {
+        let mut event = Event::new().await;
+        event.set_proxy_rule("NoProxies").await;
+        event.register_own(0).await;
+        event.register_own(1).await;
+        let deck = event.players[0].deck.clone();
+        put_proxies(&mut event.players[0].client, &deck, 2).await;
+
+        let mine = event.mine(0).await;
+        assert_eq!(mine["proxies"], 2, "{mine}");
+        assert_eq!(mine["breaks_proxy_rule"], true, "{mine}");
+
+        let theirs = event.mine(1).await;
+        assert_eq!(theirs["proxies"], 0, "{theirs}");
+        assert_eq!(theirs["breaks_proxy_rule"], false, "{theirs}");
+    });
+}
+
+#[test]
+fn breaking_the_proxy_rule_never_blocks_registration_check_in_or_pairing() {
+    run(async {
+        let mut event = Event::new().await;
+        event.settings["check_in"] = json!("RequiredWithDeck");
+        event.set_proxy_rule("NoProxies").await;
+        let deck = event.players[0].deck.clone();
+        put_proxies(&mut event.players[0].client, &deck, 3).await;
+
+        event.register_own(0).await;
+        event.register_own(1).await;
+        assert_eq!(event.mine(0).await["breaks_proxy_rule"], true);
+        for index in 0..2 {
+            let participant = event.players[index].participant.clone();
+            let url = event.url(&format!("participants/{participant}/checked-in"));
+            event
+                .owner
+                .json(Method::PUT, &url, &json!({ "checked_in": true }))
+                .await
+                .ok_json();
+        }
+        event.start().await;
+
+        let rounds = event.owner.get(&event.url("rounds")).await.ok_json();
+        let mut seated: Vec<String> = rounds["rounds"][0]["matches"]
+            .as_array()
+            .expect("a list of matches")
+            .iter()
+            .flat_map(seated)
+            .collect();
+        seated.sort();
+        let mut players: Vec<String> = event
+            .players
+            .iter()
+            .map(|player| player.participant.clone())
+            .collect();
+        players.sort();
+        assert_eq!(seated, players, "{rounds}");
+    });
+}
+
+#[test]
+fn a_deck_without_a_physical_deck_breaks_no_proxy_rule() {
+    run(async {
+        let mut event = Event::new().await;
+        event.set_proxy_rule("NoProxies").await;
+        event.register_own(0).await;
+
+        assert_eq!(breaks_proxy_rule(&mut event, 0).await, false);
+        assert_eq!(event.mine(0).await["breaks_proxy_rule"], false);
+
+        event.start().await;
+        assert_eq!(breaks_proxy_rule(&mut event, 0).await, false);
+        assert_eq!(event.mine(0).await["breaks_proxy_rule"], false);
+    });
+}
+
+#[test]
+fn a_participant_without_a_registered_deck_breaks_no_proxy_rule() {
+    run(async {
+        let mut event = Event::new().await;
+        event.set_proxy_rule("NoProxies").await;
+
+        let mine = event.mine(0).await;
+        assert_eq!(mine["proxies"], 0, "{mine}");
+        assert_eq!(mine["breaks_proxy_rule"], false, "{mine}");
     });
 }

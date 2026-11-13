@@ -10,7 +10,6 @@ Name | Type
 `card` | [SourcedPrintingResponse](SourcedPrintingResponse.md)
 `foil` | boolean
 `printing` | string
-`proxy` | boolean
 `quantity` | number
 `uuid` | string
 `zone` | [DeckZone](DeckZone.md)

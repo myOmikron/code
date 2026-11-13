@@ -217,13 +217,9 @@ impl<'query> Filters<'query> {
 /// The sideboard and the maybe board are left out of both numbers, the same way
 /// [`DeckSummary`](super::listing::DeckSummary) counts them.
 ///
-/// Unlike that one, every slot is priced, proxies included. `DeckSummary` reads
-/// to the owner as "what this shelf cost me", so a stand-in costing nothing is
-/// the right answer there. Here the reader is a stranger and the number reads
-/// as "what this list costs to build" — and a price that quietly drops by the
-/// value of every proxied slot would answer a question about the owner's
-/// collection that nobody outside it is entitled to ask, see
-/// [`redact_slot`](crate::http::handler_frontend::shared::schema::redact_slot).
+/// Every slot is priced at full price: the number reads as "what this list
+/// costs to build", the List value. Whether the owner covers a card with a
+/// Proxy is the Physical deck's business, never the list's (ADR 0007).
 const SUMMARY_JOIN: &str = "LEFT JOIN LATERAL ( \
         SELECT COALESCE(SUM(c.quantity), 0)::bigint AS cards, \
                COALESCE(SUM(c.quantity * COALESCE(p.price_eur, 0)), 0)::bigint AS price \

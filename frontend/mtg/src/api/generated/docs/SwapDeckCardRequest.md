@@ -9,7 +9,6 @@ Name | Type
 ------------ | -------------
 `foil` | boolean
 `printing` | string
-`proxy` | boolean
 `quantity` | number
 
 

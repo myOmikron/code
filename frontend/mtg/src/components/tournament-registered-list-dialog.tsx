@@ -1,4 +1,13 @@
-import { Button, Dialog, DialogActions, DialogBody, DialogDescription, DialogTitle, Subheading } from "components";
+import {
+    Badge,
+    Button,
+    Dialog,
+    DialogActions,
+    DialogBody,
+    DialogDescription,
+    DialogTitle,
+    Subheading,
+} from "components";
 import { useTranslation } from "react-i18next";
 import { type RegisteredListResponse, DeckZone } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
@@ -48,6 +57,11 @@ export function TournamentRegisteredListDialog({ list, player, onClose }: Tourna
                                     <li key={slot.uuid} className={"flex gap-2"}>
                                         <span className={"w-6 text-right tabular-nums"}>{slot.quantity}</span>
                                         <span>{slot.card?.name ?? t("label.unknown-card")}</span>
+                                        {slot.proxies > 0 && (
+                                            <Badge color={"purple"}>
+                                                {t("label.list-proxies", { count: slot.proxies })}
+                                            </Badge>
+                                        )}
                                     </li>
                                 ))}
                             </ul>

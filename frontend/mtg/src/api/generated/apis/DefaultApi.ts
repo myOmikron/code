@@ -56,6 +56,7 @@ import type {
     CollectionOverviewResponse,
     CollectionResponse,
     CollectionStatisticsResponse,
+    CollectionTotalsResponse,
     CreateCollectionRequest,
     CreateDeckFolderRequest,
     CreateDeckRequest,
@@ -65,7 +66,7 @@ import type {
     CreateTournament200Response,
     CreateWatchListRequest,
     DeckCardResponse,
-    DeckDriftResponse,
+    DeckDeviationResponse,
     DeckFolderResponse,
     DeckHistoryResponse,
     DeckOverviewResponse,
@@ -74,7 +75,9 @@ import type {
     DeckSourcingResponse,
     DeckTagResponse,
     DeckUndoResponse,
+    DeckValuesResponse,
     DeleteAccountRequest,
+    DiscardDeckCardsRequest,
     EndTournamentRound200Response,
     EntrySort,
     FileScannerSessionRequest,
@@ -150,6 +153,7 @@ import type {
     NameAccountRequest,
     OfferTournamentHandover200Response,
     PairTournamentRound200Response,
+    PhysicalDeckResponse,
     PriceHistoryResponse,
     PrintingLanguagesResponse,
     PublicCollectionResponse,
@@ -161,6 +165,7 @@ import type {
     PushSettingsResponse,
     PutDeckCollaborator200Response,
     PutDeckCollaboratorRequest,
+    PutDeckProxiesRequest,
     ReadDeckUrlRequest,
     ReadDeckUrlResponse,
     RecoverAccountRequest,
@@ -169,12 +174,11 @@ import type {
     RenameAccount200Response,
     RenameAccountRequest,
     RenamePasskeyRequest,
+    ReplaceDeckProxyRequest,
     ReplaceMpcFillFavoriteRequest,
     ReportResultRequest,
     ResolvePrintingsRequest,
     ResolvePrintingsResponse,
-    ReturnAllDeckCardsRequest,
-    ReturnAllDeckCardsResponse,
     ReturnDeckCardsRequest,
     Role,
     RotateDeckShareTokenResponse,
@@ -224,6 +228,8 @@ import type {
     StartRegistrationRequest,
     SubscribePushDeviceRequest,
     SwapDeckCardRequest,
+    TakeApartPhysicalDeckRequest,
+    TakeApartPhysicalDeckResponse,
     TakeDeckCardsRequest,
     Timeframe,
     TournamentEvent,
@@ -552,13 +558,6 @@ export interface AssignDeckCardTagRequest {
     tag: string;
 }
 
-export interface AttachDeckCollectionRequest {
-    /**
-     * 
-     */
-    deck: string;
-}
-
 export interface CancelTournamentRequest {
     /**
      * 
@@ -802,11 +801,15 @@ export interface DeleteWatchListEntryRequest {
     entry: string;
 }
 
-export interface DetachDeckCollectionRequest {
+export interface DiscardDeckCardsOperationRequest {
     /**
      * 
      */
     deck: string;
+    /**
+     * 
+     */
+    DiscardDeckCardsRequest?: DiscardDeckCardsRequest;
 }
 
 export interface DiscardTournamentRoundRequest {
@@ -967,7 +970,7 @@ export interface GetDeckAdvisorSettingsRequest {
     deck: string;
 }
 
-export interface GetDeckCollectionDriftRequest {
+export interface GetDeckDeviationRequest {
     /**
      * 
      */
@@ -1001,6 +1004,13 @@ export interface GetDeckPointRequest {
 }
 
 export interface GetDeckSourcingRequest {
+    /**
+     * 
+     */
+    deck: string;
+}
+
+export interface GetDeckValuesRequest {
     /**
      * 
      */
@@ -1045,6 +1055,13 @@ export interface GetMyTournamentMatchRequest {
      * 
      */
     tournament: string;
+}
+
+export interface GetPhysicalDeckRequest {
+    /**
+     * 
+     */
+    deck: string;
 }
 
 export interface GetPriceHistoryRequest {
@@ -1515,6 +1532,17 @@ export interface PutDeckCollaboratorOperationRequest {
     PutDeckCollaboratorRequest?: PutDeckCollaboratorRequest;
 }
 
+export interface PutDeckProxiesOperationRequest {
+    /**
+     * 
+     */
+    deck: string;
+    /**
+     * 
+     */
+    PutDeckProxiesRequest?: PutDeckProxiesRequest;
+}
+
 export interface ReadDeckUrlOperationRequest {
     /**
      * 
@@ -1657,6 +1685,17 @@ export interface RenamePasskeyOperationRequest {
     RenamePasskeyRequest?: RenamePasskeyRequest;
 }
 
+export interface ReplaceDeckProxyOperationRequest {
+    /**
+     * 
+     */
+    deck: string;
+    /**
+     * 
+     */
+    ReplaceDeckProxyRequest?: ReplaceDeckProxyRequest;
+}
+
 export interface ReplaceMpcfillFavoriteRequest {
     /**
      * 
@@ -1699,17 +1738,6 @@ export interface ResolvePrintingsOperationRequest {
      * 
      */
     ResolvePrintingsRequest?: ResolvePrintingsRequest;
-}
-
-export interface ReturnAllDeckCardsOperationRequest {
-    /**
-     * 
-     */
-    deck: string;
-    /**
-     * 
-     */
-    ReturnAllDeckCardsRequest?: ReturnAllDeckCardsRequest;
 }
 
 export interface ReturnDeckCardsOperationRequest {
@@ -2099,6 +2127,17 @@ export interface SwapDeckCardOperationRequest {
      * 
      */
     SwapDeckCardRequest?: SwapDeckCardRequest;
+}
+
+export interface TakeApartPhysicalDeckOperationRequest {
+    /**
+     * 
+     */
+    deck: string;
+    /**
+     * 
+     */
+    TakeApartPhysicalDeckRequest?: TakeApartPhysicalDeckRequest;
 }
 
 export interface TakeBackTournamentRoundRequest {
@@ -2551,7 +2590,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Put a card into a deck  Copies joining an alike Deck entry (same printing, zone, finish and proxy status) raise its count instead of opening a second line beside it. The answer is the entry\'s bookkeeping fields either way; catalog data and tags come from the list endpoint. Only the owner adds proxies, see [`DeckGrant::proxy`].
+     * Put a card into a deck  Copies joining an alike Deck entry (same printing, zone and finish) raise its count instead of opening a second line beside it. The answer is the entry\'s bookkeeping fields either way; catalog data and tags come from the list endpoint.
      * Put a card into a deck
      */
     async addDeckCardRaw(requestParameters: AddDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckCardResponse>> {
@@ -2562,7 +2601,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Put a card into a deck  Copies joining an alike Deck entry (same printing, zone, finish and proxy status) raise its count instead of opening a second line beside it. The answer is the entry\'s bookkeeping fields either way; catalog data and tags come from the list endpoint. Only the owner adds proxies, see [`DeckGrant::proxy`].
+     * Put a card into a deck  Copies joining an alike Deck entry (same printing, zone and finish) raise its count instead of opening a second line beside it. The answer is the entry\'s bookkeeping fields either way; catalog data and tags come from the list endpoint.
      * Put a card into a deck
      */
     async addDeckCard(requestParameters: AddDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckCardResponse> {
@@ -3860,53 +3899,6 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Creates request options for attachDeckCollection without sending the request
-     */
-    async attachDeckCollectionRequestOpts(requestParameters: AttachDeckCollectionRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['deck'] == null) {
-            throw new runtime.RequiredError(
-                'deck',
-                'Required parameter "deck" was null or undefined when calling attachDeckCollection().'
-            );
-        }
-
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-
-        let urlPath = `/api/frontend/v1/decks/{deck}/collection`;
-        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
-
-        return {
-            path: urlPath,
-            method: 'POST',
-            headers: headerParameters,
-            query: queryParameters,
-        };
-    }
-
-    /**
-     * Start keeping the cards that are physically in this deck  The deck gets a collection of its own. Idempotent, so the client can call it without first asking whether there already is one.
-     * Start keeping the cards that are physically in this deck
-     */
-    async attachDeckCollectionRaw(requestParameters: AttachDeckCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CollectionResponse>> {
-        const requestOptions = await this.attachDeckCollectionRequestOpts(requestParameters);
-        const response = await this.request(requestOptions, initOverrides);
-
-        return new runtime.JSONApiResponse(response);
-    }
-
-    /**
-     * Start keeping the cards that are physically in this deck  The deck gets a collection of its own. Idempotent, so the client can call it without first asking whether there already is one.
-     * Start keeping the cards that are physically in this deck
-     */
-    async attachDeckCollection(requestParameters: AttachDeckCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionResponse> {
-        const response = await this.attachDeckCollectionRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
-
-    /**
      * Creates request options for cancelTournament without sending the request
      */
     async cancelTournamentRequestOpts(requestParameters: CancelTournamentRequest): Promise<runtime.RequestOpts> {
@@ -4771,8 +4763,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Delete a deck and everything in it
-     * Delete a deck and everything in it
+     * Delete a deck, its list and its Physical deck  Refused while the Physical deck holds real cards: deleting a deck never deletes the owner\'s cards, so it is taken apart first. Proxies go with it.
+     * Delete a deck, its list and its Physical deck
      */
     async deleteDeckRaw(requestParameters: DeleteDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
         const requestOptions = await this.deleteDeckRequestOpts(requestParameters);
@@ -4786,8 +4778,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Delete a deck and everything in it
-     * Delete a deck and everything in it
+     * Delete a deck, its list and its Physical deck  Refused while the Physical deck holds real cards: deleting a deck never deletes the owner\'s cards, so it is taken apart first. Proxies go with it.
+     * Delete a deck, its list and its Physical deck
      */
     async deleteDeck(requestParameters: DeleteDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.deleteDeckRaw(requestParameters, initOverrides);
@@ -5333,13 +5325,13 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Creates request options for detachDeckCollection without sending the request
+     * Creates request options for discardDeckCards without sending the request
      */
-    async detachDeckCollectionRequestOpts(requestParameters: DetachDeckCollectionRequest): Promise<runtime.RequestOpts> {
+    async discardDeckCardsRequestOpts(requestParameters: DiscardDeckCardsOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['deck'] == null) {
             throw new runtime.RequiredError(
                 'deck',
-                'Required parameter "deck" was null or undefined when calling detachDeckCollection().'
+                'Required parameter "deck" was null or undefined when calling discardDeckCards().'
             );
         }
 
@@ -5347,24 +5339,27 @@ export class DefaultApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        headerParameters['Content-Type'] = 'application/json';
 
-        let urlPath = `/api/frontend/v1/decks/{deck}/collection`;
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/sourcing/discard`;
         urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
 
         return {
             path: urlPath,
-            method: 'DELETE',
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
+            body: requestParameters['DiscardDeckCardsRequest'],
         };
     }
 
     /**
-     * Stop keeping them  Refused while cards are still filed in it: they would otherwise leave the account\'s inventory without anybody saying where they went.
-     * Stop keeping them
+     * Throw a stack out of the Physical deck, and so out of the account  For cards that are gone: sold, traded away, lost. A Proxy stack is simply thrown away.
+     * Throw a stack out of the Physical deck, and so out of the account
      */
-    async detachDeckCollectionRaw(requestParameters: DetachDeckCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
-        const requestOptions = await this.detachDeckCollectionRequestOpts(requestParameters);
+    async discardDeckCardsRaw(requestParameters: DiscardDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.discardDeckCardsRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
         if (this.isJsonMime(response.headers.get('content-type'))) {
@@ -5375,11 +5370,11 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Stop keeping them  Refused while cards are still filed in it: they would otherwise leave the account\'s inventory without anybody saying where they went.
-     * Stop keeping them
+     * Throw a stack out of the Physical deck, and so out of the account  For cards that are gone: sold, traded away, lost. A Proxy stack is simply thrown away.
+     * Throw a stack out of the Physical deck, and so out of the account
      */
-    async detachDeckCollection(requestParameters: DetachDeckCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
-        const response = await this.detachDeckCollectionRaw(requestParameters, initOverrides);
+    async discardDeckCards(requestParameters: DiscardDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.discardDeckCardsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -5720,7 +5715,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Atomically file every staged stack and empty the session
+     * Atomically file every staged stack and empty the session  The target is a collection or one of the account\'s own decks, whose Physical deck is created if missing; cards filed into a deck have no origin. Only a collection becomes the session\'s preferred destination.
      * Atomically file every staged stack and empty the session
      */
     async fileScannerSessionRaw(requestParameters: FileScannerSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FileScannerSessionResponse>> {
@@ -5731,7 +5726,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Atomically file every staged stack and empty the session
+     * Atomically file every staged stack and empty the session  The target is a collection or one of the account\'s own decks, whose Physical deck is created if missing; cards filed into a deck have no origin. Only a collection becomes the session\'s preferred destination.
      * Atomically file every staged stack and empty the session
      */
     async fileScannerSession(requestParameters: FileScannerSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FileScannerSessionResponse> {
@@ -5770,7 +5765,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Declare that the deck holds what its list asks for  Two things at once, because they are the same thing at different sizes: the way in for a deck that arrived from somewhere else, where the list is already right and saying so one card at a time would be an afternoon\'s work, and the answer to \"I bought that one\" for a single slot.  The slots are topped up to what they ask for, in the printing and finish they name, as near mint and without an origin: nothing was taken out of a collection, so there is nowhere to put it back. Sorting them into one later is the same return call with a target.
+     * Declare that the deck holds what its list asks for  Two things at once, because they are the same thing at different sizes: the way in for a deck that arrived from somewhere else, where the list is already right and saying so one card at a time would be an afternoon\'s work, and the answer to \"I bought that one\" for a single slot.  The slots are topped up to what they ask for, in the printing and finish they name, as near mint and without an origin: nothing was taken out of a collection, so there is nowhere to put it back. Sorting them into one later is the same return call with a target. The first card creates the Physical deck. Proxies of a slot\'s printing and finish count as held, and the list is never changed.
      * Declare that the deck holds what its list asks for
      */
     async fillDeckCollectionRaw(requestParameters: FillDeckCollectionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FillDeckCollectionResponse>> {
@@ -5781,7 +5776,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Declare that the deck holds what its list asks for  Two things at once, because they are the same thing at different sizes: the way in for a deck that arrived from somewhere else, where the list is already right and saying so one card at a time would be an afternoon\'s work, and the answer to \"I bought that one\" for a single slot.  The slots are topped up to what they ask for, in the printing and finish they name, as near mint and without an origin: nothing was taken out of a collection, so there is nowhere to put it back. Sorting them into one later is the same return call with a target.
+     * Declare that the deck holds what its list asks for  Two things at once, because they are the same thing at different sizes: the way in for a deck that arrived from somewhere else, where the list is already right and saying so one card at a time would be an afternoon\'s work, and the answer to \"I bought that one\" for a single slot.  The slots are topped up to what they ask for, in the printing and finish they name, as near mint and without an origin: nothing was taken out of a collection, so there is nowhere to put it back. Sorting them into one later is the same return call with a target. The first card creates the Physical deck. Proxies of a slot\'s printing and finish count as held, and the list is never changed.
      * Declare that the deck holds what its list asks for
      */
     async fillDeckCollection(requestParameters: FillDeckCollectionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FillDeckCollectionResponse> {
@@ -6422,6 +6417,45 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getCollectionTotals without sending the request
+     */
+    async getCollectionTotalsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/collections/totals`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * How many cards the account owns and what they are worth  Real cards in a Physical deck count as the account\'s cards, though the Physical deck is listed with no collections; Proxies never count.
+     * How many cards the account owns and what they are worth
+     */
+    async getCollectionTotalsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CollectionTotalsResponse>> {
+        const requestOptions = await this.getCollectionTotalsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * How many cards the account owns and what they are worth  Real cards in a Physical deck count as the account\'s cards, though the Physical deck is listed with no collections; Proxies never count.
+     * How many cards the account owns and what they are worth
+     */
+    async getCollectionTotals(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionTotalsResponse> {
+        const response = await this.getCollectionTotalsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getDeck without sending the request
      */
     async getDeckRequestOpts(requestParameters: GetDeckRequest): Promise<runtime.RequestOpts> {
@@ -6516,13 +6550,13 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Creates request options for getDeckCollectionDrift without sending the request
+     * Creates request options for getDeckDeviation without sending the request
      */
-    async getDeckCollectionDriftRequestOpts(requestParameters: GetDeckCollectionDriftRequest): Promise<runtime.RequestOpts> {
+    async getDeckDeviationRequestOpts(requestParameters: GetDeckDeviationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['deck'] == null) {
             throw new runtime.RequiredError(
                 'deck',
-                'Required parameter "deck" was null or undefined when calling getDeckCollectionDrift().'
+                'Required parameter "deck" was null or undefined when calling getDeckDeviation().'
             );
         }
 
@@ -6531,7 +6565,7 @@ export class DefaultApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/api/frontend/v1/decks/{deck}/collection/drift`;
+        let urlPath = `/api/frontend/v1/decks/{deck}/deviation`;
         urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
 
         return {
@@ -6543,22 +6577,22 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Where the deck list and the deck\'s own collection disagree  Read on its own rather than out of the sourcing answer: the header asks this on every tab of the deck, and it has no use for the whole account\'s shelf.
-     * Where the deck list and the deck\'s own collection disagree
+     * The Deviation between the deck list and the Physical deck  Read on its own rather than out of the sourcing answer: the header and the card list ask this on every tab of the deck, and they have no use for the whole account\'s shelf. An Editor reads it too; the sourcing answer, which shows the owner\'s collections, stays the owner\'s.
+     * The Deviation between the deck list and the Physical deck
      */
-    async getDeckCollectionDriftRaw(requestParameters: GetDeckCollectionDriftRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckDriftResponse>> {
-        const requestOptions = await this.getDeckCollectionDriftRequestOpts(requestParameters);
+    async getDeckDeviationRaw(requestParameters: GetDeckDeviationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckDeviationResponse>> {
+        const requestOptions = await this.getDeckDeviationRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response);
     }
 
     /**
-     * Where the deck list and the deck\'s own collection disagree  Read on its own rather than out of the sourcing answer: the header asks this on every tab of the deck, and it has no use for the whole account\'s shelf.
-     * Where the deck list and the deck\'s own collection disagree
+     * The Deviation between the deck list and the Physical deck  Read on its own rather than out of the sourcing answer: the header and the card list ask this on every tab of the deck, and they have no use for the whole account\'s shelf. An Editor reads it too; the sourcing answer, which shows the owner\'s collections, stays the owner\'s.
+     * The Deviation between the deck list and the Physical deck
      */
-    async getDeckCollectionDrift(requestParameters: GetDeckCollectionDriftRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckDriftResponse> {
-        const response = await this.getDeckCollectionDriftRaw(requestParameters, initOverrides);
+    async getDeckDeviation(requestParameters: GetDeckDeviationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckDeviationResponse> {
+        const response = await this.getDeckDeviationRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -6755,6 +6789,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getDeckSourcing(requestParameters: GetDeckSourcingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckSourcingResponse> {
         const response = await this.getDeckSourcingRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getDeckValues without sending the request
+     */
+    async getDeckValuesRequestOpts(requestParameters: GetDeckValuesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling getDeckValues().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/values`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * What the deck\'s list costs, what its Physical deck is worth and what replacing its Proxies would cost  An Editor reads it too, as it reads the Deviation; a Viewer sees nothing of the Physical deck.
+     * What the deck\'s list costs, what its Physical deck is worth and what
+     */
+    async getDeckValuesRaw(requestParameters: GetDeckValuesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckValuesResponse>> {
+        const requestOptions = await this.getDeckValuesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * What the deck\'s list costs, what its Physical deck is worth and what replacing its Proxies would cost  An Editor reads it too, as it reads the Deviation; a Viewer sees nothing of the Physical deck.
+     * What the deck\'s list costs, what its Physical deck is worth and what
+     */
+    async getDeckValues(requestParameters: GetDeckValuesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckValuesResponse> {
+        const response = await this.getDeckValuesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -7021,7 +7102,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The logged-in Account\'s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts; a late Participant registers its own until it is pinned.
+     * The logged-in Account\'s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts; a late Participant registers its own until it is pinned. Says too how many of its copies are Proxies and whether they break the Tournament\'s Proxy rule, which the Participant sees before anyone else\'s list.
      * The logged-in Account\'s own Registered deck in a Tournament it plays in
      */
     async getMyTournamentDeckRaw(requestParameters: GetMyTournamentDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyRegisteredDeckResponse>> {
@@ -7032,7 +7113,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The logged-in Account\'s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts; a late Participant registers its own until it is pinned.
+     * The logged-in Account\'s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts; a late Participant registers its own until it is pinned. Says too how many of its copies are Proxies and whether they break the Tournament\'s Proxy rule, which the Participant sees before anyone else\'s list.
      * The logged-in Account\'s own Registered deck in a Tournament it plays in
      */
     async getMyTournamentDeck(requestParameters: GetMyTournamentDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyRegisteredDeckResponse> {
@@ -7162,6 +7243,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getPendingOidcLogin(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetPendingOidcLoginResponse> {
         const response = await this.getPendingOidcLoginRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getPhysicalDeck without sending the request
+     */
+    async getPhysicalDeckRequestOpts(requestParameters: GetPhysicalDeckRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling getPhysicalDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/physical-deck`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * What lies in the Physical deck: real cards and Proxies  What an Editor reads to see what the owner has built. Where the real cards came from is left out, since the owner\'s collections stay the owner\'s; an empty list for a deck without a Physical deck.
+     * What lies in the Physical deck: real cards and Proxies
+     */
+    async getPhysicalDeckRaw(requestParameters: GetPhysicalDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PhysicalDeckResponse>> {
+        const requestOptions = await this.getPhysicalDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * What lies in the Physical deck: real cards and Proxies  What an Editor reads to see what the owner has built. Where the real cards came from is left out, since the owner\'s collections stay the owner\'s; an empty list for a deck without a Physical deck.
+     * What lies in the Physical deck: real cards and Proxies
+     */
+    async getPhysicalDeck(requestParameters: GetPhysicalDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PhysicalDeckResponse> {
+        const response = await this.getPhysicalDeckRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -8352,7 +8480,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at. A Collaborator gets it the way the Share link shows it, see [`redact_slot`].
+     * Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at. A Collaborator reads the same list the owner does: a Deck entry says nothing about the owner\'s shelf (ADR 0007).
      * Every card of a deck, with the catalog data and the tags on it
      */
     async listDeckCardsRaw(requestParameters: ListDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckCardsResponse>> {
@@ -8363,7 +8491,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at. A Collaborator gets it the way the Share link shows it, see [`redact_slot`].
+     * Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at. A Collaborator reads the same list the owner does: a Deck entry says nothing about the owner\'s shelf (ADR 0007).
      * Every card of a deck, with the catalog data and the tags on it
      */
     async listDeckCards(requestParameters: ListDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCardsResponse> {
@@ -8666,7 +8794,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a public deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [`redact_slot`].
+     * Every card of a public deck, with the catalog data and the tags on it  The listing the owner reads.
      * Every card of a public deck, with the catalog data and the tags on it
      */
     async listPublicDeckCardsRaw(requestParameters: ListPublicDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckCardsResponse>> {
@@ -8677,7 +8805,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a public deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [`redact_slot`].
+     * Every card of a public deck, with the catalog data and the tags on it  The listing the owner reads.
      * Every card of a public deck, with the catalog data and the tags on it
      */
     async listPublicDeckCards(requestParameters: ListPublicDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCardsResponse> {
@@ -8851,7 +8979,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a shared deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [`redact_slot`].
+     * Every card of a shared deck, with the catalog data and the tags on it  The listing the owner reads.
      * Every card of a shared deck, with the catalog data and the tags on it
      */
     async listSharedDeckCardsRaw(requestParameters: ListSharedDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckCardsResponse>> {
@@ -8862,7 +8990,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a shared deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [`redact_slot`].
+     * Every card of a shared deck, with the catalog data and the tags on it  The listing the owner reads.
      * Every card of a shared deck, with the catalog data and the tags on it
      */
     async listSharedDeckCards(requestParameters: ListSharedDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCardsResponse> {
@@ -9678,6 +9806,60 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for putDeckProxies without sending the request
+     */
+    async putDeckProxiesRequestOpts(requestParameters: PutDeckProxiesOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling putDeckProxies().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/sourcing/proxy`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['PutDeckProxiesRequest'],
+        };
+    }
+
+    /**
+     * Put Proxies into the Physical deck for a Deck entry  They stand for the entry\'s printing and finish. The first card creates the Physical deck.
+     * Put Proxies into the Physical deck for a Deck entry
+     */
+    async putDeckProxiesRaw(requestParameters: PutDeckProxiesOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.putDeckProxiesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Put Proxies into the Physical deck for a Deck entry  They stand for the entry\'s printing and finish. The first card creates the Physical deck.
+     * Put Proxies into the Physical deck for a Deck entry
+     */
+    async putDeckProxies(requestParameters: PutDeckProxiesOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.putDeckProxiesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for readDeckUrl without sending the request
      */
     async readDeckUrlRequestOpts(requestParameters: ReadDeckUrlOperationRequest): Promise<runtime.RequestOpts> {
@@ -10409,6 +10591,60 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for replaceDeckProxy without sending the request
+     */
+    async replaceDeckProxyRequestOpts(requestParameters: ReplaceDeckProxyOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling replaceDeckProxy().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/sourcing/replace-proxy`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['ReplaceDeckProxyRequest'],
+        };
+    }
+
+    /**
+     * Replace Proxies with real copies out of a collection  One step: the real copies move in, remembering where they came from, and as many Proxies are thrown away. Either both happen or neither does.
+     * Replace Proxies with real copies out of a collection
+     */
+    async replaceDeckProxyRaw(requestParameters: ReplaceDeckProxyOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.replaceDeckProxyRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Replace Proxies with real copies out of a collection  One step: the real copies move in, remembering where they came from, and as many Proxies are thrown away. Either both happen or neither does.
+     * Replace Proxies with real copies out of a collection
+     */
+    async replaceDeckProxy(requestParameters: ReplaceDeckProxyOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.replaceDeckProxyRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for replaceMpcfillFavorite without sending the request
      */
     async replaceMpcfillFavoriteRequestOpts(requestParameters: ReplaceMpcfillFavoriteRequest): Promise<runtime.RequestOpts> {
@@ -10618,56 +10854,6 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Creates request options for returnAllDeckCards without sending the request
-     */
-    async returnAllDeckCardsRequestOpts(requestParameters: ReturnAllDeckCardsOperationRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['deck'] == null) {
-            throw new runtime.RequiredError(
-                'deck',
-                'Required parameter "deck" was null or undefined when calling returnAllDeckCards().'
-            );
-        }
-
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        headerParameters['Content-Type'] = 'application/json';
-
-
-        let urlPath = `/api/frontend/v1/decks/{deck}/sourcing/return-all`;
-        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
-
-        return {
-            path: urlPath,
-            method: 'POST',
-            headers: headerParameters,
-            query: queryParameters,
-            body: requestParameters['ReturnAllDeckCardsRequest'],
-        };
-    }
-
-    /**
-     * Sort everything in the deck back where it came from  This is what taking a deck apart does. Stacks that remember no origin only move when the client says where they should go; otherwise they stay, and the answer says how many that was.
-     * Sort everything in the deck back where it came from
-     */
-    async returnAllDeckCardsRaw(requestParameters: ReturnAllDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ReturnAllDeckCardsResponse>> {
-        const requestOptions = await this.returnAllDeckCardsRequestOpts(requestParameters);
-        const response = await this.request(requestOptions, initOverrides);
-
-        return new runtime.JSONApiResponse(response);
-    }
-
-    /**
-     * Sort everything in the deck back where it came from  This is what taking a deck apart does. Stacks that remember no origin only move when the client says where they should go; otherwise they stay, and the answer says how many that was.
-     * Sort everything in the deck back where it came from
-     */
-    async returnAllDeckCards(requestParameters: ReturnAllDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReturnAllDeckCardsResponse> {
-        const response = await this.returnAllDeckCardsRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
-
-    /**
      * Creates request options for returnDeckCards without sending the request
      */
     async returnDeckCardsRequestOpts(requestParameters: ReturnDeckCardsOperationRequest): Promise<runtime.RequestOpts> {
@@ -10698,8 +10884,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Sort copies out of the deck back into a collection
-     * Sort copies out of the deck back into a collection
+     * Sort copies out of the Physical deck back into a collection  Proxies have nowhere to go back to: returning them throws them away, and `target` is not read for them.
+     * Sort copies out of the Physical deck back into a collection
      */
     async returnDeckCardsRaw(requestParameters: ReturnDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
         const requestOptions = await this.returnDeckCardsRequestOpts(requestParameters);
@@ -10713,8 +10899,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Sort copies out of the deck back into a collection
-     * Sort copies out of the deck back into a collection
+     * Sort copies out of the Physical deck back into a collection  Proxies have nowhere to go back to: returning them throws them away, and `target` is not read for them.
+     * Sort copies out of the Physical deck back into a collection
      */
     async returnDeckCards(requestParameters: ReturnDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.returnDeckCardsRaw(requestParameters, initOverrides);
@@ -12532,6 +12718,56 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for takeApartPhysicalDeck without sending the request
+     */
+    async takeApartPhysicalDeckRequestOpts(requestParameters: TakeApartPhysicalDeckOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling takeApartPhysicalDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/sourcing/take-apart`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['TakeApartPhysicalDeckRequest'],
+        };
+    }
+
+    /**
+     * Take the Physical deck apart  Real cards go back to the collection they came from; those without a usable origin (none recorded, or that collection is gone) go into `target`. Refused if a single real card has nowhere to go, and then nothing moves. Afterwards the deck has no Physical deck.
+     * Take the Physical deck apart
+     */
+    async takeApartPhysicalDeckRaw(requestParameters: TakeApartPhysicalDeckOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TakeApartPhysicalDeckResponse>> {
+        const requestOptions = await this.takeApartPhysicalDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Take the Physical deck apart  Real cards go back to the collection they came from; those without a usable origin (none recorded, or that collection is gone) go into `target`. Refused if a single real card has nowhere to go, and then nothing moves. Afterwards the deck has no Physical deck.
+     * Take the Physical deck apart
+     */
+    async takeApartPhysicalDeck(requestParameters: TakeApartPhysicalDeckOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TakeApartPhysicalDeckResponse> {
+        const response = await this.takeApartPhysicalDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for takeBackTournamentRound without sending the request
      */
     async takeBackTournamentRoundRequestOpts(requestParameters: TakeBackTournamentRoundRequest): Promise<runtime.RequestOpts> {
@@ -12617,8 +12853,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Move copies out of a collection and into the deck  Where they came from is written down with them, which is what makes taking the deck apart again possible.
-     * Move copies out of a collection and into the deck
+     * Move copies out of a collection and into the Physical deck  Where they came from is written down with them, which is what makes taking the deck apart again possible. The first card creates the Physical deck.  The list leads: copies of another printing or finish than a line asks for do not change the line, they are a Deviation.
+     * Move copies out of a collection and into the Physical deck
      */
     async takeDeckCardsRaw(requestParameters: TakeDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
         const requestOptions = await this.takeDeckCardsRequestOpts(requestParameters);
@@ -12632,8 +12868,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Move copies out of a collection and into the deck  Where they came from is written down with them, which is what makes taking the deck apart again possible.
-     * Move copies out of a collection and into the deck
+     * Move copies out of a collection and into the Physical deck  Where they came from is written down with them, which is what makes taking the deck apart again possible. The first card creates the Physical deck.  The list leads: copies of another printing or finish than a line asks for do not change the line, they are a Deviation.
+     * Move copies out of a collection and into the Physical deck
      */
     async takeDeckCards(requestParameters: TakeDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.takeDeckCardsRaw(requestParameters, initOverrides);
@@ -13177,7 +13413,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it. A Collaborator\'s change leaves the proxy flag as it is, see [`DeckGrant::proxy`].
+     * Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it.
      * Change a Deck entry: its count, its zone or the print it sleeves
      */
     async updateDeckCardRaw(requestParameters: UpdateDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
@@ -13192,7 +13428,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it. A Collaborator\'s change leaves the proxy flag as it is, see [`DeckGrant::proxy`].
+     * Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it.
      * Change a Deck entry: its count, its zone or the print it sleeves
      */
     async updateDeckCard(requestParameters: UpdateDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {

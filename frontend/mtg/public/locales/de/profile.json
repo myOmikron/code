@@ -27,7 +27,7 @@
         "foil-tilt": "Der Glanz auf Foil-Karten folgt der Neigung deines Geräts, so wie eine Karte in der Hand ins Licht gehalten wird.",
         "language": "Gilt für die Oberfläche. Kartennamen kommen von Scryfall und bleiben davon unberührt.",
         "passkeys": "Mit diesen Geräten kannst du dich anmelden. Lege für jedes Gerät einen eigenen Passkey an — geht eines verloren, kommst du mit den anderen weiterhin rein.",
-        "proxy-fade": "Als Proxy markierte Karten werden im Deck ausgewaschen gezeichnet, damit ein Platzhalter nicht auf den ersten Blick als echte Karte durchgeht.",
+        "proxy-fade": "Proxies im Physischen Deck werden ausgewaschen gezeichnet, damit ein Platzhalter nicht auf den ersten Blick als echte Karte durchgeht.",
         "push-device": "Benachrichtigungen auf diesem Gerät empfangen. Jedes Gerät meldest du einzeln an.",
         "push-unavailable": "Dieser Browser kann keine Benachrichtigungen empfangen. Auf iPhone und iPad geht es nur, wenn die App zum Home-Bildschirm hinzugefügt ist.",
         "remove-passkey": "Mit \"{{label}}\" kannst du dich danach nicht mehr anmelden. Das lässt sich nur rückgängig machen, indem du das Gerät neu hinzufügst.",

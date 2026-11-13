@@ -15,11 +15,14 @@ import { useTranslation } from "react-i18next";
 import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
 import type { DeckCardResponse, DeckTagResponse, DeckZone } from "src/api/generated";
 import { CardFlipButton } from "src/components/card-flip-button";
-import { FoilMark, ProxyMark } from "src/components/card-attribute-badge";
+import { FoilMark } from "src/components/card-attribute-badge";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { violationLabel } from "src/components/deck-card-row";
 import { useDeckLabels } from "src/components/deck-labels";
+import { DeckLineDeviation } from "src/components/deck-line-deviation";
 import { DeckTagDots, DeckTagPicker } from "src/components/deck-tag-picker";
+import { useLineDeviation } from "src/context/deck-deviation-context";
+import { lineMarks } from "src/utils/deck-deviation";
 import { ManaCost } from "src/components/mana-cost";
 import type { DeckTileSize } from "src/components/deck-view-controls";
 import { GameChangerMarker } from "src/components/game-changer-marker";
@@ -349,6 +352,33 @@ export function GroupHeading({
 }
 
 /**
+ * Whether a tile shows the row under its artwork: finish, Deviation and tags
+ *
+ * @param card the slot
+ * @param strip whether the tile offers its tags
+ * @param deviates whether the Physical deck deviates from the slot
+ *
+ * @returns whether the row is shown
+ */
+export function showsTileRow(card: DeckCardResponse, strip: boolean, deviates: boolean): boolean {
+    return strip || finishOf(card) !== "Nonfoil" || deviates;
+}
+
+/**
+ * How much a tile adds under its artwork, as a CSS length
+ *
+ * The row is `h-6` and the remark line one `text-xs` line, each after the tile's `gap-1`.
+ *
+ * @param row whether the tile shows its row, see {@link showsTileRow}
+ * @param remark whether the tile shows a remark line
+ *
+ * @returns the length
+ */
+export function tileUnder(row: boolean, remark: boolean): string {
+    return `${(row ? 1.75 : 0) + (remark ? 1.25 : 0)}rem`;
+}
+
+/**
  * The properties for {@link Tile}
  */
 export type TileProps = {
@@ -420,6 +450,7 @@ export function Tile({
     const printing = card.card;
     const finish = finishOf(card);
     const gameChanger = printing?.game_changer === true;
+    const deviates = lineMarks(useLineDeviation(card.uuid)).length > 0;
     const back = artworkOf(printing, "back");
     // The flip is a single tap, so the other side is fetched while this one
     // is being looked at rather than after the tap.
@@ -464,7 +495,6 @@ export function Tile({
                         thumbnail={artwork.thumbnail}
                         sizes={width}
                         finish={finish}
-                        muted={card.proxy}
                         className={"w-full rounded-xl"}
                     />
                 </button>
@@ -563,13 +593,17 @@ export function Tile({
                 </span>
             )}
 
-            {(strip || finish !== "Nonfoil" || card.proxy) && (
-                <div className={"flex h-6 items-center gap-1.5"}>
+            {showsTileRow(card, strip, deviates) && (
+                <div className={"flex h-6 min-w-0 items-center gap-1.5"}>
                     {/* Under the tile with the tags rather than over the
                         artwork: the picture is the card, and every mark laid on
                         top of it hides a piece of the thing it describes. */}
                     <FoilMark finish={finish} className={"ml-1.5"} />
-                    <ProxyMark proxy={card.proxy} />
+                    {deviates && (
+                        <span className={"flex min-w-0 items-center gap-1 overflow-hidden"}>
+                            <DeckLineDeviation entry={card.uuid} />
+                        </span>
+                    )}
                     {onToggleTag === undefined ? (
                         onSlot.length > 0 && (
                             <span className={"px-1.5"}>

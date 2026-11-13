@@ -16,6 +16,7 @@ Name | Type
 `location` | string
 `name` | string
 `participant_limit` | number
+`proxy_rule` | [ProxyRule](ProxyRule.md)
 `round_minutes` | number
 `ruleset` | [Ruleset](Ruleset.md)
 `self_sign_up` | boolean

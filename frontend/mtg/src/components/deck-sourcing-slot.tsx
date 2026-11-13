@@ -3,13 +3,14 @@ import {
     CheckIcon,
     ChevronDownIcon,
     ChevronRightIcon,
+    DocumentDuplicateIcon,
     ShoppingCartIcon,
 } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Badge, Button, StackedListFlexRow, Text } from "components";
 import { useTranslation } from "react-i18next";
 import type { SourcedStackResponse, SourcingCandidateResponse, SourcingSlotResponse } from "src/api/generated";
-import { FoilMark, ProxyBadge } from "src/components/card-attribute-badge";
+import { FoilMark } from "src/components/card-attribute-badge";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { CardmarketLink } from "src/components/cardmarket-link";
 import { DeckSourcingCandidate } from "src/components/deck-sourcing-candidate";
@@ -37,6 +38,8 @@ export type DeckSourcingSlotProps = {
     onTake: (slot: SourcingSlotResponse, candidate: SourcingCandidateResponse, quantity: number) => void;
     /** Files what is still missing as bought, straight into the deck */
     onBuy: (slot: SourcingSlotResponse) => void;
+    /** Puts Proxies into the deck for the copies it does not hold yet */
+    onProxy: (slot: SourcingSlotResponse, quantity: number) => void;
     /** Whether a write is in flight for this row */
     busy: boolean;
 };
@@ -61,6 +64,7 @@ export function DeckSourcingSlot({
     onToggle,
     onTake,
     onBuy,
+    onProxy,
     busy,
 }: DeckSourcingSlotProps) {
     const [t] = useTranslation("collection");
@@ -94,14 +98,12 @@ export function DeckSourcingSlot({
                         image={card?.image_small ?? null}
                         finish={slot.foil ? "Foil" : "Nonfoil"}
                         compact={true}
-                        muted={slot.proxy}
                         className={"h-12 shrink-0 rounded"}
                     />
                     <span className={"flex min-w-0 flex-1 flex-col gap-0.5"}>
                         <span className={"flex min-w-0 items-center gap-1.5"}>
                             <span className={"truncate font-medium text-zinc-950 dark:text-white"}>{name}</span>
                             <FoilMark finish={slot.foil ? "Foil" : "Nonfoil"} />
-                            <ProxyBadge proxy={slot.proxy} />
                         </span>
                         <span className={"truncate text-xs text-zinc-500 dark:text-zinc-400"}>
                             {card != null && `${card.set_name} · ${card.collector_number}`}
@@ -165,6 +167,24 @@ export function DeckSourcingSlot({
                             <Button outline={true} disabled={busy} onClick={() => onBuy(slot)}>
                                 <CheckIcon />
                                 {t("button.bought-it", { count: count.missing })}
+                            </Button>
+                        </div>
+                    )}
+
+                    {!done && (
+                        <div
+                            className={
+                                "flex flex-wrap items-center justify-between gap-2 rounded-(--radius-control) bg-purple-500/10 px-3 py-2"
+                            }
+                        >
+                            <Text className={"text-xs"}>{t("description.proxy-it")}</Text>
+                            <Button
+                                outline={true}
+                                disabled={busy}
+                                onClick={() => onProxy(slot, count.needed - count.filed)}
+                            >
+                                <DocumentDuplicateIcon />
+                                {t("button.put-in-proxies", { count: count.needed - count.filed })}
                             </Button>
                         </div>
                     )}

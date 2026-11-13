@@ -1,7 +1,7 @@
 
 # FillDeckCollectionRequest
 
-Request to declare that the deck holds what its list asks for
+Request to record copies bought straight into the Physical deck
 
 ## Properties
 

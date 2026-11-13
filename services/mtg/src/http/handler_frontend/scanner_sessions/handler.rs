@@ -28,6 +28,8 @@ use crate::models::collection::Collection;
 use crate::models::collection::CollectionAccess;
 use crate::models::collection::CollectionEntry;
 use crate::models::collection::CollectionEntryInsert;
+use crate::models::deck::Deck;
+use crate::models::deck::DeckAccess;
 use crate::models::scanner_session::ScannerSession;
 use crate::models::scanner_session::ScannerSessionAccess;
 use crate::models::scanner_session::ScannerSessionEntry;
@@ -235,6 +237,10 @@ pub async fn delete_scanner_session_entry(
 }
 
 /// Atomically file every staged stack and empty the session
+///
+/// The target is a collection or one of the account's own decks, whose
+/// Physical deck is created if missing; cards filed into a deck have no origin.
+/// Only a collection becomes the session's preferred destination.
 #[post("/{session}/file")]
 pub async fn file_scanner_session(
     account: Account,
@@ -243,11 +249,25 @@ pub async fn file_scanner_session(
 ) -> ApiResult<ApiJson<FileScannerSessionResponse>> {
     let mut tx = Database::global().start_transaction().await?;
     let session = owned_session(&mut tx, account.uuid, session_uuid).await?;
-    let collection = request
-        .collection
-        .or(session.collection)
-        .ok_or_else(|| ApiError::bad_request("Choose a collection first"))?;
-    ensure_collection(&mut tx, account.uuid, Some(collection)).await?;
+    let collection = match request.deck {
+        Some(_) if request.collection.is_some() => {
+            return Err(ApiError::bad_request(
+                "File into a collection or a deck, not both",
+            ));
+        }
+        Some(deck) => match Deck::physical_deck_or_create(&mut tx, account.uuid, deck).await? {
+            DeckAccess::Granted(physical_deck) => physical_deck.uuid,
+            DeckAccess::Denied => return denied(),
+        },
+        None => {
+            let collection = request
+                .collection
+                .or(session.collection)
+                .ok_or_else(|| ApiError::bad_request("Choose a collection first"))?;
+            ensure_collection(&mut tx, account.uuid, Some(collection)).await?;
+            collection
+        }
+    };
     let entries = ScannerSessionEntry::get_all(&mut tx, session_uuid).await?;
     let copies = entries.iter().map(|entry| i64::from(entry.quantity)).sum();
     let stacks = entries.len() as i64;
@@ -275,7 +295,7 @@ pub async fn file_scanner_session(
         .await?;
     }
     ScannerSessionEntry::clear(&mut tx, session_uuid).await?;
-    if session.collection != Some(collection) {
+    if request.deck.is_none() && session.collection != Some(collection) {
         match ScannerSession::update(
             &mut tx,
             account.uuid,
@@ -295,7 +315,8 @@ pub async fn file_scanner_session(
     }
     tx.commit().await?;
     Ok(ApiJson(FileScannerSessionResponse {
-        collection,
+        collection: request.deck.is_none().then_some(collection),
+        deck: request.deck,
         stacks,
         copies,
     }))
@@ -319,7 +340,7 @@ async fn ensure_collection(
     let Some(collection) = collection else {
         return Ok(());
     };
-    match Collection::may_administer(tx, collection, owner).await? {
+    match Collection::may_change_entries(tx, collection, owner).await? {
         CollectionAccess::Granted(()) => Ok(()),
         CollectionAccess::Denied => Err(ApiError::bad_request("Request was denied")),
     }

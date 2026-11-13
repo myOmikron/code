@@ -15,6 +15,7 @@ Name | Type
 `origin_icon` | string
 `origin_name` | string
 `printing` | string
+`proxy` | boolean
 `quantity` | number
 `uuid` | string
 

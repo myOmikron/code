@@ -16,6 +16,7 @@ use crate::models::tournament::TournamentState;
 use crate::models::tournament::round::RoundStage;
 use crate::models::tournament::round::RoundState;
 use crate::models::tournament::settings::CheckIn;
+use crate::models::tournament::settings::ProxyRule;
 use crate::models::visibility::Visibility;
 use crate::tournament::reporting::ResultState;
 use crate::tournament::ruleset::BestOf;
@@ -94,6 +95,10 @@ pub struct TournamentModel {
     #[rorm(default = "Off")]
     pub check_in: CheckIn,
 
+    /// What the Tournament allows of Proxies in its Registered decks
+    #[rorm(default = "ProxiesAllowed")]
+    pub proxy_rule: ProxyRule,
+
     /// How many Swiss Rounds are played
     ///
     /// `None` until an Organizer sets it or the first Round starts, which
@@ -169,6 +174,8 @@ pub struct TournamentInsertPatch {
     pub entry_fee_currency: Option<MaxStr<3>>,
     /// Whether Participants check in before they are paired
     pub check_in: CheckIn,
+    /// What the Tournament allows of Proxies in its Registered decks
+    pub proxy_rule: ProxyRule,
     /// Where the Tournament stands
     pub state: TournamentState,
 }
@@ -600,8 +607,9 @@ pub struct TournamentRegisteredCardModel {
     /// Whether the copies were the foil ones
     pub foil: bool,
 
-    /// Whether the copies were stand-ins rather than the real cards
-    pub proxy: bool,
+    /// How many of the copies were Proxies in the deck's Physical deck
+    #[rorm(default = 0)]
+    pub proxies: i32,
 }
 
 /// Insert patch for [`TournamentRegisteredCardModel`]
@@ -620,8 +628,8 @@ pub struct TournamentRegisteredCardInsertPatch {
     pub zone: DeckZone,
     /// Whether the copies were the foil ones
     pub foil: bool,
-    /// Whether the copies were stand-ins
-    pub proxy: bool,
+    /// How many of the copies were Proxies
+    pub proxies: i32,
 }
 
 /// One Match's durable Life history and private recording ownership.

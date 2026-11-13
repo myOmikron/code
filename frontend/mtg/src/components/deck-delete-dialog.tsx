@@ -9,9 +9,7 @@ import {
     Listbox,
     ListboxLabel,
     ListboxOption,
-    Description,
-    Switch,
-    SwitchField,
+    Text,
     notify,
 } from "components";
 import { useEffect, useState } from "react";
@@ -32,12 +30,11 @@ export type DeckDeleteDialogProps = {
 };
 
 /**
- * Throwing a deck away, and deciding what happens to the cards in it.
+ * Throwing a deck away; the real cards in its Physical deck go back onto the shelf first.
  *
- * A deck that keeps a collection is holding real cardboard. Deleting it without
- * asking would take those cards out of the inventory as if they had been sold,
- * so the question is put before the deed — and only when there is anything to
- * ask about.
+ * Deleting a deck never deletes cards. The real cards go back into the collections
+ * they came from, so the only question is where those that remember none go; Proxies
+ * are thrown away with the deck.
  *
  * @returns the dialog
  */
@@ -48,25 +45,23 @@ export function DeckDeleteDialog({ deck, onClose, onDeleted }: DeckDeleteDialogP
     const [homeless, setHomeless] = useState(false);
     const [collections, setBoxes] = useState<Array<CollectionOverviewResponse>>([]);
     const [target, setTarget] = useState("");
-    const [giveBack, setGiveBack] = useState(true);
     const [busy, setBusy] = useState(false);
 
     const uuid = deck?.uuid ?? null;
     useEffect(() => {
         setCopies(0);
         setHomeless(false);
-        setGiveBack(true);
         if (uuid === null) return;
 
         let dropped = false;
         void (async () => {
             const [sourcing, collections] = await Promise.all([Api.decks.sourcing.read(uuid), Api.collections.list()]);
             if (dropped) return;
-            const shelf = collections.filter((collection) => collection.collection.deck == null);
-            setCopies(sourcing.filed.reduce((sum, stack) => sum + stack.quantity, 0));
-            setHomeless(sourcing.filed.some((stack) => stack.origin == null));
-            setBoxes(shelf);
-            setTarget(shelf[0]?.collection.uuid ?? "");
+            const real = sourcing.filed.filter((stack) => !stack.proxy);
+            setCopies(real.reduce((sum, stack) => sum + stack.quantity, 0));
+            setHomeless(real.some((stack) => stack.origin == null));
+            setBoxes(collections);
+            setTarget(collections[0]?.collection.uuid ?? "");
         })();
         return () => {
             dropped = true;
@@ -80,8 +75,8 @@ export function DeckDeleteDialog({ deck, onClose, onDeleted }: DeckDeleteDialogP
         if (uuid === null) return;
         setBusy(true);
         try {
-            if (copies > 0 && giveBack) {
-                await Api.decks.sourcing.returnAll(uuid, homeless ? target : null);
+            if (copies > 0) {
+                await Api.decks.sourcing.takeApart(uuid, homeless ? target : null);
             }
             await Api.decks.delete(uuid);
             notify.success(t("toast.deck-deleted"));
@@ -92,18 +87,17 @@ export function DeckDeleteDialog({ deck, onClose, onDeleted }: DeckDeleteDialogP
         }
     }
 
+    const nowhere = homeless && collections.length === 0;
+
     return (
         <Alert open={deck !== null} onClose={onClose}>
             <AlertTitle>{t("heading.delete-deck")}</AlertTitle>
             <AlertDescription>{t("description.delete-deck", { name: deck?.name ?? "" })}</AlertDescription>
             {copies > 0 && (
                 <div className={"mt-4 flex flex-col gap-4"}>
-                    <SwitchField>
-                        <Label>{t("label.return-cards")}</Label>
-                        <Description>{t("description.delete-deck-cards", { count: copies })}</Description>
-                        <Switch color={"lime"} checked={giveBack} onChange={setGiveBack} />
-                    </SwitchField>
-                    {giveBack && homeless && collections.length > 0 && (
+                    <Text>{t("description.delete-deck-cards", { count: copies })}</Text>
+                    {nowhere && <Text>{t("description.delete-deck-no-collection")}</Text>}
+                    {homeless && collections.length > 0 && (
                         <Field>
                             <Label>{t("label.return-target")}</Label>
                             <Listbox value={target} onChange={setTarget}>
@@ -121,7 +115,7 @@ export function DeckDeleteDialog({ deck, onClose, onDeleted }: DeckDeleteDialogP
                 <Button plain={true} onClick={onClose}>
                     {tg("button.cancel")}
                 </Button>
-                <Button color={"red"} disabled={busy} onClick={() => void remove()}>
+                <Button color={"red"} disabled={busy || nowhere} onClick={() => void remove()}>
                     {t("button.delete-deck")}
                 </Button>
             </AlertActions>

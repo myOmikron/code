@@ -374,14 +374,11 @@ fn owner_operations(friend: &TestAccount) -> Vec<Operation> {
         Operation::new(Method::POST, "", json!({ "visibility": "Public" })),
         Operation::new(Method::POST, "share-token", json!({})),
         Operation::new(Method::POST, "folder", json!({ "folder": null })),
-        Operation::new(Method::POST, "collection", json!({})),
-        Operation::new(Method::DELETE, "collection", json!({})),
         Operation::new(Method::GET, "sourcing", Value::Null),
-        Operation::new(Method::GET, "collection/drift", Value::Null),
         Operation::new(
             Method::POST,
             "sourcing/take",
-            json!({ "entry": entry, "quantity": 1, "slot": null }),
+            json!({ "entry": entry, "quantity": 1 }),
         ),
         Operation::new(Method::POST, "sourcing/fill", json!({ "slot": null })),
         Operation::new(
@@ -391,7 +388,7 @@ fn owner_operations(friend: &TestAccount) -> Vec<Operation> {
         ),
         Operation::new(
             Method::POST,
-            "sourcing/return-all",
+            "sourcing/take-apart",
             json!({ "target": null }),
         ),
         Operation::new(Method::GET, "history", Value::Null),
@@ -625,12 +622,12 @@ fn the_tombstone_cannot_be_added() {
 }
 
 #[test]
-fn a_viewer_sees_a_private_deck_without_the_proxy_flag() {
+fn a_viewer_sees_a_private_deck() {
     run(async {
         let mut fixture = Fixture::new().await;
         let printing = Uuid::new_v4();
         fixture
-            .add_card(json!({ "printing": printing, "quantity": 1, "zone": "Main", "proxy": true }))
+            .add_card(json!({ "printing": printing, "quantity": 1, "zone": "Main" }))
             .await;
         fixture.add_tag().await;
         fixture.add_friend("Viewer").await;
@@ -646,13 +643,10 @@ fn a_viewer_sees_a_private_deck_without_the_proxy_flag() {
         let cards = listing["cards"].as_array().expect("cards");
         assert_eq!(cards.len(), 1);
         assert_eq!(cards[0]["printing"], printing.to_string());
-        assert_eq!(cards[0]["proxy"], false);
         let tags = listing["tags"].as_array().expect("tags");
         assert_eq!(tags.len(), 1);
         assert_eq!(tags[0]["name"], "Ramp");
 
-        let owners = fixture.owner.get(&fixture.url("cards")).await.ok_json();
-        assert_eq!(owners["cards"][0]["proxy"], true);
         let deck = fixture.owner.get(&fixture.url("")).await.ok_json();
         assert_eq!(deck["role"], "Owner");
     });
@@ -908,28 +902,17 @@ fn an_editor_is_denied_the_global_tags_and_other_decks_tags() {
 }
 
 #[test]
-fn an_editors_card_update_leaves_the_proxy_flag_in_place() {
+fn an_editors_card_update_changes_the_owners_entry() {
     run(async {
         let mut fixture = Fixture::new().await;
         let card = fixture
-            .add_card(json!({
-                "printing": Uuid::new_v4(),
-                "quantity": 1,
-                "zone": "Main",
-                "proxy": true,
-            }))
+            .add_card(json!({ "printing": Uuid::new_v4(), "quantity": 1, "zone": "Main" }))
             .await;
         fixture.add_friend("Editor").await;
         let mut editor = TestClient::logged_in(&fixture.friend).await;
 
-        let listing = editor.get(&fixture.url("cards")).await.ok_json();
-        assert_eq!(listing["cards"][0]["proxy"], false, "{listing}");
-
         let url = fixture.url(&format!("cards/{card}"));
-        for update in [
-            json!({ "quantity": 3 }),
-            json!({ "zone": "Side", "proxy": false }),
-        ] {
+        for update in [json!({ "quantity": 3 }), json!({ "zone": "Side" })] {
             let body = editor.json(Method::PATCH, &url, &update).await.ok_json();
             assert_eq!(body, Value::Null);
         }
@@ -940,73 +923,6 @@ fn an_editors_card_update_leaves_the_proxy_flag_in_place() {
         assert_eq!(cards[0]["uuid"], card.as_str(), "{listing}");
         assert_eq!(cards[0]["quantity"], 3, "{listing}");
         assert_eq!(cards[0]["zone"], "Side", "{listing}");
-        assert_eq!(cards[0]["proxy"], true, "{listing}");
-    });
-}
-
-#[test]
-fn an_editor_never_sets_the_proxy_flag() {
-    run(async {
-        let mut fixture = Fixture::new().await;
-        let card = fixture
-            .add_card(json!({ "printing": Uuid::new_v4(), "quantity": 2, "zone": "Main" }))
-            .await;
-        fixture.add_friend("Editor").await;
-        let mut editor = TestClient::logged_in(&fixture.friend).await;
-
-        let added = editor
-            .json(
-                Method::POST,
-                &fixture.url("cards"),
-                &json!({
-                    "printing": Uuid::new_v4(),
-                    "quantity": 1,
-                    "zone": "Main",
-                    "proxy": true,
-                }),
-            )
-            .await
-            .ok_json();
-        assert_eq!(added["proxy"], false, "{added}");
-        editor
-            .json(
-                Method::POST,
-                &fixture.url("cards/import"),
-                &json!({
-                    "cards": [{
-                        "printing": Uuid::new_v4(),
-                        "quantity": 1,
-                        "zone": "Side",
-                        "proxy": true,
-                    }],
-                    "mode": "Add",
-                }),
-            )
-            .await
-            .ok_json();
-        let swapped = editor
-            .json(
-                Method::POST,
-                &fixture.url(&format!("cards/{card}/swap")),
-                &json!({ "quantity": 1, "printing": Uuid::new_v4(), "proxy": true }),
-            )
-            .await
-            .ok_json();
-        assert_eq!(swapped["proxy"], false, "{swapped}");
-        let body = editor
-            .json(
-                Method::PATCH,
-                &fixture.url(&format!("cards/{card}")),
-                &json!({ "proxy": true }),
-            )
-            .await
-            .ok_json();
-        assert_eq!(body, Value::Null);
-
-        let listing = fixture.owner.get(&fixture.url("cards")).await.ok_json();
-        let cards = listing["cards"].as_array().expect("cards");
-        assert_eq!(cards.len(), 4, "{listing}");
-        assert!(cards.iter().all(|slot| slot["proxy"] == false), "{listing}");
     });
 }
 
@@ -1433,9 +1349,7 @@ fn a_shared_deck_shows_up_under_shared_with_me() {
     run(async {
         let mut fixture = Fixture::new().await;
         fixture
-            .add_card(
-                json!({ "printing": Uuid::new_v4(), "quantity": 3, "zone": "Main", "proxy": true }),
-            )
+            .add_card(json!({ "printing": Uuid::new_v4(), "quantity": 3, "zone": "Main" }))
             .await;
         fixture.add_friend("Viewer").await;
         let owner = username_of(&mut fixture.owner).await;

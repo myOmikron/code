@@ -30,6 +30,7 @@ use crate::models::scanner_session::ScannerSessionInsert;
 use crate::models::statistics::StatisticsSnapshot;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::settings::CheckIn;
+use crate::models::tournament::settings::ProxyRule;
 use crate::models::tournament::settings::TournamentSettings;
 use crate::models::visibility::Visibility;
 use crate::tests::harness::App;
@@ -132,6 +133,7 @@ async fn create_tournament(tx: &mut Transaction, owner: AccountUuid) -> Tourname
             entered_afterwards: false,
             entry_fee: None,
             check_in: CheckIn::Off,
+            proxy_rule: ProxyRule::ProxiesAllowed,
         },
     )
     .await
@@ -199,7 +201,7 @@ fn a_snapshot_counts_what_the_accounts_own() {
 
         let public = create_deck(&mut tx, owner, Visibility::Public).await;
         create_deck(&mut tx, veteran, Visibility::Private).await;
-        let sleeves = Deck::attach_collection(&mut tx, owner, public.uuid)
+        let sleeves = Deck::physical_deck_or_create(&mut tx, owner, public.uuid)
             .await
             .expect("attach a collection")
             .granted()

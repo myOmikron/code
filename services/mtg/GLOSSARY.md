@@ -81,15 +81,35 @@ The lowest Commander bracket whose rules a deck's cards keep. Read from the card
 _Avoid_: actual bracket, real bracket
 
 **Deck entry**:
-One line of a deck: a printing in a zone, foil or not, proxy or not, with a quantity of at least one. A deck holds at most one Deck entry per printing, zone, foil and proxy; an edit that makes two alike merges them, and an entry whose quantity drops to zero is gone.
+One line of a deck: a printing in a zone, foil or not, with a quantity of at least one. A deck holds at most one Deck entry per printing, zone and foil; an edit that makes two alike merges them, and an entry whose quantity drops to zero is gone. Whether a copy is a Proxy is not the list's business but the Physical deck's.
 _Avoid_: slot, deck card, line
+
+**Physical deck**:
+The cardboard that is really in a deck: real cards and Proxies. Part of the deck, never a collection on the shelf. The deck list is what the deck should be, the Physical deck what it is; where they disagree is the deck's **Deviation**. A deck has a Physical deck from the first card put into it, and none while it is not built; taking it apart sorts its real cards back and throws its Proxies away. Its real cards stay the Account's cards and remember the collection they came from, if any. Only the main deck, Commander, Companion and sideboard are in it, never the maybe board.
+_Avoid_: deck collection, deck's collection, sleeved cards
+
+**Proxy**:
+A stand-in in the Physical deck for a card of the list. It fulfils its Deck entry like a real card, but it is not owned: no collection it came from, no value, not counted as a card. It shows which printing it stands for, stays a card still worth buying, and can be replaced by a real copy from a collection. A deck with Proxies is not legal where Proxies are not allowed.
+_Avoid_: proxy entry, proxy flag, fake
+
+**List value**:
+What a deck list costs: every copy it asks for at its printing's price, Proxies or not.
+_Avoid_: deck value (alone), price
+
+**Physical value**:
+What the real cards in a Physical deck are worth; a Proxy adds nothing. The price of the copies the Proxies stand for is what replacing them would cost.
+_Avoid_: owned value, box value
+
+**Deviation**:
+Where a deck list and its Physical deck disagree: copies the list asks for that are not in the deck, copies in another printing or finish, copies of cards the list does not name, and copies beyond the count. The list always leads; a deck without a Physical deck has none.
+_Avoid_: drift, mismatch, diff
 
 **Default printing**:
 The printing a card gets when it is added to a deck by its name alone: the newest already released printing that exists without foil and is legal somewhere; of equally new ones the cheapest without foil, printings with a price before those without, and then the lowest collector number. A card that exists only in foil gets its newest legal printing, filed as foil; a token of the same name never wins over it. It is only a starting point; the printing can be changed afterwards. A printing id, a named set and collector number, or a foil marker in an import wins over it, and a card already in the same zone keeps the printing it has there.
 _Avoid_: preferred printing, standard print
 
 **Deck change**:
-One step in a deck's Deck history: what the owner or an Editor did to its Deck entries or to its name, description, format, colors, bracket, rule-zero exceptions or size. Tags, folder, visibility, sharing and the deck's collection are not part of it. An import, a fill, a swap or a move between zones is one Deck change. Changes to the same Deck entry, or to the same field, made in quick succession become one Deck change, unless a Deck checkpoint names it. Creating the deck is its first Deck change; a deck that existed before Deck histories begins with its state at that time. Undo, redo and resetting to an earlier point are Deck changes of their own, so the Deck history only ever grows.
+One step in a deck's Deck history: what the owner or an Editor did to its Deck entries or to its name, description, format, colors, bracket, rule-zero exceptions or size. Tags, folder, visibility, sharing and the Physical deck are not part of it. An import, a fill, a swap or a move between zones is one Deck change. Changes to the same Deck entry, or to the same field, made in quick succession become one Deck change, unless a Deck checkpoint names it. Creating the deck is its first Deck change; a deck that existed before Deck histories begins with its state at that time. Undo, redo and resetting to an earlier point are Deck changes of their own, so the Deck history only ever grows.
 _Avoid_: revision, edit, version
 
 **Deck history**:
@@ -101,7 +121,7 @@ A name the owner gives one Deck change, e.g. "FNM 18.10.", to find that point in
 _Avoid_: snapshot, tag, version, milestone
 
 **Collaborator**:
-Another Account the owner of a deck named on it by username, as a Viewer or an Editor. Sees the deck whatever its Visibility, the way its Share link shows it: proxy flags are reported as no proxy. Takes effect at once, without an invitation or a mail. Only the owner names, changes and removes Collaborators; neither the owner nor the Tombstone can be one. A deck that is not shared with an Account answers it the same as a deck that does not exist.
+Another Account the owner of a deck named on it by username, as a Viewer or an Editor. Sees the deck whatever its Visibility, the way its Share link shows it, without the Physical deck; an Editor sees the Physical deck too. Takes effect at once, without an invitation or a mail. Only the owner names, changes and removes Collaborators; neither the owner nor the Tombstone can be one. A deck that is not shared with an Account answers it the same as a deck that does not exist.
 _Avoid_: member, share, guest
 
 **Viewer**:
@@ -232,8 +252,12 @@ _Avoid_: secondary score, resistance
 The playoff after the Swiss Rounds among the best Participants of the standings, seeded by them: Top 4 or Top 8 single elimination one-on-one, one final Match multiplayer. Its Rounds go on counting after the Swiss Rounds and do not count for the standings; with fewer Participants left than its size it shrinks to the next size that fits. In a Tournament entered afterwards its size is the settings' and its Organizers seat it as it was played.
 _Avoid_: playoff, finals, bracket (that is how it is shown)
 
+**Proxy rule**:
+What a Tournament allows of Proxies in its Registered decks, e.g. none, or Reserved List cards and a few more. A Registered deck breaking it is a warning to its Participant and the Organizers that never blocks; a deck without a Physical deck breaks none.
+_Avoid_: proxy policy, no-proxy flag
+
 **Registered deck**:
-The deck a Participant with an Account plays in a Tournament. Follows the deck until the first Round starts, or until a late Participant joins; from then on it is a copy of the deck's Deck entries that never changes with the deck and outlives it. Its list is hidden from other Participants until the Tournament is Finished, and shown afterwards only if its Participant shared it (the default for a public deck), a choice fixed once the Tournament is Finished or Cancelled. Organizers see every list at any time, to be warned of format, legality and bracket mismatches, which never block. Organizers may also register or swap one for a Participant at any time, during Registration too, but only from its Account's decks that are not private.
+The deck a Participant with an Account plays in a Tournament. Follows the deck until the first Round starts, or until a late Participant joins; from then on it is a copy of the deck's Deck entries, with how many copies of each are Proxies, that never changes with the deck and outlives it. Its list is hidden from other Participants until the Tournament is Finished, and shown afterwards only if its Participant shared it (the default for a public deck), a choice fixed once the Tournament is Finished or Cancelled. Organizers see every list at any time, to be warned of format, legality and bracket mismatches and of a broken Proxy rule, which never block; its Participant sees a broken Proxy rule before the list is shown to anyone else. Organizers may also register or swap one for a Participant at any time, during Registration too, but only from its Account's decks that are not private.
 _Avoid_: decklist, submitted deck, tournament deck
 
 **Tournament push**:
@@ -253,11 +277,14 @@ _Avoid_: status, phase, closed, completed
 - A **Deletion** hands the Account's public decks to the **Tombstone**, unless it is a full Deletion
 - A **Statistics snapshot** never counts the **Tombstone**
 - A deck has exactly one **Deck history**; handing the deck to the **Tombstone** empties it
+- A deck has at most one **Physical deck**; a **Proxy** belongs to exactly one Physical deck and stands for one card of its deck list
+- The owner changes the **Physical deck**; an **Editor** only sees it, a **Viewer** not at all
+- Deleting a deck never deletes real cards: its **Physical deck** is taken apart first, and only its **Proxies** go with the deck
 - A deck has any number of **Collaborators**, each Account at most once, as a **Viewer** or an **Editor**; deleting the deck or the Account removes the Collaborator
 - A **Collaborator** sees the deck whatever its Visibility; Visibility and the Share link work the same with or without Collaborators
 - A **Release** has any number of **Release notes**; pending ones belong to the next Release cut with `just release`
 - A **Bug report** belongs to the Account that sent it and goes with it on any **Deletion**; it is open until an **Admin** marks it done
-- Undoing or resetting a **Deck change** restores **Deck entries** without their card tags, and never moves cards of the deck's collection
+- Undoing or resetting a **Deck change** restores **Deck entries** without their card tags, and never changes the **Physical deck**
 - A **Tournament** has exactly one **Owner** and any number of **Co-organizers**, each an **Account**; an **Account** is at most one of the two
 - A **Tournament**'s Visibility decides who sees it by its id: everybody a public one, nobody else an unlisted or private one; its **Organizers** and **Participants** see it whatever its Visibility, and so does an **Account** it is offered to for a handover, but only while the offer stands
 - A **Participant** is exactly one **Account** or one **Guest**; an **Account** is at most one Participant per **Tournament**, and can be an **Organizer** of it at the same time
@@ -270,7 +297,7 @@ _Avoid_: status, phase, closed, completed
 
 ## Flagged ambiguities
 
-- "Collection" in Account counts means a collection on the shelf; a collection standing for a deck's cards belongs to the deck and is counted with it, not as a collection.
+- "Collection" in Account counts means a collection on the shelf; a **Physical deck** belongs to the deck and is counted with it, not as a collection. Its real cards are counted as cards, its **Proxies** are not.
 - "Never counts the Tombstone" in a Statistics snapshot means the Tombstone is not an Account there. The public decks it holds are still decks on the site and counted as decks.
 - "Owner" of a deck is the Account that holds the deck; **Owner** with a capital O, in the Tournaments section, is the Account a Tournament belongs to. The two are unrelated: an Organizer never gains rights on a Participant's deck.
 - "Pod" is what multiplayer players and the Rulesets' documents call a **Match**; mtg says Match at every Table size.

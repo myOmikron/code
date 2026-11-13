@@ -6,12 +6,10 @@ use serde::Deserialize;
 use serde::Serialize;
 use uuid::Uuid;
 
-use crate::http::handler_frontend::collections::schema::CollectionResponse;
 use crate::http::handler_frontend::decks::history::schema::DeckUndoResponse;
 use crate::models::card_attributes::CardCondition;
 use crate::models::card_attributes::CardFinish;
 use crate::models::card_attributes::CardRarity;
-use crate::models::collection::Collection;
 use crate::models::collection::CollectionEntryUuid;
 use crate::models::collection::CollectionUuid;
 use crate::models::deck::Deck;
@@ -23,8 +21,9 @@ use crate::models::deck::advisor::AdvisorSettings;
 use crate::models::deck::advisor::DeckTargets;
 use crate::models::deck::advisor::MarkedCard;
 use crate::models::deck::advisor::ThemePrefs;
-use crate::models::deck::drift::DeckDrift;
-use crate::models::deck::drift::DriftRow;
+use crate::models::deck::deviation::DeckDeviation;
+use crate::models::deck::deviation::DeviationCopies;
+use crate::models::deck::deviation::LineDeviation;
 use crate::models::deck::folder::DeckFolderUuid;
 use crate::models::deck::listing::DeckCommander;
 use crate::models::deck::listing::DeckSummary;
@@ -37,6 +36,7 @@ use crate::models::deck::sourcing::SourcingCandidate;
 use crate::models::deck::sourcing::SourcingSlot;
 use crate::models::deck::tag::DeckTag;
 use crate::models::deck::tag::DeckTagUuid;
+use crate::models::deck::value::DeckValue;
 use crate::models::format::BracketRules;
 use crate::models::format::ComboRule;
 use crate::models::format::CommanderRule;
@@ -128,8 +128,6 @@ pub struct SourcingSlotResponse {
     pub zone: DeckZone,
     /// Whether the list asks for foils
     pub foil: bool,
-    /// Whether the slot is a stand-in — it asks for no cardboard
-    pub proxy: bool,
     /// What the catalog knows, `None` for a printing it has not caught up with
     pub card: Option<SourcedPrintingResponse>,
 }
@@ -147,8 +145,11 @@ pub struct SourcedStackResponse {
     pub condition: CardCondition,
     /// Finish of the cards
     pub finish: CardFinish,
-    /// The collection they were taken out of, `None` if they were bought into it
+    /// The collection they were taken out of, `None` if they were bought into
+    /// it or are Proxies
     pub origin: Option<CollectionUuid>,
+    /// Whether the stack holds Proxies rather than real cards
+    pub proxy: bool,
     /// What that collection is called, `None` once it is gone
     pub origin_name: Option<String>,
     /// Its marker colour
@@ -157,6 +158,51 @@ pub struct SourcedStackResponse {
     pub origin_icon: Option<String>,
     /// What the catalog knows about the printing
     pub card: Option<SourcedPrintingResponse>,
+}
+
+/// What lies in a Physical deck, as an Editor reads it
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PhysicalDeckResponse {
+    /// The stacks, oldest first, empty for a deck without a Physical deck
+    pub stacks: Vec<PhysicalStackResponse>,
+}
+
+/// One stack lying in a Physical deck, without the collection it came from
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PhysicalStackResponse {
+    /// Primary key of the stack
+    pub uuid: CollectionEntryUuid,
+    /// Scryfall's id of the printing
+    pub printing: Uuid,
+    /// How many copies the stack holds
+    pub quantity: i32,
+    /// Condition of the cards
+    pub condition: CardCondition,
+    /// Finish of the cards
+    pub finish: CardFinish,
+    /// Whether the stack holds Proxies rather than real cards
+    pub proxy: bool,
+    /// What the catalog knows about the printing
+    pub card: Option<SourcedPrintingResponse>,
+}
+
+impl From<Vec<SourcedStack>> for PhysicalDeckResponse {
+    fn from(stacks: Vec<SourcedStack>) -> Self {
+        Self {
+            stacks: stacks
+                .into_iter()
+                .map(|stack| PhysicalStackResponse {
+                    uuid: stack.uuid,
+                    printing: stack.printing,
+                    quantity: stack.quantity,
+                    condition: stack.condition,
+                    finish: stack.finish,
+                    proxy: stack.proxy,
+                    card: stack.card.map(SourcedPrintingResponse::from),
+                })
+                .collect(),
+        }
+    }
 }
 
 /// One stack elsewhere in the account that could fill a slot
@@ -189,31 +235,30 @@ pub struct SourcingCandidateResponse {
 /// Everything the sourcing view is drawn from
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct DeckSourcingResponse {
-    /// The deck's own collection, `None` while it keeps none
-    pub collection: Option<CollectionResponse>,
+    /// The collection the deck's Physical deck is stored as, `None` while the
+    /// deck has none
+    pub physical_deck: Option<CollectionUuid>,
     /// What the list asks for
     pub slots: Vec<SourcingSlotResponse>,
-    /// What is filed in the deck's own collection
+    /// What is in the Physical deck
     pub filed: Vec<SourcedStackResponse>,
     /// What could still be taken from elsewhere
     pub candidates: Vec<SourcingCandidateResponse>,
 }
 
-/// Request to move copies out of a collection and into the deck
+/// Request to move copies out of a collection and into the Physical deck
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct TakeDeckCardsRequest {
     /// The stack to take them from
     pub entry: CollectionEntryUuid,
     /// How many copies to take
     pub quantity: i32,
-    /// The slot they are being sourced for, which then follows the printing
-    pub slot: Option<DeckCardUuid>,
 }
 
-/// Request to sort copies out of the deck back into a collection
+/// Request to sort copies out of the Physical deck back into a collection on the shelf
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ReturnDeckCardsRequest {
-    /// The stack in the deck to take them from
+    /// The stack in the Physical deck to take them from
     pub entry: CollectionEntryUuid,
     /// How many copies to sort back
     pub quantity: i32,
@@ -221,30 +266,57 @@ pub struct ReturnDeckCardsRequest {
     pub target: Option<CollectionUuid>,
 }
 
-/// Request to sort everything in the deck back where it came from
+/// Request to throw a stack out of the Physical deck
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct ReturnAllDeckCardsRequest {
-    /// Where stacks without an origin go, `None` to leave those in the deck
+pub struct DiscardDeckCardsRequest {
+    /// The stack in the Physical deck
+    pub entry: CollectionEntryUuid,
+}
+
+/// Request to put Proxies into the Physical deck for a Deck entry
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PutDeckProxiesRequest {
+    /// The Deck entry whose printing and finish the Proxies stand for
+    pub slot: DeckCardUuid,
+    /// How many Proxies to put in
+    pub quantity: i32,
+}
+
+/// Request to replace Proxies in the Physical deck with real copies out of a
+/// collection
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ReplaceDeckProxyRequest {
+    /// The Proxy stack in the Physical deck
+    pub proxy: CollectionEntryUuid,
+    /// The stack in a collection the real copies come from
+    pub entry: CollectionEntryUuid,
+    /// How many Proxies to replace
+    pub quantity: i32,
+}
+
+/// Request to take the Physical deck apart
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct TakeApartPhysicalDeckRequest {
+    /// Where real cards without a usable origin go; needed only when there are
+    /// such cards
     pub target: Option<CollectionUuid>,
 }
 
-/// What sorting a deck back moved
+/// What taking the Physical deck apart moved
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct ReturnAllDeckCardsResponse {
-    /// How many stacks were sorted back
+pub struct TakeApartPhysicalDeckResponse {
+    /// How many real cards went back into collections
     pub returned: u32,
-    /// How many stayed, because nobody said where they belong
-    pub left: u32,
 }
 
-/// Request to declare that the deck holds what its list asks for
+/// Request to record copies bought straight into the Physical deck
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct FillDeckCollectionRequest {
     /// The one slot to fill, `None` for every slot of the deck
     pub slot: Option<DeckCardUuid>,
 }
 
-/// What filling a deck's collection from its own list came to
+/// What recording bought copies came to
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct FillDeckCollectionResponse {
     /// How many copies were filed as being in the deck
@@ -284,7 +356,6 @@ impl From<SourcingSlot> for SourcingSlotResponse {
             quantity: slot.quantity,
             zone: slot.zone,
             foil: slot.foil,
-            proxy: slot.proxy,
             card: slot.card.map(SourcedPrintingResponse::from),
         }
     }
@@ -299,6 +370,7 @@ impl From<SourcedStack> for SourcedStackResponse {
             condition: stack.condition,
             finish: stack.finish,
             origin: stack.origin,
+            proxy: stack.proxy,
             origin_name: stack.origin_name,
             origin_color: stack.origin_color,
             origin_icon: stack.origin_icon,
@@ -326,10 +398,10 @@ impl From<SourcingCandidate> for SourcingCandidateResponse {
 }
 
 impl DeckSourcingResponse {
-    /// Puts the three lists and the deck's own collection into one answer
-    pub fn new(sourcing: DeckSourcing, collection: Option<Collection>) -> Self {
+    /// Puts the three lists and the Physical deck into one answer
+    pub fn new(sourcing: DeckSourcing, physical_deck: Option<CollectionUuid>) -> Self {
         Self {
-            collection: collection.map(CollectionResponse::from),
+            physical_deck,
             slots: sourcing
                 .slots
                 .into_iter()
@@ -349,65 +421,138 @@ impl DeckSourcingResponse {
     }
 }
 
-/// One card the deck list and the deck's own collection disagree about
+/// What a deck is worth, in euro cents
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct DeckDriftRowResponse {
-    /// Scryfall's id of the printing the row is about
-    pub printing: Uuid,
-    /// How many copies the disagreement is about
-    pub quantity: i32,
-    /// Whether those copies are the foil ones
-    pub foil: bool,
-    /// What the catalog knows about the printing
-    pub card: Option<SourcedPrintingResponse>,
-    /// The printing the list asks for instead, only on `other_printing` rows
-    pub wanted: Option<SourcedPrintingResponse>,
+pub struct DeckValuesResponse {
+    /// The List value: every copy the main deck, command zone, companion and
+    /// sideboard ask for at its printing's price, Proxies or not
+    pub list_value_cents: i64,
+    /// What the Physical deck holds, `null` for a deck without one
+    pub physical: Option<PhysicalDeckValueResponse>,
 }
 
-/// Where the deck list and the cardboard filed under it disagree
-///
-/// Every list empty means the deck in the box is the deck on the list, which is
-/// what lets the header say so without asking a second question.
+/// What the Physical deck of a deck holds
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct DeckDriftResponse {
-    /// Whether the deck keeps a collection at all; nothing drifts while it does not
-    pub keeps_collection: bool,
-    /// Copies the list asks for that are nowhere in the deck
-    pub pending: Vec<DeckDriftRowResponse>,
-    /// Copies lying in the deck in a printing or finish the list does not ask for
-    pub other_printing: Vec<DeckDriftRowResponse>,
-    /// Copies lying in the deck whose card the list does not name at all
-    pub not_in_deck: Vec<DeckDriftRowResponse>,
-    /// Copies of a card the list wants, beyond the count it asks for
-    pub surplus: Vec<DeckDriftRowResponse>,
+pub struct PhysicalDeckValueResponse {
+    /// The Physical value: the real cards at their own printing's price, in euro cents
+    pub physical_value_cents: i64,
+    /// What buying the printings the Proxies stand for would cost, in euro cents
+    pub proxy_replacement_cents: i64,
+    /// How many Proxies lie in it
+    pub proxies: i64,
 }
 
-impl From<DriftRow> for DeckDriftRowResponse {
-    fn from(row: DriftRow) -> Self {
+impl From<DeckValue> for DeckValuesResponse {
+    fn from(value: DeckValue) -> Self {
         Self {
-            printing: row.printing,
-            quantity: row.quantity,
-            foil: row.foil,
-            card: row.card.map(SourcedPrintingResponse::from),
-            wanted: row.wanted.map(SourcedPrintingResponse::from),
+            list_value_cents: value.list,
+            physical: value.physical.map(|physical| PhysicalDeckValueResponse {
+                physical_value_cents: physical.real,
+                proxy_replacement_cents: physical.proxy_replacement,
+                proxies: physical.proxies,
+            }),
         }
     }
 }
 
-impl DeckDriftResponse {
-    /// Puts the four lists into one answer
-    pub fn new(drift: DeckDrift, keeps_collection: bool) -> Self {
-        let rows = |rows: Vec<DriftRow>| {
-            rows.into_iter()
-                .map(DeckDriftRowResponse::from)
-                .collect::<Vec<_>>()
-        };
+/// Copies of one printing and finish lying in the Physical deck
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DeviationCopiesResponse {
+    /// Scryfall's id of the printing
+    pub printing: Uuid,
+    /// How many copies
+    pub quantity: i32,
+    /// Their finish
+    pub finish: CardFinish,
+    /// Whether they are Proxies
+    pub proxy: bool,
+    /// What the catalog knows about the printing
+    pub card: Option<SourcedPrintingResponse>,
+}
+
+/// What the Physical deck holds for one Deck entry
+///
+/// The entry lacks `missing` copies, holds `in_deck` of its own printing and
+/// finish (`proxies` of them Proxies) and stands in for the rest with
+/// `other_printing`; `surplus` copies of its card are one too many.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct LineDeviationResponse {
+    /// The Deck entry
+    pub entry: DeckCardUuid,
+    /// Copies of the listed printing and finish in the deck, up to the count
+    /// the entry asks for, Proxies included
+    pub in_deck: i32,
+    /// How many of `in_deck` are Proxies
+    pub proxies: i32,
+    /// Copies of the same card in another printing or finish, standing in for
+    /// copies the entry still lacks
+    pub other_printing: Vec<DeviationCopiesResponse>,
+    /// Copies the entry asks for that nothing in the deck stands in for
+    pub missing: i32,
+    /// Copies of the entry's card beyond what the list asks for
+    pub surplus: i32,
+}
+
+/// The Deviation between the deck list and its Physical deck
+///
+/// One line per Deck entry of the main deck, Commander, Companion and
+/// sideboard; the maybe board never counts. A deck without a Physical deck has
+/// no Deviation: no lines and nothing off the list.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DeckDeviationResponse {
+    /// Whether the deck has a Physical deck
+    pub has_physical_deck: bool,
+    /// What the Physical deck holds for each counted Deck entry
+    pub entries: Vec<LineDeviationResponse>,
+    /// Copies in the deck whose card no counted Deck entry names
+    pub not_on_list: Vec<DeviationCopiesResponse>,
+}
+
+impl From<DeviationCopies> for DeviationCopiesResponse {
+    fn from(copies: DeviationCopies) -> Self {
         Self {
-            keeps_collection,
-            pending: rows(drift.pending),
-            other_printing: rows(drift.other_printing),
-            not_in_deck: rows(drift.not_in_deck),
-            surplus: rows(drift.surplus),
+            printing: copies.printing,
+            quantity: copies.quantity,
+            finish: copies.finish,
+            proxy: copies.proxy,
+            card: copies.card.map(SourcedPrintingResponse::from),
+        }
+    }
+}
+
+impl From<LineDeviation> for LineDeviationResponse {
+    fn from(line: LineDeviation) -> Self {
+        Self {
+            entry: line.entry,
+            in_deck: line.in_deck,
+            proxies: line.proxies,
+            other_printing: line
+                .other_printing
+                .into_iter()
+                .map(DeviationCopiesResponse::from)
+                .collect(),
+            missing: line.missing,
+            surplus: line.surplus,
+        }
+    }
+}
+
+impl From<Option<DeckDeviation>> for DeckDeviationResponse {
+    fn from(deviation: Option<DeckDeviation>) -> Self {
+        let has_physical_deck = deviation.is_some();
+        let deviation = deviation.unwrap_or_default();
+        Self {
+            has_physical_deck,
+            entries: deviation
+                .lines
+                .into_iter()
+                .map(LineDeviationResponse::from)
+                .collect(),
+            not_on_list: deviation
+                .not_on_list
+                .into_iter()
+                .map(DeviationCopiesResponse::from)
+                .collect(),
         }
     }
 }
@@ -711,8 +856,6 @@ pub struct DeckCardResponse {
     pub zone: DeckZone,
     /// Whether the copies in this slot are the foil ones
     pub foil: bool,
-    /// Whether the copies in this slot are stand-ins rather than the real cards
-    pub proxy: bool,
     /// The card, as far as the catalog knows it
     pub card: Option<DeckCardCatalogResponse>,
     /// The tags put on this slot
@@ -755,9 +898,6 @@ pub struct AddDeckCardRequest {
     /// Whether the copies are the foil ones, `null` for the ordinary ones
     #[serde(default)]
     pub foil: Option<bool>,
-    /// Whether the copies are stand-ins rather than the real cards, `null` for the ordinary ones
-    #[serde(default)]
-    pub proxy: Option<bool>,
 }
 
 /// Request to change some of a slot's fields, leaving the rest alone
@@ -775,9 +915,6 @@ pub struct UpdateDeckCardRequest {
     /// Whether the copies in this slot are the foil ones
     #[serde(default)]
     pub foil: Option<bool>,
-    /// Whether the copies in this slot are stand-ins rather than the real cards
-    #[serde(default)]
-    pub proxy: Option<bool>,
 }
 
 /// Copies of a Deck entry to give up for another card in the same zone
@@ -790,9 +927,6 @@ pub struct SwapDeckCardRequest {
     /// Whether the incoming copies are the foil ones, `null` for the ordinary ones
     #[serde(default)]
     pub foil: Option<bool>,
-    /// Whether the incoming copies are stand-ins rather than the real cards, `null` for the ordinary ones
-    #[serde(default)]
-    pub proxy: Option<bool>,
 }
 
 /// A decklist to write into a deck
@@ -889,8 +1023,11 @@ pub struct DeckOverviewResponse {
     pub deck: DeckResponse,
     /// How many cards sit in the deck proper, the sideboard aside
     pub cards: i64,
-    /// What those cards are worth in euro cents
+    /// The List value in euro cents: the main deck, command zone, companion
+    /// and sideboard at the price of each printing and finish, Proxies or not
     pub price_eur_cents: i64,
+    /// How many Proxies lie in the deck's Physical deck, `null` for a Viewer
+    pub proxies: Option<i64>,
     /// The commanders, in the order they were put in
     pub commanders: Vec<DeckCommanderResponse>,
 }
@@ -1044,7 +1181,6 @@ impl From<ListedSlot> for DeckCardResponse {
             quantity: slot.quantity,
             zone: slot.zone,
             foil: slot.foil,
-            proxy: slot.proxy,
             card: slot.card.map(DeckCardCatalogResponse::from),
             tags: slot.tags,
         }
@@ -1083,6 +1219,7 @@ impl DeckOverviewResponse {
             deck: DeckResponse::from(deck),
             cards: summary.cards,
             price_eur_cents: summary.price_eur,
+            proxies: Some(summary.proxies),
             commanders: summary
                 .commanders
                 .into_iter()

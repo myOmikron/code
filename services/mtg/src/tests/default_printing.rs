@@ -16,7 +16,7 @@ use crate::tests::harness::run;
 use crate::utils::catalog_sync::printing_from_json;
 
 /// One printing of a test card, as far as choosing a Default printing reads it
-struct Print<'a> {
+pub(super) struct Print<'a> {
     /// Release date, `YYYY-MM-DD`
     released: &'a str,
     /// Collector number as printed
@@ -27,6 +27,8 @@ struct Print<'a> {
     finishes: &'a [&'a str],
     /// The non-foil EUR price, as Scryfall writes it
     eur: Option<&'a str>,
+    /// The foil EUR price, as Scryfall writes it
+    eur_foil: Option<&'a str>,
     /// Scryfall's language code
     lang: &'a str,
 }
@@ -39,18 +41,53 @@ impl Default for Print<'_> {
             legal: true,
             finishes: &["nonfoil", "foil"],
             eur: None,
+            eur_foil: None,
             lang: "en",
         }
     }
 }
 
+impl<'a> Print<'a> {
+    /// The default printing at a non-foil EUR price, as Scryfall writes it
+    pub(super) fn priced(eur: &'a str) -> Self {
+        Self {
+            eur: Some(eur),
+            ..Self::default()
+        }
+    }
+
+    /// The default printing at a non-foil and a foil EUR price, as Scryfall writes them
+    pub(super) fn priced_foil(eur: &'a str, eur_foil: &'a str) -> Self {
+        Self {
+            eur: Some(eur),
+            eur_foil: Some(eur_foil),
+            ..Self::default()
+        }
+    }
+}
+
 /// A card name no other test files a printing under
-fn unique(name: &str) -> String {
+pub(super) fn unique(name: &str) -> String {
     format!("{name} {}", Uuid::new_v4().simple())
 }
 
 /// Files one printing of `name` into the catalog and answers its id
-async fn file(name: &str, print: Print<'_>) -> Uuid {
+pub(super) async fn file(name: &str, print: Print<'_>) -> Uuid {
+    file_of(name, print, Uuid::new_v4()).await
+}
+
+/// Files `count` printings of one card named `name` and answers their ids
+pub(super) async fn file_printings(name: &str, count: usize) -> Vec<Uuid> {
+    let oracle = Uuid::new_v4();
+    let mut printings = Vec::with_capacity(count);
+    for _ in 0..count {
+        printings.push(file_of(name, Print::default(), oracle).await);
+    }
+    printings
+}
+
+/// Files one printing of the card `oracle` and answers its id
+async fn file_of(name: &str, print: Print<'_>, oracle: Uuid) -> Uuid {
     let id = Uuid::new_v4();
     let legalities = if print.legal {
         json!({ "commander": "legal" })
@@ -60,7 +97,7 @@ async fn file(name: &str, print: Print<'_>) -> Uuid {
     let printing = printing_from_json(
         &json!({
             "id": id,
-            "oracle_id": Uuid::new_v4(),
+            "oracle_id": oracle,
             "name": name,
             "set": "tdp",
             "set_name": "Test Default Printing",
@@ -69,7 +106,7 @@ async fn file(name: &str, print: Print<'_>) -> Uuid {
             "released_at": print.released,
             "legalities": legalities,
             "finishes": print.finishes,
-            "prices": { "eur": print.eur, "eur_foil": null },
+            "prices": { "eur": print.eur, "eur_foil": print.eur_foil },
         })
         .to_string(),
     );

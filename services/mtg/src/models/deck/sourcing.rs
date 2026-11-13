@@ -31,11 +31,11 @@ use crate::models::deck::DeckUuid;
 use crate::models::deck::DeckZone;
 use crate::models::deck::listing::zone_of;
 
-/// The zones whose cards are really in the deck collection
+/// The zones whose cards are really in the Physical deck, and what the List value covers
 ///
 /// A maybe board is a thought, not a pile of cardboard, so nothing is ever
 /// sourced for it.
-const PHYSICAL_ZONES: &str = "('Main', 'Commander', 'Companion', 'Side')";
+pub(in crate::models) const PHYSICAL_ZONES: &str = "('Main', 'Commander', 'Companion', 'Side')";
 
 /// What the catalog knows about a card the sourcing view shows
 ///
@@ -80,8 +80,6 @@ pub struct SourcingSlot {
     pub zone: DeckZone,
     /// Whether the list asks for foils
     pub foil: bool,
-    /// Whether the slot is a stand-in — it asks for no cardboard
-    pub proxy: bool,
     /// What the catalog knows, `None` for a printing it has not caught up with
     pub card: Option<SourcedPrinting>,
 }
@@ -99,8 +97,11 @@ pub struct SourcedStack {
     pub condition: CardCondition,
     /// Finish of the cards
     pub finish: CardFinish,
-    /// The collection they were taken out of, `None` if they were bought into it
+    /// The collection they were taken out of, `None` if they were bought into
+    /// it or are Proxies
     pub origin: Option<CollectionUuid>,
+    /// Whether the stack holds Proxies rather than real cards
+    pub proxy: bool,
     /// What that collection is called, `None` once it is gone
     pub origin_name: Option<String>,
     /// Its marker colour
@@ -210,7 +211,7 @@ pub(in crate::models) async fn read_slots(
     deck: DeckUuid,
 ) -> Result<Vec<SourcingSlot>, rorm::Error> {
     let statement = format!(
-        "SELECT c.uuid, c.printing, c.quantity, c.zone, c.foil, c.proxy, {PRINTING_COLUMNS} \
+        "SELECT c.uuid, c.printing, c.quantity, c.zone, c.foil, {PRINTING_COLUMNS} \
          FROM deckcard c \
          LEFT JOIN printing p ON p.id = c.printing \
          WHERE c.deck = $1 AND c.zone IN {PHYSICAL_ZONES} \
@@ -230,11 +231,26 @@ pub(in crate::models) async fn read_slots(
             quantity: row.get("quantity").map_err(decode)?,
             zone: zone_of(row.get::<String>("zone").map_err(decode)?.as_str()),
             foil: row.get("foil").map_err(decode)?,
-            proxy: row.get("proxy").map_err(decode)?,
             card: printing_of(&row)?,
         });
     }
     Ok(slots)
+}
+
+/// What lies in a Physical deck, oldest first, empty for a deck without one
+///
+/// The caller has to have established that the account may see the Physical
+/// deck. Each stack carries the collection it came from; whoever answers an
+/// Editor leaves that out, since the owner's collections stay the owner's.
+#[instrument(name = "read_physical_deck", skip(tx))]
+pub async fn read_physical_deck(
+    tx: &mut Transaction,
+    collection: Option<CollectionUuid>,
+) -> Result<Vec<SourcedStack>, rorm::Error> {
+    match collection {
+        Some(collection) => read_filed(tx, collection).await,
+        None => Ok(Vec::new()),
+    }
 }
 
 /// What is lying in the deck's own collection, oldest first
@@ -243,7 +259,7 @@ pub(in crate::models) async fn read_filed(
     collection: CollectionUuid,
 ) -> Result<Vec<SourcedStack>, rorm::Error> {
     let statement = format!(
-        "SELECT e.uuid, e.printing, e.quantity, e.condition, e.finish, e.origin, \
+        "SELECT e.uuid, e.printing, e.quantity, e.condition, e.finish, e.origin, e.proxy, \
                 o.name AS origin_name, o.color AS origin_color, o.icon AS origin_icon, \
                 {PRINTING_COLUMNS} \
          FROM collection_entry e \
@@ -268,6 +284,7 @@ pub(in crate::models) async fn read_filed(
             condition: condition_of(row.get::<String>("condition").map_err(decode)?.as_str()),
             finish: finish_of(row.get::<String>("finish").map_err(decode)?.as_str()),
             origin: origin.map(CollectionUuid::from_uuid),
+            proxy: row.get("proxy").map_err(decode)?,
             origin_name: row.get("origin_name").map_err(decode)?,
             origin_color: row.get("origin_color").map_err(decode)?,
             origin_icon: row.get("origin_icon").map_err(decode)?,
@@ -299,7 +316,7 @@ async fn read_candidates(
          JOIN collection c ON c.uuid = e.collection \
          JOIN printing p ON p.id = e.printing \
          WHERE c.owner = $1 \
-           AND c.deck IS NULL \
+           AND c.deck IS NULL AND NOT e.proxy \
            AND c.uuid <> $2 \
            AND p.oracle_id IN ( \
                 SELECT d.oracle_id FROM deckcard s \

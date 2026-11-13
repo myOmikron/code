@@ -14,6 +14,7 @@ import {
     ListboxLabel,
     ListboxOption,
     Subheading,
+    Strong,
     Switch,
     SwitchField,
     Text,
@@ -205,6 +206,23 @@ export function MyTournamentDeck({ tournament, checkedIn }: MyTournamentDeckProp
                 <Text>{registered?.name ?? t("label.no-deck")}</Text>
                 {registered?.pinned && <Badge color={"zinc"}>{t("label.deck-pinned")}</Badge>}
             </div>
+            {mine.breaks_proxy_rule && (
+                <div
+                    role={"alert"}
+                    className={
+                        "flex gap-3 rounded-lg bg-red-500/10 p-4 ring-1 ring-red-600/20 dark:bg-red-400/10 dark:ring-red-400/25"
+                    }
+                >
+                    <ExclamationTriangleIcon
+                        className={"size-5 shrink-0 text-red-600 dark:text-red-400"}
+                        aria-hidden={true}
+                    />
+                    <div className={"flex flex-col gap-1"}>
+                        <Strong>{t("heading.proxy-rule-broken", { count: mine.proxies })}</Strong>
+                        <Text>{t("description.proxy-rule-broken")}</Text>
+                    </div>
+                </div>
+            )}
             {mine.changeable ? (
                 decks.length === 0 ? (
                     <Text>{t("description.no-own-decks")}</Text>
@@ -304,6 +322,8 @@ export function RegisteredListWarnings({ warnings }: RegisteredListWarningsProps
                 return t("label.warning-legality", { count: warning.remarks });
             case "bracket":
                 return t("label.warning-bracket", { bracket: warning.bracket });
+            case "proxies":
+                return t("label.warning-proxies", { count: warning.proxies });
         }
     }
 

@@ -83,10 +83,6 @@ export interface AddDeckCardRequest {
      */
     printing: string;
     /**
-     * Whether the copies are stand-ins rather than the real cards, `null` for the ordinary ones
-     */
-    proxy?: boolean | null;
-    /**
      * How many copies to put in
      */
     quantity: number;
@@ -1878,6 +1874,21 @@ export interface CollectionStatisticsResponse {
      */
     years: Array<StatBucketResponse>;
 }
+/**
+ * Everything an account owns, on the shelf and in its Physical decks, Proxies aside
+ * @export
+ * @interface CollectionTotalsResponse
+ */
+export interface CollectionTotalsResponse {
+    /**
+     * How many copies the account owns
+     */
+    cards: number;
+    /**
+     * What those copies are worth in euro cents
+     */
+    price_eur_cents: number;
+}
 
 /**
  * How much combo play a bracket tolerates
@@ -2296,10 +2307,6 @@ export interface DeckCardResponse {
      */
     printing: string;
     /**
-     * Whether the copies in this slot are stand-ins rather than the real cards
-     */
-    proxy: boolean;
-    /**
      * How many copies this slot holds
      */
     quantity: number;
@@ -2341,7 +2348,7 @@ export const DeckChangeKind = {
     */
     Move: 'Move',
     /**
-    * A Deck entry switched to another printing, finish or proxy status
+    * A Deck entry switched to another printing or finish
     */
     Switch: 'Switch',
     /**
@@ -2361,7 +2368,7 @@ export const DeckChangeKind = {
     */
     Fill: 'Fill',
     /**
-    * A Deck entry made to say what was sourced for it: another printing or finish, or no longer a proxy
+    * A Deck entry made to say what was sourced for it: another printing or finish
     */
     Sourcing: 'Sourcing',
     /**
@@ -2473,60 +2480,25 @@ export interface DeckCommanderResponse {
     name: string;
 }
 /**
- * Where the deck list and the cardboard filed under it disagree
+ * The Deviation between the deck list and its Physical deck
  * 
- * Every list empty means the deck in the box is the deck on the list, which is what lets the header say so without asking a second question.
+ * One line per Deck entry of the main deck, Commander, Companion and sideboard; the maybe board never counts. A deck without a Physical deck has no Deviation: no lines and nothing off the list.
  * @export
- * @interface DeckDriftResponse
+ * @interface DeckDeviationResponse
  */
-export interface DeckDriftResponse {
+export interface DeckDeviationResponse {
     /**
-     * Whether the deck keeps a collection at all; nothing drifts while it does not
+     * What the Physical deck holds for each counted Deck entry
      */
-    keeps_collection: boolean;
+    entries: Array<LineDeviationResponse>;
     /**
-     * Copies lying in the deck whose card the list does not name at all
+     * Whether the deck has a Physical deck
      */
-    not_in_deck: Array<DeckDriftRowResponse>;
+    has_physical_deck: boolean;
     /**
-     * Copies lying in the deck in a printing or finish the list does not ask for
+     * Copies in the deck whose card no counted Deck entry names
      */
-    other_printing: Array<DeckDriftRowResponse>;
-    /**
-     * Copies the list asks for that are nowhere in the deck
-     */
-    pending: Array<DeckDriftRowResponse>;
-    /**
-     * Copies of a card the list wants, beyond the count it asks for
-     */
-    surplus: Array<DeckDriftRowResponse>;
-}
-/**
- * One card the deck list and the deck's own collection disagree about
- * @export
- * @interface DeckDriftRowResponse
- */
-export interface DeckDriftRowResponse {
-    /**
-     * What the catalog knows about the printing
-     */
-    card?: SourcedPrintingResponse | null;
-    /**
-     * Whether those copies are the foil ones
-     */
-    foil: boolean;
-    /**
-     * Scryfall's id of the printing the row is about
-     */
-    printing: string;
-    /**
-     * How many copies the disagreement is about
-     */
-    quantity: number;
-    /**
-     * The printing the list asks for instead, only on `other_printing` rows
-     */
-    wanted?: SourcedPrintingResponse | null;
+    not_on_list: Array<DeviationCopiesResponse>;
 }
 /**
  * How many copies one Deck entry held before and after a Deck change
@@ -2554,10 +2526,6 @@ export interface DeckEntryChangeResponse {
      * Scryfall's id of the printing
      */
     printing: string;
-    /**
-     * Whether the copies are stand-ins rather than the real cards
-     */
-    proxy: boolean;
     /**
      * Which zone the entry sits in
      */
@@ -2651,9 +2619,13 @@ export interface DeckOverviewResponse {
      */
     deck: DeckResponse;
     /**
-     * What those cards are worth in euro cents
+     * The List value in euro cents: the main deck, command zone, companion and sideboard at the price of each printing and finish, Proxies or not
      */
     price_eur_cents: number;
+    /**
+     * How many Proxies lie in the deck's Physical deck, `null` for a Viewer
+     */
+    proxies?: number | null;
 }
 /**
  * The Account owning a deck
@@ -2688,10 +2660,6 @@ export interface DeckPointEntryResponse {
      * Scryfall's id of the printing
      */
     printing: string;
-    /**
-     * Whether the copies were stand-ins rather than the real cards
-     */
-    proxy: boolean;
     /**
      * How many copies it held
      */
@@ -2934,13 +2902,13 @@ export interface DeckSourcingResponse {
      */
     candidates: Array<SourcingCandidateResponse>;
     /**
-     * The deck's own collection, `None` while it keeps none
-     */
-    collection?: CollectionResponse | null;
-    /**
-     * What is filed in the deck's own collection
+     * What is in the Physical deck
      */
     filed: Array<SourcedStackResponse>;
+    /**
+     * The collection the deck's Physical deck is stored as, `None` while the deck has none
+     */
+    physical_deck?: string | null;
     /**
      * What the list asks for
      */
@@ -3006,6 +2974,21 @@ export interface DeckUndoResponse {
      * Whether there is a Deck change to undo
      */
     can_undo: boolean;
+}
+/**
+ * What a deck is worth, in euro cents
+ * @export
+ * @interface DeckValuesResponse
+ */
+export interface DeckValuesResponse {
+    /**
+     * The List value: every copy the main deck, command zone, companion and sideboard ask for at its printing's price, Proxies or not
+     */
+    list_value_cents: number;
+    /**
+     * What the Physical deck holds, `null` for a deck without one
+     */
+    physical?: PhysicalDeckValueResponse | null;
 }
 
 /**
@@ -3096,6 +3079,46 @@ export const DeletionMode = {
 } as const;
 export type DeletionMode = typeof DeletionMode[keyof typeof DeletionMode];
 
+/**
+ * Copies of one printing and finish lying in the Physical deck
+ * @export
+ * @interface DeviationCopiesResponse
+ */
+export interface DeviationCopiesResponse {
+    /**
+     * What the catalog knows about the printing
+     */
+    card?: SourcedPrintingResponse | null;
+    /**
+     * Their finish
+     */
+    finish: CardFinish;
+    /**
+     * Scryfall's id of the printing
+     */
+    printing: string;
+    /**
+     * Whether they are Proxies
+     */
+    proxy: boolean;
+    /**
+     * How many copies
+     */
+    quantity: number;
+}
+
+
+/**
+ * Request to throw a stack out of the Physical deck
+ * @export
+ * @interface DiscardDeckCardsRequest
+ */
+export interface DiscardDeckCardsRequest {
+    /**
+     * The stack in the Physical deck
+     */
+    entry: string;
+}
 /**
  * Why a Participant's dispute was refused
  * @export
@@ -3516,7 +3539,7 @@ export const FieldDifferenceOneOf8FieldEnum = {
 export type FieldDifferenceOneOf8FieldEnum = typeof FieldDifferenceOneOf8FieldEnum[keyof typeof FieldDifferenceOneOf8FieldEnum];
 
 /**
- * File a session's staging area into a collection
+ * File a session's staging area into a collection or a deck's Physical deck
  * @export
  * @interface FileScannerSessionRequest
  */
@@ -3525,6 +3548,10 @@ export interface FileScannerSessionRequest {
      * Destination; omitted to use the session's preferred collection
      */
     collection?: string | null;
+    /**
+     * One of the account's own decks whose Physical deck takes the cards instead of a collection; excludes `collection`
+     */
+    deck?: string | null;
 }
 /**
  * Result of filing and clearing a staging area
@@ -3533,20 +3560,24 @@ export interface FileScannerSessionRequest {
  */
 export interface FileScannerSessionResponse {
     /**
-     * Destination collection
+     * Destination collection, `None` when filed into a deck
      */
-    collection: string;
+    collection?: string | null;
     /**
      * Copies filed
      */
     copies: number;
+    /**
+     * Destination deck, `None` when filed into a collection
+     */
+    deck?: string | null;
     /**
      * Distinct stacks filed
      */
     stacks: number;
 }
 /**
- * Request to declare that the deck holds what its list asks for
+ * Request to record copies bought straight into the Physical deck
  * @export
  * @interface FillDeckCollectionRequest
  */
@@ -3557,7 +3588,7 @@ export interface FillDeckCollectionRequest {
     slot?: string | null;
 }
 /**
- * What filling a deck's collection from its own list came to
+ * What recording bought copies came to
  * @export
  * @interface FillDeckCollectionResponse
  */
@@ -4435,6 +4466,39 @@ Gives every slot a new id, so anything hanging off those ids is lost. That is ri
 } as const;
 export type ImportMode = typeof ImportMode[keyof typeof ImportMode];
 
+/**
+ * What the Physical deck holds for one Deck entry
+ * 
+ * The entry lacks `missing` copies, holds `in_deck` of its own printing and finish (`proxies` of them Proxies) and stands in for the rest with `other_printing`; `surplus` copies of its card are one too many.
+ * @export
+ * @interface LineDeviationResponse
+ */
+export interface LineDeviationResponse {
+    /**
+     * The Deck entry
+     */
+    entry: string;
+    /**
+     * Copies of the listed printing and finish in the deck, up to the count the entry asks for, Proxies included
+     */
+    in_deck: number;
+    /**
+     * Copies the entry asks for that nothing in the deck stands in for
+     */
+    missing: number;
+    /**
+     * Copies of the same card in another printing or finish, standing in for copies the entry still lacks
+     */
+    other_printing: Array<DeviationCopiesResponse>;
+    /**
+     * How many of `in_deck` are Proxies
+     */
+    proxies: number;
+    /**
+     * Copies of the entry's card beyond what the list asks for
+     */
+    surplus: number;
+}
 /**
  * One page of a collection
  * @export
@@ -5556,6 +5620,10 @@ export interface MyMatchResponse {
  */
 export interface MyRegisteredDeckResponse {
     /**
+     * Whether its Proxies break the Tournament's Proxy rule, a warning that never blocks
+     */
+    breaks_proxy_rule: boolean;
+    /**
      * Whether the reader may still register, swap or remove it itself
      */
     changeable: boolean;
@@ -5563,6 +5631,10 @@ export interface MyRegisteredDeckResponse {
      * The Registered deck, `null` while the reader plays without one
      */
     deck?: RegisteredDeckResponse | null;
+    /**
+     * How many of its copies are Proxies, 0 without a Registered deck or a Physical deck
+     */
+    proxies: number;
 }
 /**
  * The Tournaments an Account runs and the ones it plays in
@@ -5880,6 +5952,73 @@ export interface PendingOidcLogin {
     provider: string;
 }
 /**
+ * What lies in a Physical deck, as an Editor reads it
+ * @export
+ * @interface PhysicalDeckResponse
+ */
+export interface PhysicalDeckResponse {
+    /**
+     * The stacks, oldest first, empty for a deck without a Physical deck
+     */
+    stacks: Array<PhysicalStackResponse>;
+}
+/**
+ * What the Physical deck of a deck holds
+ * @export
+ * @interface PhysicalDeckValueResponse
+ */
+export interface PhysicalDeckValueResponse {
+    /**
+     * The Physical value: the real cards at their own printing's price, in euro cents
+     */
+    physical_value_cents: number;
+    /**
+     * How many Proxies lie in it
+     */
+    proxies: number;
+    /**
+     * What buying the printings the Proxies stand for would cost, in euro cents
+     */
+    proxy_replacement_cents: number;
+}
+/**
+ * One stack lying in a Physical deck, without the collection it came from
+ * @export
+ * @interface PhysicalStackResponse
+ */
+export interface PhysicalStackResponse {
+    /**
+     * What the catalog knows about the printing
+     */
+    card?: SourcedPrintingResponse | null;
+    /**
+     * Condition of the cards
+     */
+    condition: CardCondition;
+    /**
+     * Finish of the cards
+     */
+    finish: CardFinish;
+    /**
+     * Scryfall's id of the printing
+     */
+    printing: string;
+    /**
+     * Whether the stack holds Proxies rather than real cards
+     */
+    proxy: boolean;
+    /**
+     * How many copies the stack holds
+     */
+    quantity: number;
+    /**
+     * Primary key of the stack
+     */
+    uuid: string;
+}
+
+
+/**
  * What one card cost on one day
  * 
  * All four are euro cents and all four may be absent: Cardmarket quotes no foil price for a card that was never printed in foil, and no price at all for a product nobody is offering that day.
@@ -6003,6 +6142,25 @@ export interface PrintingLookupRequest {
      */
     set_code?: string | null;
 }
+
+/**
+ * What a Tournament allows of Proxies in its Registered decks
+ * 
+ * A Registered deck breaking it is a warning to its Participant and the Organizers that never blocks registration, check-in or pairing. A deck without a Physical deck has no Proxies and so breaks none.
+ * @export
+ */
+export const ProxyRule = {
+    /**
+    * Any number of Proxies
+    */
+    ProxiesAllowed: 'ProxiesAllowed',
+    /**
+    * Not a single Proxy
+    */
+    NoProxies: 'NoProxies',
+} as const;
+export type ProxyRule = typeof ProxyRule[keyof typeof ProxyRule];
+
 /**
  * A collection somebody put on show
  * 
@@ -6262,6 +6420,21 @@ export interface PutDeckCollaboratorRequest {
 
 
 /**
+ * Request to put Proxies into the Physical deck for a Deck entry
+ * @export
+ * @interface PutDeckProxiesRequest
+ */
+export interface PutDeckProxiesRequest {
+    /**
+     * How many Proxies to put in
+     */
+    quantity: number;
+    /**
+     * The Deck entry whose printing and finish the Proxies stand for
+     */
+    slot: string;
+}
+/**
  * Copies per rarity in a collection
  * @export
  * @interface RarityCountsResponse
@@ -6409,6 +6582,47 @@ export interface RegisterDeckRequest {
     shared?: boolean | null;
 }
 /**
+ * One Deck entry of a Registered deck's list
+ * @export
+ * @interface RegisteredCardResponse
+ */
+export interface RegisteredCardResponse {
+    /**
+     * The card, as far as the catalog knows it
+     */
+    card?: DeckCardCatalogResponse | null;
+    /**
+     * Whether the copies in this slot are the foil ones
+     */
+    foil: boolean;
+    /**
+     * Scryfall's id of the printing
+     */
+    printing: string;
+    /**
+     * How many of its copies are Proxies: those in the deck's Physical deck while the Registered deck follows the deck, those frozen with the copy once pinned, 0 for a deck without a Physical deck
+     */
+    proxies: number;
+    /**
+     * How many copies this slot holds
+     */
+    quantity: number;
+    /**
+     * The tags put on this slot
+     */
+    tags: Array<string>;
+    /**
+     * Primary key
+     */
+    uuid: string;
+    /**
+     * Which zone the slot sits in
+     */
+    zone: DeckZone;
+}
+
+
+/**
  * The deck a Participant plays in a Tournament
  * @export
  * @interface RegisteredDeckResponse
@@ -6470,9 +6684,13 @@ export interface RegisteredListResponse {
      */
     bracket?: number | null;
     /**
+     * Whether its Proxies break the Tournament's Proxy rule, a warning that never blocks
+     */
+    breaks_proxy_rule: boolean;
+    /**
      * Its Deck entries, joined against the card catalog
      */
-    cards: Array<DeckCardResponse>;
+    cards: Array<RegisteredCardResponse>;
     /**
      * The deck it was made from, `null` once that deck is deleted
      */
@@ -6624,6 +6842,25 @@ export interface RenamePasskeyRequest {
      * The new label, trimmed before it is stored
      */
     label: string;
+}
+/**
+ * Request to replace Proxies in the Physical deck with real copies out of a collection
+ * @export
+ * @interface ReplaceDeckProxyRequest
+ */
+export interface ReplaceDeckProxyRequest {
+    /**
+     * The stack in a collection the real copies come from
+     */
+    entry: string;
+    /**
+     * The Proxy stack in the Physical deck
+     */
+    proxy: string;
+    /**
+     * How many Proxies to replace
+     */
+    quantity: number;
 }
 /**
  * Request to move a star to the file that replaced its image
@@ -6802,39 +7039,13 @@ export const ResultState = {
 export type ResultState = typeof ResultState[keyof typeof ResultState];
 
 /**
- * Request to sort everything in the deck back where it came from
- * @export
- * @interface ReturnAllDeckCardsRequest
- */
-export interface ReturnAllDeckCardsRequest {
-    /**
-     * Where stacks without an origin go, `None` to leave those in the deck
-     */
-    target?: string | null;
-}
-/**
- * What sorting a deck back moved
- * @export
- * @interface ReturnAllDeckCardsResponse
- */
-export interface ReturnAllDeckCardsResponse {
-    /**
-     * How many stayed, because nobody said where they belong
-     */
-    left: number;
-    /**
-     * How many stacks were sorted back
-     */
-    returned: number;
-}
-/**
- * Request to sort copies out of the deck back into a collection
+ * Request to sort copies out of the Physical deck back into a collection on the shelf
  * @export
  * @interface ReturnDeckCardsRequest
  */
 export interface ReturnDeckCardsRequest {
     /**
-     * The stack in the deck to take them from
+     * The stack in the Physical deck to take them from
      */
     entry: string;
     /**
@@ -8078,7 +8289,7 @@ export interface SourcedStackResponse {
      */
     finish: CardFinish;
     /**
-     * The collection they were taken out of, `None` if they were bought into it
+     * The collection they were taken out of, `None` if they were bought into it or are Proxies
      */
     origin?: string | null;
     /**
@@ -8097,6 +8308,10 @@ export interface SourcedStackResponse {
      * Scryfall's id of the printing
      */
     printing: string;
+    /**
+     * Whether the stack holds Proxies rather than real cards
+     */
+    proxy: boolean;
     /**
      * How many copies the stack holds
      */
@@ -8179,10 +8394,6 @@ export interface SourcingSlotResponse {
      * Scryfall's id of the printing the list asks for
      */
     printing: string;
-    /**
-     * Whether the slot is a stand-in — it asks for no cardboard
-     */
-    proxy: boolean;
     /**
      * How many copies it asks for
      */
@@ -8524,10 +8735,6 @@ export interface SwapDeckCardRequest {
      */
     printing: string;
     /**
-     * Whether the incoming copies are stand-ins rather than the real cards, `null` for the ordinary ones
-     */
-    proxy?: boolean | null;
-    /**
      * How many copies leave the entry and how many of the other card come in
      */
     quantity: number;
@@ -8554,7 +8761,29 @@ export const SyncRunOutcome = {
 export type SyncRunOutcome = typeof SyncRunOutcome[keyof typeof SyncRunOutcome];
 
 /**
- * Request to move copies out of a collection and into the deck
+ * Request to take the Physical deck apart
+ * @export
+ * @interface TakeApartPhysicalDeckRequest
+ */
+export interface TakeApartPhysicalDeckRequest {
+    /**
+     * Where real cards without a usable origin go; needed only when there are such cards
+     */
+    target?: string | null;
+}
+/**
+ * What taking the Physical deck apart moved
+ * @export
+ * @interface TakeApartPhysicalDeckResponse
+ */
+export interface TakeApartPhysicalDeckResponse {
+    /**
+     * How many real cards went back into collections
+     */
+    returned: number;
+}
+/**
+ * Request to move copies out of a collection and into the Physical deck
  * @export
  * @interface TakeDeckCardsRequest
  */
@@ -8567,10 +8796,6 @@ export interface TakeDeckCardsRequest {
      * How many copies to take
      */
     quantity: number;
-    /**
-     * The slot they are being sourced for, which then follows the printing
-     */
-    slot?: string | null;
 }
 
 /**
@@ -9194,6 +9419,10 @@ export interface TournamentResponse {
      */
     participant_limit?: number | null;
     /**
+     * What the Tournament allows of Proxies in its Registered decks
+     */
+    proxy_rule: ProxyRule;
+    /**
      * How many minutes the round timer gives a Round, `null` for no timer
      */
     round_minutes?: number | null;
@@ -9349,6 +9578,12 @@ export interface TournamentSettingsRequest {
      * How many Participants self sign-up admits at most, two or more; `null` for no limit
      */
     participant_limit?: number | null;
+    /**
+     * What the Tournament allows of Proxies in its Registered decks, `ProxiesAllowed` when left out
+     * 
+     * Breaking it is only a warning, so it may change at any time.
+     */
+    proxy_rule?: ProxyRule;
     /**
      * How many minutes the round timer gives a Round, 1 to 240; `null` for no timer
      */
@@ -9553,10 +9788,6 @@ export interface UpdateDeckCardRequest {
      * Scryfall's id of the printing — send this to sleeve a different print
      */
     printing?: string | null;
-    /**
-     * Whether the copies in this slot are stand-ins rather than the real cards
-     */
-    proxy?: boolean | null;
     /**
      * The new count, zero removes the Deck entry
      */

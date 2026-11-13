@@ -123,12 +123,7 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
      * @param intoCollection whether the deck should physically hold what was imported
      */
     async function fill(uuid: string, url: string, intoCollection: boolean) {
-        // A deck built without a list can still be asked to keep one, and then
-        // it gets its collection up front rather than on the first import.
-        if (url.trim() === "") {
-            if (intoCollection) await Api.decks.collection.attach(uuid);
-            return;
-        }
+        if (url.trim() === "") return;
 
         try {
             const read = await Api.decks.readUrl(url.trim());
@@ -140,10 +135,7 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
                 ...(card.foil ? { foil: true } : {}),
                 zone: card.zone,
             }));
-            if (rows.length === 0) {
-                if (intoCollection) await Api.decks.collection.attach(uuid);
-                return;
-            }
+            if (rows.length === 0) return;
 
             const outcome = await importRows(uuid, rows, { intoCollection });
             if (outcome.added > 0) notify.success(t("toast.import-done", { cards: outcome.copies }));

@@ -25,7 +25,9 @@ use crate::models::card_attributes::CardRarity;
 use crate::models::deck::DeckCardUuid;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::DeckZone;
+use crate::models::deck::sourcing::PHYSICAL_ZONES;
 use crate::models::deck::tag::DeckTagUuid;
+use crate::models::tournament::registered_deck::RegisteredSlot;
 
 /// What the catalog knows about a deck card's printing
 ///
@@ -97,8 +99,6 @@ pub struct ListedSlot {
     pub zone: DeckZone,
     /// Whether the copies in this slot are the foil ones
     pub foil: bool,
-    /// Whether the copies in this slot are stand-ins rather than the real cards
-    pub proxy: bool,
     /// The card, as far as the catalog knows it
     pub card: Option<ListedDeckCard>,
     /// Local tags put on this slot plus global tags for its card identity
@@ -116,7 +116,7 @@ impl ListedSlot {
         deck: DeckUuid,
     ) -> Result<Vec<ListedSlot>, rorm::Error> {
         let statement = format!(
-            "SELECT {SLOT_COLUMNS} \
+            "SELECT {SLOT_COLUMNS}, {CARD_COLUMNS} \
              FROM deckcard c \
              LEFT JOIN printing p ON p.id = c.printing \
              WHERE c.deck = $1 \
@@ -139,7 +139,8 @@ impl ListedSlot {
         Ok(slots)
     }
 
-    /// Read the copied Deck entries of a pinned Registered deck, by its Participant
+    /// Read the copied Deck entries of a pinned Registered deck, by its Participant,
+    /// each with its frozen Proxy count
     ///
     /// Read like a deck's own slots, but without tags: the copy carries none.
     /// The caller has to have established that the reader may see the list.
@@ -147,9 +148,9 @@ impl ListedSlot {
     pub async fn read_registered(
         tx: &mut Transaction,
         participant: Uuid,
-    ) -> Result<Vec<ListedSlot>, rorm::Error> {
+    ) -> Result<Vec<RegisteredSlot>, rorm::Error> {
         let statement = format!(
-            "SELECT {SLOT_COLUMNS} \
+            "SELECT {SLOT_COLUMNS}, c.proxies, {CARD_COLUMNS} \
              FROM tournament_registered_card c \
              JOIN tournament_registered_deck d ON d.uuid = c.registered_deck \
              LEFT JOIN printing p ON p.id = c.printing \
@@ -160,20 +161,32 @@ impl ListedSlot {
         let rows = (&mut *tx)
             .execute::<All>(statement, vec![Value::Uuid(participant)])
             .await?;
-        rows.iter().map(decode_slot).collect()
+        rows.iter()
+            .map(|row| {
+                let proxies = row
+                    .get("proxies")
+                    .map_err(|error| rorm::Error::RowError(error.into_owned()))?;
+                Ok(RegisteredSlot {
+                    slot: decode_slot(row)?,
+                    proxies,
+                })
+            })
+            .collect()
     }
 }
 
-/// The columns [`decode_slot`] reads: a slot `c` joined against its printing `p`
-const SLOT_COLUMNS: &str = "c.uuid, c.printing, c.quantity, c.zone, c.foil, c.proxy, \
-    p.name, p.oracle_id, p.set_code, p.set_name, p.collector_number, \
+/// The columns of a slot `c` [`decode_slot`] reads
+const SLOT_COLUMNS: &str = "c.uuid, c.printing, c.quantity, c.zone, c.foil";
+
+/// The columns of the printing `p` a slot is joined against that [`decode_slot`] reads
+const CARD_COLUMNS: &str = "p.name, p.oracle_id, p.set_code, p.set_name, p.collector_number, \
     p.lang, p.cardmarket_id, p.rarity, p.mana_value, p.mana_cost, \
     p.color_identity, p.type_line, p.legal_formats, \
     p.image_small, p.image_normal, p.image_back_small, p.image_back_normal, \
     p.price_eur, p.price_eur_foil, p.finishes, p.produced_mana, p.game_changer, \
     p.mass_land_denial, p.extra_turns, p.reserved";
 
-/// One slot out of a row holding [`SLOT_COLUMNS`], still without its tags
+/// One slot out of a row holding [`SLOT_COLUMNS`] and [`CARD_COLUMNS`], still without its tags
 fn decode_slot(row: &Row) -> Result<ListedSlot, rorm::Error> {
     let decode = |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
 
@@ -215,7 +228,6 @@ fn decode_slot(row: &Row) -> Result<ListedSlot, rorm::Error> {
         quantity: row.get("quantity").map_err(decode)?,
         zone: zone_of(row.get::<String>("zone").map_err(decode)?.as_str()),
         foil: row.get("foil").map_err(decode)?,
-        proxy: row.get("proxy").map_err(decode)?,
         card,
         tags: Vec::new(),
     })
@@ -239,14 +251,16 @@ pub struct DeckCommander {
 /// What a deck looks like from the outside
 ///
 /// Everything the list of decks shows besides the deck's own row: how big it
-/// is, what it is worth, and who is at the head of it. The sideboard and the
-/// maybe board are left out of both numbers, the same way the statistics count.
+/// is, what it is worth, and who is at the head of it.
 #[derive(Debug, Clone, Default)]
 pub struct DeckSummary {
-    /// How many cards sit in the deck proper
+    /// How many cards sit in the deck proper: the main deck and the command zone
     pub cards: i64,
-    /// What those cards are worth in euro cents
+    /// The List value in euro cents: every copy of the main deck, command zone,
+    /// companion and sideboard at the price of its printing and finish, Proxies or not
     pub price_eur: i64,
+    /// How many Proxies lie in the deck's Physical deck
+    pub proxies: i64,
     /// The commanders, in the order they were put in
     pub commanders: Vec<DeckCommander>,
 }
@@ -254,9 +268,10 @@ pub struct DeckSummary {
 impl DeckSummary {
     /// Read the summary of every deck of an account, keyed by the deck
     ///
-    /// Two statements for the whole list rather than two per deck: the numbers
-    /// are one grouped read, and the commanders are a second one because a deck
-    /// can have two of them.
+    /// Three statements for the whole list rather than three per deck: the
+    /// numbers are one grouped read, the commanders a second one because a
+    /// deck can have two of them, and the Proxies a third because they lie in
+    /// the Physical deck rather than on the list.
     #[instrument(name = "DeckSummary::read_for_account", skip(tx))]
     pub async fn read_for_account(
         tx: &mut Transaction,
@@ -267,8 +282,8 @@ impl DeckSummary {
 
     /// Read the summary of every deck other Accounts named `account` on, keyed by the deck
     ///
-    /// The price counts proxies like real cards, so it tells a Collaborator no
-    /// more about the owner's shelf than the redacted proxy flag does.
+    /// It counts the Proxies of every deck; hiding them from a Viewer is the
+    /// caller's job, which knows the Collaborator's level.
     #[instrument(name = "DeckSummary::read_shared_with", skip(tx))]
     pub async fn read_shared_with(
         tx: &mut Transaction,
@@ -295,16 +310,6 @@ impl SummaryScope {
             Self::SharedWith => "JOIN deck_collaborator k ON k.deck = d.uuid WHERE k.account = $1",
         }
     }
-
-    /// What one slot adds to the deck's price
-    fn price(self) -> &'static str {
-        match self {
-            Self::Owned => {
-                "CASE WHEN c.proxy THEN 0 ELSE c.quantity * COALESCE(p.price_eur, 0) END"
-            }
-            Self::SharedWith => "c.quantity * COALESCE(p.price_eur, 0)",
-        }
-    }
 }
 
 /// Read the summaries of the decks `scope` selects for `account`
@@ -315,14 +320,16 @@ async fn read_summaries(
 ) -> Result<HashMap<DeckUuid, DeckSummary>, rorm::Error> {
     let counts = format!(
         "SELECT c.deck AS deck, \
-                COALESCE(SUM(c.quantity), 0)::bigint AS cards, \
-                COALESCE(SUM({price}), 0)::bigint AS price \
+                COALESCE(SUM(CASE WHEN c.zone IN ('Main', 'Commander') THEN c.quantity ELSE 0 END), 0)::bigint \
+                    AS cards, \
+                COALESCE(SUM(c.quantity * COALESCE( \
+                    CASE WHEN c.foil THEN COALESCE(p.price_eur_foil, p.price_eur) ELSE p.price_eur END, 0 \
+                )), 0)::bigint AS price \
          FROM deckcard c \
          JOIN deck d ON d.uuid = c.deck \
          LEFT JOIN printing p ON p.id = c.printing \
-         {decks} AND c.zone IN ('Main', 'Commander') \
+         {decks} AND c.zone IN {PHYSICAL_ZONES} \
          GROUP BY c.deck",
-        price = scope.price(),
         decks = scope.decks(),
     );
 
@@ -339,9 +346,30 @@ async fn read_summaries(
             DeckSummary {
                 cards: row.get("cards").map_err(decode)?,
                 price_eur: row.get("price").map_err(decode)?,
+                proxies: 0,
                 commanders: Vec::new(),
             },
         );
+    }
+
+    let proxies = format!(
+        "SELECT o.deck AS deck, COALESCE(SUM(e.quantity), 0)::bigint AS proxies \
+         FROM collection_entry e \
+         JOIN collection o ON o.uuid = e.collection \
+         JOIN deck d ON d.uuid = o.deck \
+         {decks} AND e.proxy \
+         GROUP BY o.deck",
+        decks = scope.decks(),
+    );
+
+    let rows = (&mut *tx)
+        .execute::<All>(proxies, vec![Value::Uuid(account.into_inner())])
+        .await?;
+
+    for row in rows {
+        let decode = |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
+        let deck = DeckUuid::from_uuid(row.get("deck").map_err(decode)?);
+        summaries.entry(deck).or_default().proxies = row.get("proxies").map_err(decode)?;
     }
 
     let commanders = format!(

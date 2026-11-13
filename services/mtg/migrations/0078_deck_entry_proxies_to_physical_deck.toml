@@ -1,0 +1,232 @@
+[Migration]
+Hash = "10967538707738680306"
+Initial = false
+Dependency = 77
+Replaces = []
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+INSERT INTO collection (uuid, name, description, color, icon, deck, owner, visibility, share_token, created_at)
+SELECT uuidv7(), d.name, '', 'indigo', 'deckbox', d.uuid, d.owner, 'Private', NULL, now()
+FROM deck d
+WHERE EXISTS (SELECT 1 FROM deckcard c WHERE c.deck = d.uuid AND c.proxy)
+  AND NOT EXISTS (SELECT 1 FROM collection o WHERE o.deck = d.uuid);
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+UPDATE collection_entry e
+SET quantity = e.quantity + w.quantity
+FROM (
+    SELECT o.uuid AS collection,
+           c.printing,
+           CASE WHEN c.foil THEN 'Foil' ELSE 'Nonfoil' END AS finish,
+           SUM(c.quantity)::integer AS quantity
+    FROM deckcard c
+    JOIN collection o ON o.deck = c.deck
+    WHERE c.proxy
+    GROUP BY o.uuid, c.printing, c.foil
+) w
+WHERE e.uuid = (
+    SELECT x.uuid FROM collection_entry x
+    WHERE x.collection = w.collection
+      AND x.printing = w.printing
+      AND x.finish = w.finish
+      AND x.proxy
+    ORDER BY x.uuid
+    LIMIT 1
+);
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+INSERT INTO collection_entry
+    (uuid, collection, printing, quantity, condition, finish, signed,
+     purchase_price_cents, acquired_at, origin, proxy, created_at)
+SELECT uuidv7(), w.collection, w.printing, w.quantity, 'NearMint', w.finish, false,
+       NULL, NULL, NULL, true, now()
+FROM (
+    SELECT o.uuid AS collection,
+           c.printing,
+           CASE WHEN c.foil THEN 'Foil' ELSE 'Nonfoil' END AS finish,
+           SUM(c.quantity)::integer AS quantity
+    FROM deckcard c
+    JOIN collection o ON o.deck = c.deck
+    WHERE c.proxy
+    GROUP BY o.uuid, c.printing, c.foil
+) w
+WHERE NOT EXISTS (
+    SELECT 1 FROM collection_entry x
+    WHERE x.collection = w.collection
+      AND x.printing = w.printing
+      AND x.finish = w.finish
+      AND x.proxy
+);
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE TEMPORARY TABLE deckcard_proxy_merge ON COMMIT DROP AS
+SELECT p.uuid AS proxy, r.uuid AS keeper, p.quantity
+FROM deckcard p
+JOIN deckcard r
+  ON r.deck = p.deck
+ AND r.printing = p.printing
+ AND r.zone = p.zone
+ AND r.foil = p.foil
+ AND NOT r.proxy
+WHERE p.proxy;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+UPDATE deckcard c
+SET quantity = c.quantity + m.quantity
+FROM deckcard_proxy_merge m
+WHERE c.uuid = m.keeper;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+UPDATE deck_card_tag a
+SET deck_card = m.keeper
+FROM deckcard_proxy_merge m
+WHERE a.deck_card = m.proxy;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+DELETE FROM deck_card_tag a
+USING deck_card_tag b
+WHERE a.deck_card = b.deck_card
+  AND a.tag = b.tag
+  AND a.uuid > b.uuid
+  AND a.deck_card IN (SELECT keeper FROM deckcard_proxy_merge);
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+DELETE FROM deckcard
+WHERE uuid IN (SELECT proxy FROM deckcard_proxy_merge);
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+DROP TABLE deckcard_proxy_merge;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+UPDATE deckcard SET proxy = false WHERE proxy;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+DROP INDEX deckcard_entry;
+"""
+
+[[Migration.Operations]]
+Type = "DeleteField"
+Model = "deckcard"
+Name = "proxy"
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE UNIQUE INDEX deckcard_entry ON deckcard (deck, printing, zone, foil);
+"""

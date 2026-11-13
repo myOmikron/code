@@ -24,7 +24,6 @@ const WINCON: DeckTagResponse = {
  * @param card.produces the mana it makes, none by default
  * @param tags the tags on it
  * @param zone which zone it sits in, the main deck by default
- * @param proxy whether the slot is a stand-in, `false` by default
  *
  * @returns the slot
  */
@@ -33,7 +32,6 @@ function slot(
     card: { type: string; cost: string; manaValue: number; identity: string; produces?: Array<string> },
     tags: Array<string>,
     zone: DeckCardResponse["zone"] = "Main",
-    proxy: boolean = false,
 ): DeckCardResponse {
     return {
         uuid,
@@ -42,7 +40,6 @@ function slot(
         zone,
         tags,
         foil: false,
-        proxy,
         card: {
             name: uuid,
             type_line: card.type,
@@ -209,30 +206,6 @@ describe("deckStats by tag", () => {
     });
 });
 
-describe("deckStats and proxies", () => {
-    it("counts a proxy's cardboard but not its price, in the total or by tag", () => {
-        const withProxy = [
-            ...CARDS,
-            slot(
-                "proxy-ring",
-                { type: "Artifact", cost: "{1}", manaValue: 1, identity: "" },
-                [RAMP.uuid],
-                "Main",
-                true,
-            ),
-        ];
-        const without = deckStats(CARDS, ["U", "G"], [RAMP, WINCON]);
-        const stats = deckStats(withProxy, ["U", "G"], [RAMP, WINCON]);
-
-        expect(stats.totalCards).toBe(without.totalCards + 1);
-        expect(stats.marketValue).toBeCloseTo(without.marketValue);
-        expect(stats.pricedCards).toBe(without.pricedCards);
-        expect(stats.tagStats.find((tag) => tag.key === RAMP.uuid)?.value).toBeCloseTo(
-            without.tagStats.find((tag) => tag.key === RAMP.uuid)?.value ?? 0,
-        );
-    });
-});
-
 describe("deckStats under an eminence", () => {
     const dragons = [
         slot(
@@ -262,5 +235,35 @@ describe("deckStats under an eminence", () => {
 
         expect(alone.eminence).toBe(false);
         expect(alone.manaCurve.find((bucket) => bucket.key === "5")?.cards).toBe(1);
+    });
+});
+
+describe("deckStats List value", () => {
+    const sideboard = slot("pyroblast", { type: "Instant", cost: "{R}", manaValue: 1, identity: "R" }, [], "Side");
+    const companion = slot(
+        "lurrus",
+        { type: "Creature", cost: "{3}{W}", manaValue: 4, identity: "W" },
+        [],
+        "Companion",
+    );
+    const maybe = slot("lotus", { type: "Artifact", cost: "{0}", manaValue: 0, identity: "" }, [], "Maybe");
+    const plain = slot("crypt", { type: "Artifact", cost: "{0}", manaValue: 0, identity: "" }, []);
+    const foil = {
+        ...plain,
+        foil: true,
+        card: { ...(plain.card as NonNullable<DeckCardResponse["card"]>), price_eur_foil_cents: 500 },
+    } as DeckCardResponse;
+
+    it("covers the main deck, command zone, companion and sideboard, never the maybe board", () => {
+        const stats = deckStats([...CARDS, sideboard, companion, maybe]);
+
+        expect(stats.marketValue).toBe(7);
+        expect(stats.totalCards).toBe(5);
+    });
+
+    it("prices a foil copy at the foil price", () => {
+        const stats = deckStats([foil]);
+
+        expect(stats.marketValue).toBe(5);
     });
 });

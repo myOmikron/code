@@ -20,7 +20,10 @@
         "visibility": "Sichtbarkeit",
         "visibility-private": "Privat",
         "visibility-public": "Öffentlich",
-        "visibility-unlisted": "Per Link"
+        "visibility-unlisted": "Per Link",
+        "proxy-rule": "Proxy-Regel",
+        "proxy-rule-proxies-allowed": "Proxies erlaubt",
+        "proxy-rule-no-proxies": "Keine Proxies"
     },
     "description": {
         "check-in": "Ausgelost wird nur, wer eingecheckt ist.",
@@ -34,7 +37,8 @@
         "step-game": "Format, Tisch, Regelwerk und Top Cut.",
         "step-general": "Name, Beginn und Ort des Turniers.",
         "step-registration": "Wer das Turnier sieht und wie Spieler dazukommen.",
-        "visibility": "Öffentlich: Jeder findet das Turnier in der Übersicht. Per Link: Jeder mit dem Link sieht das Turnier. Privat: Nur du, deine Mitorganisatoren und die Spieler sehen das Turnier."
+        "visibility": "Öffentlich: Jeder findet das Turnier in der Übersicht. Per Link: Jeder mit dem Link sieht das Turnier. Privat: Nur du, deine Mitorganisatoren und die Spieler sehen das Turnier.",
+        "proxy-rule": "Ein Deck, das die Regel bricht, ist nur eine Warnung: Anmeldung, Check-in und Auslosung laufen trotzdem."
     },
     "error": {
         "best-of-mismatch": "Best of gibt es nur bei 2 Spielern am Tisch, und dort muss es gewählt sein.",

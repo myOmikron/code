@@ -22,6 +22,7 @@ use crate::models::tournament::db::TournamentInsertPatch;
 use crate::models::tournament::db::TournamentModel;
 use crate::models::tournament::settings::CheckIn;
 use crate::models::tournament::settings::EntryFee;
+use crate::models::tournament::settings::ProxyRule;
 use crate::models::tournament::settings::TournamentSettings;
 use crate::models::visibility::Visibility;
 use crate::tournament::reporting::ResultState;
@@ -68,6 +69,12 @@ custom_db_enum! {
     enum: CheckIn,
     variants: [Off, Required, RequiredWithDeck],
     decoder: CheckInDecoder,
+}
+
+custom_db_enum! {
+    enum: ProxyRule,
+    variants: [ProxiesAllowed, NoProxies],
+    decoder: ProxyRuleDecoder,
 }
 
 custom_db_enum! {
@@ -135,6 +142,8 @@ pub struct Tournament {
     pub entry_fee: Option<EntryFee>,
     /// Whether Participants check in before they are paired
     pub check_in: CheckIn,
+    /// What the Tournament allows of Proxies in its Registered decks
+    pub proxy_rule: ProxyRule,
     /// How many minutes the round timer gives a Round, `None` for no timer
     pub round_minutes: Option<u16>,
     /// How many Swiss Rounds are played, `None` while the suggestion applies
@@ -198,6 +207,7 @@ impl Tournament {
                 entry_fee_amount: settings.entry_fee.as_ref().map(|fee| fee.amount),
                 entry_fee_currency: settings.entry_fee.as_ref().map(|fee| fee.currency.clone()),
                 check_in: settings.check_in,
+                proxy_rule: settings.proxy_rule,
                 state: TournamentState::Registration,
             })
             .await?;
@@ -254,6 +264,7 @@ impl Tournament {
                 settings.entry_fee.as_ref().map(|fee| fee.currency.clone()),
             )
             .set(TournamentModel.check_in, settings.check_in)
+            .set(TournamentModel.proxy_rule, settings.proxy_rule)
             .condition(TournamentModel.uuid.equals(self.uuid.0))
             .await?;
         Ok(Tournament {
@@ -275,6 +286,7 @@ impl Tournament {
             entered_afterwards: settings.entered_afterwards,
             entry_fee: settings.entry_fee,
             check_in: settings.check_in,
+            proxy_rule: settings.proxy_rule,
             ..self
         })
     }
@@ -313,6 +325,7 @@ impl Tournament {
             entered_afterwards: settings.entered_afterwards,
             entry_fee: settings.entry_fee,
             check_in: settings.check_in,
+            proxy_rule: settings.proxy_rule,
             round_minutes: settings.round_minutes,
             swiss_rounds: None,
             state: TournamentState::Registration,
@@ -345,6 +358,7 @@ impl From<TournamentModel> for Tournament {
                 _ => None,
             },
             check_in: value.check_in,
+            proxy_rule: value.proxy_rule,
             round_minutes: value
                 .round_minutes
                 .and_then(|minutes| u16::try_from(minutes).ok()),

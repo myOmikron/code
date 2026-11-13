@@ -10,6 +10,7 @@ pub fn initialize_routes() -> GalvynRouter {
         .merge(
             GalvynRouter::new()
                 .handler(handler::get_all_collections)
+                .handler(handler::get_collection_totals)
                 .handler(handler::create_collection)
                 .handler(handler::get_collection)
                 .handler(handler::set_visibility_collection)

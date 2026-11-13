@@ -1,14 +1,4 @@
-import {
-    Button,
-    Description,
-    Dialog,
-    DialogActions,
-    DialogBody,
-    DialogTitle,
-    Label,
-    Switch,
-    SwitchField,
-} from "components";
+import { Button, Dialog, DialogActions, DialogBody, DialogTitle } from "components";
 import { useTranslation } from "react-i18next";
 import { DeckPrintingPicker } from "src/components/deck-printing-picker";
 import type { Printing } from "src/utils/scryfall";
@@ -25,10 +15,6 @@ export type PrintingDialogProps = {
     onClose: () => void;
     /** The printings of this card that lie in one of the account's collections */
     owned?: ReadonlySet<string>;
-    /** Whether the slot is a stand-in, absent where the dialog has no slot to say so about */
-    proxy?: boolean;
-    /** Marks the slot as a proxy, or clears the mark again — absent hides the switch */
-    onToggleProxy?: (proxy: boolean) => void;
 };
 
 /**
@@ -41,7 +27,7 @@ export type PrintingDialogProps = {
  *
  * @returns the dialog
  */
-export function PrintingDialog({ card, onPick, onClose, owned, proxy, onToggleProxy }: PrintingDialogProps) {
+export function PrintingDialog({ card, onPick, onClose, owned }: PrintingDialogProps) {
     const [t] = useTranslation("deck");
     const [tg] = useTranslation();
 
@@ -49,13 +35,6 @@ export function PrintingDialog({ card, onPick, onClose, owned, proxy, onTogglePr
         <Dialog open={card !== null} onClose={onClose} size={"5xl"}>
             <DialogTitle>{card?.name ?? t("heading.printing")}</DialogTitle>
             <DialogBody>
-                {onToggleProxy !== undefined && card !== null && (
-                    <SwitchField>
-                        <Label>{t("label.proxy")}</Label>
-                        <Description>{t("description.proxy-slot")}</Description>
-                        <Switch color={"lime"} checked={proxy === true} onChange={onToggleProxy} />
-                    </SwitchField>
-                )}
                 {card !== null && (
                     <DeckPrintingPicker
                         name={card.name}

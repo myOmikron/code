@@ -1,13 +1,13 @@
 
-# ReturnAllDeckCardsRequest
+# TakeApartPhysicalDeckResponse
 
-Request to sort everything in the deck back where it came from
+What taking the Physical deck apart moved
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`target` | string
+`returned` | number
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

@@ -78,10 +78,12 @@ export type DeckStats = {
     averageManaValue: number;
     /** Whether an eminence discount shaped the curve and the averages */
     eminence: boolean;
-    /** What the deck is worth today, in euro */
+    /** The List value today, in euro: every copy of the main deck, command zone, companion and sideboard at the price of its printing and finish, Proxies or not */
     marketValue: number;
-    /** Copies the catalog has a price for */
+    /** Copies of {@link DeckStats.marketValue}'s zones the catalog has a price for */
     pricedCards: number;
+    /** Copies the List value covers: the main deck, command zone, companion and sideboard */
+    valuedCards: number;
     /** How many different sets the cards come from */
     distinctSets: number;
     /** Copies per mana value as cast, lands excluded, everything above the cap pooled */
@@ -119,6 +121,22 @@ export type DeckStats = {
 
 /** How many cards the "most expensive" list holds */
 const TOP_LIMIT = 10;
+
+/** The zones the List value covers; the maybe board holds no cardboard */
+const VALUED_ZONES: Array<DeckCardResponse["zone"]> = ["Main", "Commander", "Companion", "Side"];
+
+/**
+ * What one copy of a slot costs, the foil price for a foil slot falling back to the plain one
+ *
+ * @param slot the slot
+ *
+ * @returns the price in cents, `null` without one
+ */
+function unitPrice(slot: DeckCardResponse): number | null {
+    const card = slot.card;
+    if (card == null) return null;
+    return (slot.foil ? (card.price_eur_foil_cents ?? card.price_eur_cents) : card.price_eur_cents) ?? null;
+}
 
 /** The colours, in the order they are written */
 const COLOR_LETTERS = ["W", "U", "B", "R", "G"];
@@ -227,10 +245,8 @@ export function deckStats(
 
         add(rarities, String(card.rarity).toLowerCase(), copies);
 
-        const price = card.price_eur_cents;
-        if (price != null && !slot.proxy) {
-            marketValueCents += price * copies;
-            pricedCards += copies;
+        const price = unitPrice(slot);
+        if (price != null) {
             top.push({
                 uuid: slot.uuid,
                 name: card.name,
@@ -243,7 +259,7 @@ export function deckStats(
         for (const key of parts.tags) {
             const tally = tallyOf(perTag, key);
             tally.cards += copies;
-            tally.valueCents += slot.proxy ? 0 : (price ?? 0) * copies;
+            tally.valueCents += (price ?? 0) * copies;
             add(tally.types, type, copies);
             if (isLand) {
                 tally.lands += copies;
@@ -255,6 +271,16 @@ export function deckStats(
                 if (count > 0) add(tally.pips, PIP_LETTERS[index] ?? "", count * copies);
             });
         }
+    }
+
+    let valuedCards = 0;
+    for (const slot of cards) {
+        if (!VALUED_ZONES.includes(slot.zone)) continue;
+        valuedCards += slot.quantity;
+        const price = unitPrice(slot);
+        if (price == null) continue;
+        marketValueCents += price * slot.quantity;
+        pricedCards += slot.quantity;
     }
 
     top.sort((left, right) => right.value - left.value);
@@ -274,6 +300,7 @@ export function deckStats(
         eminence: casting.eminence,
         marketValue: marketValueCents / 100,
         pricedCards,
+        valuedCards,
         distinctSets: sets.size,
         manaCurve: fixed(manaCurve, curveKeys),
         manaCurveSplit: chartOf(curveSplit, curveKeys, tagOrder),

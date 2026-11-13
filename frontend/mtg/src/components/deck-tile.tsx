@@ -8,6 +8,7 @@ import type { MenuAt } from "src/components/context-menu";
 import { Visibility } from "src/api/generated";
 import type { DeckOverviewResponse, FormatRulesResponse } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
+import { DeckProxyMarker } from "src/components/deck-proxy-marker";
 import { ManaCost } from "src/components/mana-cost";
 import { deckCardsRoute } from "src/utils/deck-rights";
 import { deckRuleZero, letters } from "src/utils/deck-rules";
@@ -227,6 +228,7 @@ export function DeckTile({ overview, rules, onMenu, selected = false, onActivate
                     )}
                 </span>
 
+                <DeckProxyMarker count={overview.proxies} />
                 {deck.bracket != null && (
                     <span
                         className={

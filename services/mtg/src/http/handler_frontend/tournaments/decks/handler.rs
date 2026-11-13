@@ -11,14 +11,13 @@ use galvyn::rorm;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::transaction::Transaction;
 
-use crate::http::handler_frontend::decks::schema::DeckCardResponse;
-use crate::http::handler_frontend::shared::schema::redact_slot;
 use crate::http::handler_frontend::tournaments::decks::schema::ListParticipantDecksResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::ListRegisteredDecksResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::MyRegisteredDeckResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::ParticipantDeckResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisterDeckErrors;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisterDeckRequest;
+use crate::http::handler_frontend::tournaments::decks::schema::RegisteredCardResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisteredDeckResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisteredListResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisteredListsResponse;
@@ -41,7 +40,9 @@ use crate::models::tournament::registered_deck::list_visible;
 /// The logged-in Account's own Registered deck in a Tournament it plays in
 ///
 /// Says whether it may still change it itself, which ends when the first Round
-/// starts; a late Participant registers its own until it is pinned.
+/// starts; a late Participant registers its own until it is pinned. Says too
+/// how many of its copies are Proxies and whether they break the Tournament's
+/// Proxy rule, which the Participant sees before anyone else's list.
 #[get("/{tournament}/deck")]
 pub async fn get_my_tournament_deck(
     grant: TournamentGrant,
@@ -55,6 +56,10 @@ pub async fn get_my_tournament_deck(
     };
     let tournament = grant.tournament;
     let deck = tournament.registered_deck(&mut tx, participant).await?;
+    let slots = match &deck {
+        Some(deck) => tournament.registered_list(&mut tx, deck).await?,
+        None => Vec::new(),
+    };
     let changeable = tournament
         .changes_own_deck(&mut tx, tournament.state, participant)
         .await?;
@@ -64,6 +69,8 @@ pub async fn get_my_tournament_deck(
     Ok(ApiJson(MyRegisteredDeckResponse {
         deck: deck.map(RegisteredDeckResponse::from),
         changeable,
+        proxies: slots.iter().map(|slot| slot.proxies).sum(),
+        breaks_proxy_rule: tournament.proxy_rule.broken_by(&slots),
     }))
 }
 
@@ -304,7 +311,8 @@ pub async fn list_tournament_registered_lists(
 
 /// The lists of `tournament`'s Registered decks `reader` may see
 ///
-/// Somebody else's proxies stay out of the lists an Organizer does not read.
+/// A list comes with its Proxy counts and whether they break the Tournament's
+/// Proxy rule: whoever may see the list sees them.
 pub async fn registered_lists_view(
     tx: &mut Transaction,
     tournament: &Tournament,
@@ -315,17 +323,13 @@ pub async fn registered_lists_view(
         if !list_visible(tournament.state, deck.shared, reader) {
             continue;
         }
-        let cards = tournament
-            .registered_list(tx, &deck)
-            .await?
+        let slots = tournament.registered_list(tx, &deck).await?;
+        let breaks_proxy_rule = tournament.proxy_rule.broken_by(&slots);
+        let cards = slots
             .into_iter()
-            .map(DeckCardResponse::from)
-            .map(|slot| match reader {
-                ListReader::Organizer => slot,
-                ListReader::Other => redact_slot(slot),
-            })
+            .map(RegisteredCardResponse::from)
             .collect();
-        decks.push(RegisteredListResponse::new(deck, cards));
+        decks.push(RegisteredListResponse::new(deck, cards, breaks_proxy_rule));
     }
     Ok(RegisteredListsResponse { decks })
 }

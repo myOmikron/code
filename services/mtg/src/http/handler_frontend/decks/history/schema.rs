@@ -95,8 +95,6 @@ pub struct DeckEntryChangeResponse {
     pub zone: DeckZone,
     /// Whether the copies are the foil ones
     pub foil: bool,
-    /// Whether the copies are stand-ins rather than the real cards
-    pub proxy: bool,
     /// How many copies it held before, zero for an entry that came into being
     pub before: i32,
     /// How many copies it holds after, zero for an entry that is gone
@@ -129,7 +127,6 @@ impl From<ChangedEntry> for DeckEntryChangeResponse {
             name,
             zone: difference.zone,
             foil: difference.foil,
-            proxy: difference.proxy,
             before: difference.before,
             after: difference.after,
         }
@@ -167,8 +164,6 @@ pub struct DeckPointEntryResponse {
     pub zone: DeckZone,
     /// Whether the copies were the foil ones
     pub foil: bool,
-    /// Whether the copies were stand-ins rather than the real cards
-    pub proxy: bool,
     /// How many copies it held
     pub quantity: i32,
 }
@@ -223,7 +218,6 @@ impl From<PointEntry> for DeckPointEntryResponse {
             name,
             zone: key.zone,
             foil: key.foil,
-            proxy: key.proxy,
             quantity,
         }
     }
