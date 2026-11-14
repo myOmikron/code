@@ -9,8 +9,7 @@
  */
 
 import { useTranslation } from "react-i18next";
-import type { CardRarity, EntrySort } from "src/api/generated";
-import type { CardView } from "src/components/card-view";
+import type { CardRarity, EntryGrouping, EntrySort } from "src/api/generated";
 import type { Translate } from "src/utils/translate";
 
 /**
@@ -39,23 +38,27 @@ function rarityLabel(t: Translate, rarity: CardRarity): string {
 }
 
 /**
- * What a layout is called
+ * What a grouping is called
  *
  * @param t the collection namespace's translate function
- * @param view the layout to name
+ * @param grouping the grouping to name
  *
  * @returns the label
  */
-function viewLabel(t: Translate, view: CardView): string {
-    switch (view) {
-        case "grid":
-            return t("label.view-grid");
-        case "list":
-            return t("label.view-list");
-        case "large":
-            return t("label.view-large");
-        case "table":
-            return t("label.view-table");
+function groupingLabel(t: Translate, grouping: EntryGrouping): string {
+    switch (grouping) {
+        case "none":
+            return t("label.group-none");
+        case "type":
+            return t("label.group-type");
+        case "mana_value":
+            return t("label.group-mana-value");
+        case "color":
+            return t("label.group-color");
+        case "set":
+            return t("label.group-set");
+        case "tag":
+            return t("label.group-tag");
     }
 }
 
@@ -91,7 +94,7 @@ function sortLabel(t: Translate, sort: EntrySort): string {
 }
 
 /**
- * Names for the rarities, layouts and orders a collection page shows
+ * Names for the rarities, groupings and orders a collection page shows
  *
  * @returns one naming function each
  */
@@ -108,13 +111,13 @@ export function useCardLabels() {
          */
         rarity: (rarity: CardRarity) => rarityLabel(t, rarity),
         /**
-         * What a layout is called
+         * What a grouping is called
          *
-         * @param view the layout to name
+         * @param grouping the grouping to name
          *
          * @returns the label
          */
-        view: (view: CardView) => viewLabel(t, view),
+        grouping: (grouping: EntryGrouping) => groupingLabel(t, grouping),
         /**
          * What an order is called
          *

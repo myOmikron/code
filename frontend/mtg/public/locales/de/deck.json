@@ -298,6 +298,7 @@
         "deck-owner": "Besitzer",
         "deck-size": "{{cards}} Karten",
         "deck-value": "Listenwert",
+        "descending": "Absteigend",
         "header-list-value": "Listenwert {{value}}",
         "header-physical-value": "Physischer Wert {{value}}",
         "description": "Beschreibung",

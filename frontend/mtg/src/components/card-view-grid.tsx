@@ -1,10 +1,13 @@
 import clsx from "clsx";
+import type { CSSProperties } from "react";
 import { Badge, Strong, Text } from "components";
 import { useTranslation } from "react-i18next";
 import { CardFlipButton } from "src/components/card-flip-button";
 import { CardmarketLink } from "src/components/cardmarket-link";
 import { CardTagMarkers } from "src/components/card-tag-markers";
 import { CardThumbnail } from "src/components/card-thumbnail";
+import { ACROSS, COLUMNS } from "src/components/deck-card-grid";
+import type { DeckTileSize } from "src/utils/deck-view-settings";
 import { unitPrice } from "src/components/card-view";
 import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
 import { MarketPrice } from "src/components/market-price";
@@ -23,7 +26,19 @@ import { useFlippedCards } from "src/utils/use-flipped-cards";
  *
  * @returns the grid
  */
-export function CardViewGrid({ entries, onInspect, prices = true, onMenu, tags, selected, onActivate }: CardViewProps) {
+export function CardViewGrid({
+    entries,
+    onInspect,
+    prices = true,
+    onMenu,
+    tags,
+    selected,
+    onActivate,
+    size = "m",
+}: CardViewProps & {
+    /** How big the cards are drawn, a step of the deck's size slider */
+    size?: DeckTileSize;
+}) {
     const [t] = useTranslation("collection");
     const { isFlipped, toggle } = useFlippedCards();
     // Every second side at once: the flip is a tap away on any of these
@@ -31,15 +46,7 @@ export function CardViewGrid({ entries, onInspect, prices = true, onMenu, tags, 
     usePreloadImages(entries.map((entry) => artworkOf(entry.card, "back").image));
 
     return (
-        <ul
-            className={
-                // One column on the narrowest phones: two of them there leaves
-                // each card too small to be the thing this view exists for.
-                // Above that the gap and the tile padding tighten instead, which
-                // buys the artwork back the width the second column costs.
-                "grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8"
-            }
-        >
+        <ul className={clsx("grid", COLUMNS[size])} style={{ "--cards": ACROSS[size] } as CSSProperties}>
             {entries.map((entry) => {
                 const card = entry.card;
                 const price = unitPrice(entry);

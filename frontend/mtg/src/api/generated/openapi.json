@@ -3404,6 +3404,20 @@
                     },
                     {
                         "in": "query",
+                        "name": "group",
+                        "schema": {
+                            "description": "What to break the list into groups by\n\nThe groups come first in the order, in a fixed order of their own, and `sort` orders the stacks inside each; `descending` only reverses that.",
+                            "default": "none",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/EntryGrouping"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
                         "name": "limit",
                         "schema": {
                             "description": "How many stacks to return, capped server-side",
@@ -8058,6 +8072,20 @@
                     },
                     {
                         "in": "query",
+                        "name": "group",
+                        "schema": {
+                            "description": "What to break the list into groups by\n\nThe groups come first in the order, in a fixed order of their own, and `sort` orders the stacks inside each; `descending` only reverses that.",
+                            "default": "none",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/EntryGrouping"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
                         "name": "limit",
                         "schema": {
                             "description": "How many stacks to return, capped server-side",
@@ -9820,6 +9848,20 @@
                             "allOf": [
                                 {
                                     "$ref": "#/components/schemas/CardFinish"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "group",
+                        "schema": {
+                            "description": "What to break the list into groups by\n\nThe groups come first in the order, in a fixed order of their own, and `sort` orders the stacks inside each; `descending` only reverses that.",
+                            "default": "none",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/EntryGrouping"
                                 }
                             ]
                         },
@@ -20332,6 +20374,53 @@
                     "currency"
                 ]
             },
+            "EntryGrouping": {
+                "description": "What a collection's list is broken into groups by\n\nThe type, mana value and colour keys follow the deck's grouping in the frontend (`deck-grouping.ts`) rule for rule, so a card lands under the same heading in both places; a shared fixture holds the two in step.",
+                "oneOf": [
+                    {
+                        "description": "One list, no headings",
+                        "type": "string",
+                        "enum": [
+                            "none"
+                        ]
+                    },
+                    {
+                        "description": "The front face's primary card type",
+                        "type": "string",
+                        "enum": [
+                            "type"
+                        ]
+                    },
+                    {
+                        "description": "Mana value, everything from 7 up in one group",
+                        "type": "string",
+                        "enum": [
+                            "mana_value"
+                        ]
+                    },
+                    {
+                        "description": "One colour, multicolour or colourless, by colour identity",
+                        "type": "string",
+                        "enum": [
+                            "color"
+                        ]
+                    },
+                    {
+                        "description": "The set, newest release first",
+                        "type": "string",
+                        "enum": [
+                            "set"
+                        ]
+                    },
+                    {
+                        "description": "The owner's card-wide tags, a stack listed once per tag it carries",
+                        "type": "string",
+                        "enum": [
+                            "tag"
+                        ]
+                    }
+                ]
+            },
             "EntrySort": {
                 "description": "What a collection can be ordered by",
                 "oneOf": [
@@ -22023,6 +22112,31 @@
                     }
                 }
             },
+            "GroupTotalResponse": {
+                "description": "How much of a collection one group holds, across every page",
+                "type": "object",
+                "properties": {
+                    "copies": {
+                        "description": "How many copies those rows hold",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "key": {
+                        "description": "The group's key, as an entry's `group` carries it",
+                        "type": "string"
+                    },
+                    "stacks": {
+                        "description": "How many rows are listed under it",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "copies",
+                    "key",
+                    "stacks"
+                ]
+            },
             "ImportDeckCardsRequest": {
                 "description": "A decklist to write into a deck",
                 "type": "object",
@@ -22149,11 +22263,23 @@
                             "$ref": "#/components/schemas/ListedEntryResponse"
                         }
                     },
+                    "groups": {
+                        "description": "The size of every group on this page across all pages, in the order they appear",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GroupTotalResponse"
+                        }
+                    },
                     "limit": {
                         "description": "The page size actually applied, which may be below what was asked for",
                         "type": "integer",
                         "minimum": 0.0,
                         "format": "uint32"
+                    },
+                    "listed": {
+                        "description": "How many rows there are to page through\n\n`total`, except when grouping by tag lists a stack once per tag.",
+                        "type": "integer",
+                        "format": "int64"
                     },
                     "next_cursor": {
                         "nullable": true,
@@ -22183,7 +22309,9 @@
                 },
                 "required": [
                     "entries",
+                    "groups",
                     "limit",
+                    "listed",
                     "offset",
                     "total",
                     "total_copies"
@@ -22739,6 +22867,11 @@
                                 "$ref": "#/components/schemas/CardFinish"
                             }
                         ]
+                    },
+                    "group": {
+                        "nullable": true,
+                        "description": "The group this row is listed under, `None` without a grouping\n\nA type slug, a mana value from `0` to `7` (which holds everything above), a colour letter, `multicolor` or `colorless`, a set code or `unknown`, a tag's id or `untagged`.",
+                        "type": "string"
                     },
                     "printing": {
                         "description": "Scryfall's id of the printing",

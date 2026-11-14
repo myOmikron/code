@@ -12,6 +12,7 @@ use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::MaxStr;
 
 use crate::http::handler_frontend::collections::schema::CollectionStatisticsResponse;
+use crate::http::handler_frontend::collections::schema::GroupTotalResponse;
 use crate::http::handler_frontend::collections::schema::ListCardsQuery;
 use crate::http::handler_frontend::collections::schema::ListCardsResponse;
 use crate::http::handler_frontend::collections::schema::ListedEntryResponse;
@@ -38,6 +39,7 @@ use crate::http::handler_frontend::tournaments::schema::TournamentResponse;
 use crate::models::account::Account;
 use crate::models::account::extractor::Viewer;
 use crate::models::collection::Collection;
+use crate::models::collection::listing::EntryGrouping;
 use crate::models::collection::listing::EntryPage;
 use crate::models::collection::listing::EntryQuery;
 use crate::models::collection::listing::MAX_LIMIT;
@@ -82,11 +84,16 @@ pub async fn list_shared_collection_cards(
 
     let collection = resolve(&mut tx, &token).await?;
 
+    if query.group == EntryGrouping::Tag {
+        return Err(ApiError::bad_request("Grouping by tag is not offered here"));
+    }
+
     let limit = query.limit.clamp(1, MAX_LIMIT);
     let page = EntryPage::read(
         &mut tx,
         collection.uuid,
         &EntryQuery {
+            group: query.group,
             sort: query.sort,
             descending: query.descending,
             limit,
@@ -112,6 +119,12 @@ pub async fn list_shared_collection_cards(
             .collect(),
         total: page.total,
         total_copies: page.total_copies,
+        listed: page.listed,
+        groups: page
+            .groups
+            .into_iter()
+            .map(GroupTotalResponse::from)
+            .collect(),
         limit,
         offset: query.offset,
         next_cursor: page.next_cursor,

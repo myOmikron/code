@@ -79,6 +79,7 @@ import type {
     DeleteAccountRequest,
     DiscardDeckCardsRequest,
     EndTournamentRound200Response,
+    EntryGrouping,
     EntrySort,
     FileScannerSessionRequest,
     FileScannerSessionResponse,
@@ -1222,6 +1223,10 @@ export interface ListCollectionCardsRequest {
     /**
      * 
      */
+    group?: EntryGrouping;
+    /**
+     * 
+     */
     limit?: number;
     /**
      * 
@@ -1308,6 +1313,10 @@ export interface ListPublicCollectionCardsRequest {
     /**
      * 
      */
+    group?: EntryGrouping;
+    /**
+     * 
+     */
     limit?: number;
     /**
      * 
@@ -1374,6 +1383,10 @@ export interface ListSharedCollectionCardsRequest {
      * 
      */
     finish?: CardFinish | null;
+    /**
+     * 
+     */
+    group?: EntryGrouping;
     /**
      * 
      */
@@ -8300,6 +8313,10 @@ export class DefaultApi extends runtime.BaseAPI {
             queryParameters['finish'] = requestParameters['finish'];
         }
 
+        if (requestParameters['group'] != null) {
+            queryParameters['group'] = requestParameters['group'];
+        }
+
         if (requestParameters['limit'] != null) {
             queryParameters['limit'] = requestParameters['limit'];
         }
@@ -8708,6 +8725,10 @@ export class DefaultApi extends runtime.BaseAPI {
             queryParameters['finish'] = requestParameters['finish'];
         }
 
+        if (requestParameters['group'] != null) {
+            queryParameters['group'] = requestParameters['group'];
+        }
+
         if (requestParameters['limit'] != null) {
             queryParameters['limit'] = requestParameters['limit'];
         }
@@ -8891,6 +8912,10 @@ export class DefaultApi extends runtime.BaseAPI {
 
         if (requestParameters['finish'] != null) {
             queryParameters['finish'] = requestParameters['finish'];
+        }
+
+        if (requestParameters['group'] != null) {
+            queryParameters['group'] = requestParameters['group'];
         }
 
         if (requestParameters['limit'] != null) {

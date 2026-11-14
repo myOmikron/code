@@ -407,10 +407,236 @@ impl EntrySort {
     }
 }
 
+/// What a collection's list is broken into groups by
+///
+/// The type, mana value and colour keys follow the deck's grouping in the
+/// frontend (`deck-grouping.ts`) rule for rule, so a card lands under the same
+/// heading in both places; a shared fixture holds the two in step.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum EntryGrouping {
+    /// One list, no headings
+    #[default]
+    None,
+    /// The front face's primary card type
+    Type,
+    /// Mana value, everything from 7 up in one group
+    ManaValue,
+    /// One colour, multicolour or colourless, by colour identity
+    Color,
+    /// The set, newest release first
+    Set,
+    /// The owner's card-wide tags, a stack listed once per tag it carries
+    Tag,
+}
+
+/// The front face's type line, lower case
+macro_rules! front_face {
+    () => {
+        "lower(split_part(COALESCE(p.type_line, ''), '//', 1))"
+    };
+}
+
+/// The type a card is filed under, see `primaryType` in the frontend's `card-types.ts`
+///
+/// Land leads, so a Land Creature is a land; the order of the branches is the
+/// order of `TYPE_ORDER` there.
+macro_rules! type_key {
+    () => {
+        concat!(
+            "CASE",
+            " WHEN ",
+            front_face!(),
+            " LIKE '%land%' THEN 'land'",
+            " WHEN ",
+            front_face!(),
+            " LIKE '%creature%' THEN 'creature'",
+            " WHEN ",
+            front_face!(),
+            " LIKE '%planeswalker%' THEN 'planeswalker'",
+            " WHEN ",
+            front_face!(),
+            " LIKE '%battle%' THEN 'battle'",
+            " WHEN ",
+            front_face!(),
+            " LIKE '%instant%' THEN 'instant'",
+            " WHEN ",
+            front_face!(),
+            " LIKE '%sorcery%' THEN 'sorcery'",
+            " WHEN ",
+            front_face!(),
+            " LIKE '%enchantment%' THEN 'enchantment'",
+            " WHEN ",
+            front_face!(),
+            " LIKE '%artifact%' THEN 'artifact'",
+            " WHEN ",
+            front_face!(),
+            " LIKE '%conspiracy%' THEN 'conspiracy'",
+            " WHEN ",
+            front_face!(),
+            " LIKE '%dungeon%' THEN 'dungeon'",
+            " WHEN ",
+            front_face!(),
+            " LIKE '%phenomenon%' THEN 'phenomenon'",
+            " WHEN ",
+            front_face!(),
+            " LIKE '%plane%' THEN 'plane'",
+            " WHEN ",
+            front_face!(),
+            " LIKE '%scheme%' THEN 'scheme'",
+            " WHEN ",
+            front_face!(),
+            " LIKE '%vanguard%' THEN 'vanguard'",
+            " ELSE 'other' END"
+        )
+    };
+}
+
+/// `type_key!` as a constant
+const TYPE_KEY: &str = type_key!();
+
+/// The order type groups are drawn in, `TYPE_GROUP_ORDER` in the frontend
+const TYPE_RANK: &str = concat!(
+    "array_position(ARRAY['creature', 'planeswalker', 'battle', 'sorcery', 'instant', \
+     'artifact', 'enchantment', 'conspiracy', 'dungeon', 'phenomenon', 'plane', 'scheme', \
+     'vanguard', 'other', 'land'], ",
+    type_key!(),
+    ")"
+);
+
+/// Mana value rounded half up and capped at 7, `Math.min(Math.round(..), 7)` in the frontend
+macro_rules! mana_step {
+    () => {
+        "LEAST(floor(COALESCE(p.mana_value, 0) + 0.5), 7)::int"
+    };
+}
+
+/// The colour identity, upper case
+macro_rules! identity {
+    () => {
+        "upper(COALESCE(p.color_identity, ''))"
+    };
+}
+
+/// The colour bucket, `colorKey` in the frontend's `deck-grouping.ts`
+const COLOR_KEY: &str = concat!(
+    "CASE (strpos(",
+    identity!(),
+    ", 'W') > 0)::int + (strpos(",
+    identity!(),
+    ", 'U') > 0)::int + (strpos(",
+    identity!(),
+    ", 'B') > 0)::int + (strpos(",
+    identity!(),
+    ", 'R') > 0)::int + (strpos(",
+    identity!(),
+    ", 'G') > 0)::int \
+     WHEN 0 THEN 'colorless' WHEN 1 THEN CASE \
+         WHEN strpos(",
+    identity!(),
+    ", 'W') > 0 THEN 'W' WHEN strpos(",
+    identity!(),
+    ", 'U') > 0 THEN 'U' WHEN strpos(",
+    identity!(),
+    ", 'B') > 0 THEN 'B' WHEN strpos(",
+    identity!(),
+    ", 'R') > 0 THEN 'R' ELSE 'G' END \
+     ELSE 'multicolor' END"
+);
+
+/// The key a stack whose printing the catalog does not know is filed under by set
+const UNKNOWN_SET: &str = "unknown";
+
+/// The key of the group of stacks without a tag
+const UNTAGGED: &str = "untagged";
+
+/// Every card-wide tag of the owner on every stack of the collection `$1`
+///
+/// The same match as [`read_tags`], over the whole collection rather than one
+/// page: grouping by tag orders by it, so every stack's tags are needed before
+/// a page can be cut.
+const ENTRY_TAGS: &str = "WITH entry_tag AS ( \
+     SELECT DISTINCT te.uuid AS entry, t.uuid AS tag, t.name AS tag_name \
+     FROM collection_entry te \
+     JOIN collection col ON col.uuid = te.collection \
+     JOIN deck_tag t ON t.deck IS NULL AND t.owner = col.owner \
+     JOIN global_card_tag a ON a.tag = t.uuid \
+     LEFT JOIN printing card_printing ON card_printing.id = te.printing \
+     LEFT JOIN printing anchor_printing ON anchor_printing.id = a.printing \
+     WHERE te.collection = $1 AND NOT te.proxy \
+       AND (anchor_printing.oracle_id = card_printing.oracle_id \
+            OR (anchor_printing.oracle_id IS NULL \
+                AND card_printing.oracle_id IS NULL \
+                AND anchor_printing.name_sort = card_printing.name_sort) \
+            OR (anchor_printing.id IS NULL \
+                AND card_printing.id IS NULL \
+                AND a.printing = te.printing)) \
+     ) ";
+
+impl EntryGrouping {
+    /// The group a listed row is filed under, `NULL` without a grouping
+    ///
+    /// Every branch returns a literal or a fixed fragment, so nothing a caller
+    /// supplies reaches the statement as text.
+    fn key(self) -> String {
+        match self {
+            Self::None => "NULL::text".to_string(),
+            Self::Type => TYPE_KEY.to_string(),
+            Self::ManaValue => concat!("(", mana_step!(), ")::text").to_string(),
+            Self::Color => COLOR_KEY.to_string(),
+            Self::Set => format!("COALESCE(p.set_code, '{UNKNOWN_SET}')"),
+            Self::Tag => format!("COALESCE(et.tag::text, '{UNTAGGED}')"),
+        }
+    }
+
+    /// The order the groups are drawn in, ahead of the sort, `None` without a grouping
+    ///
+    /// A set's release is its earliest printing among the stacks listed: the
+    /// catalog keeps no table of sets, and a promo dated apart from its set
+    /// must not split the set's group in two.
+    fn order(self) -> Option<String> {
+        match self {
+            Self::None => None,
+            Self::Type => Some(format!("{TYPE_RANK} ASC")),
+            Self::ManaValue => Some(concat!(mana_step!(), " ASC").to_string()),
+            Self::Color => Some(format!(
+                "array_position(ARRAY['W', 'U', 'B', 'R', 'G', 'multicolor', 'colorless'], {COLOR_KEY}) ASC"
+            )),
+            Self::Set => Some(
+                "MIN(p.released_at) OVER (PARTITION BY p.set_code) DESC NULLS LAST, \
+                 p.set_code ASC NULLS LAST"
+                    .to_string(),
+            ),
+            Self::Tag => Some(
+                "et.tag IS NULL ASC, lower(et.tag_name) ASC, et.tag_name ASC, et.tag ASC"
+                    .to_string(),
+            ),
+        }
+    }
+
+    /// What the listing reads from besides the stack and its printing
+    fn joins(self) -> &'static str {
+        match self {
+            Self::Tag => " LEFT JOIN entry_tag et ON et.entry = e.uuid",
+            _ => "",
+        }
+    }
+
+    /// What has to be defined ahead of the statement
+    fn with(self) -> &'static str {
+        match self {
+            Self::Tag => ENTRY_TAGS,
+            _ => "",
+        }
+    }
+}
+
 /// Which page of which collection, in what order
 #[derive(Debug, Clone)]
 pub struct EntryQuery {
-    /// What to order by
+    /// What to break the list into groups by, the first key of the order
+    pub group: EntryGrouping,
+    /// What to order by, within a group
     pub sort: EntrySort,
     /// Whether to reverse that order
     pub descending: bool,
@@ -448,7 +674,7 @@ impl EntryQuery {
     /// Only the filed order can: it *is* the key order. Sorting by anything
     /// else leaves ties the key alone cannot resume from.
     fn uses_cursor(&self) -> bool {
-        self.sort == EntrySort::Filed && self.after.is_some()
+        self.group == EntryGrouping::None && self.sort == EntrySort::Filed && self.after.is_some()
     }
 }
 
@@ -518,6 +744,19 @@ pub struct ListedEntry {
     pub card: Option<ListedCard>,
     /// The owner's card-wide tags on the card this stack holds
     pub tags: Vec<DeckTagUuid>,
+    /// The group this row is listed under, `None` without a grouping
+    pub group: Option<String>,
+}
+
+/// How much of a collection one group holds, across every page
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GroupTotal {
+    /// The group's key, as [`ListedEntry::group`] carries it
+    pub key: String,
+    /// How many rows are listed under it
+    pub stacks: i64,
+    /// How many copies those rows hold
+    pub copies: i64,
 }
 
 /// A page of a collection, and how much there is to page through
@@ -535,6 +774,12 @@ pub struct EntryPage {
     /// numbers answer different questions, and only this one answers "how many
     /// cards do I have".
     pub total_copies: i64,
+    /// How many rows there are to page through
+    ///
+    /// [`Self::total`], except when grouping by tag lists a stack once per tag.
+    pub listed: i64,
+    /// The size of every group on this page, in the order they first appear
+    pub groups: Vec<GroupTotal>,
     /// What to pass as `after` to continue, `None` at the end or when the sort
     /// order cannot be resumed by key
     pub next_cursor: Option<CollectionEntryUuid>,
@@ -653,8 +898,47 @@ impl EntryPage {
             (row.get(0).map_err(decode)?, row.get(1).map_err(decode)?)
         };
 
+        let with = query.group.with();
+        let joins = query.group.joins();
+        let group_key = query.group.key();
+
+        let mut totals = Vec::new();
+        if query.group != EntryGrouping::None {
+            let statement = format!(
+                "{with}SELECT {group_key} AS group_key, count(*) AS stacks, \
+                        coalesce(sum(e.quantity), 0)::bigint AS copies \
+                 FROM collection_entry e LEFT JOIN printing p ON p.id = e.printing{joins} \
+                 WHERE {where_clause} GROUP BY 1"
+            );
+            let rows = (&mut *tx)
+                .execute::<All>(statement, filters.values.clone())
+                .await?;
+            for row in rows {
+                let decode =
+                    |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
+                totals.push(GroupTotal {
+                    key: row.get("group_key").map_err(decode)?,
+                    stacks: row.get("stacks").map_err(decode)?,
+                    copies: row.get("copies").map_err(decode)?,
+                });
+            }
+        }
+        let listed = if query.group == EntryGrouping::None {
+            total
+        } else {
+            totals.iter().map(|group| group.stacks).sum()
+        };
+
         let direction = if query.descending { "DESC" } else { "ASC" };
-        let mut order = format!("{} {direction} NULLS LAST", query.sort.expression());
+        let mut order = query
+            .group
+            .order()
+            .map(|order| format!("{order}, "))
+            .unwrap_or_default();
+        order.push_str(&format!(
+            "{} {direction} NULLS LAST",
+            query.sort.expression()
+        ));
         if let Some(tiebreaker) = query.sort.tiebreaker() {
             order.push_str(&format!(", {tiebreaker} {direction} NULLS LAST"));
         }
@@ -673,15 +957,16 @@ impl EntryPage {
         let offset_placeholder = values.len();
 
         let statement = format!(
-            "SELECT e.uuid, e.printing, e.quantity, e.condition, e.finish, e.signed, \
+            "{with}SELECT e.uuid, e.printing, e.quantity, e.condition, e.finish, e.signed, \
                     e.purchase_price_cents, e.acquired_at, e.created_at, \
+                    {group_key} AS group_key, \
                     p.name, p.set_code, p.set_name, p.collector_number, p.rarity, \
                     p.lang, p.cardmarket_id, \
                     p.mana_value, p.color_identity, p.type_line, p.image_small, p.image_normal, \
                     p.image_back_small, p.image_back_normal, \
                     p.price_eur, p.price_eur_foil, p.finishes, p.reserved \
              FROM collection_entry e \
-             LEFT JOIN printing p ON p.id = e.printing \
+             LEFT JOIN printing p ON p.id = e.printing{joins} \
              WHERE {where_clause} ORDER BY {order} LIMIT ${limit_placeholder} OFFSET ${offset_placeholder}"
         );
 
@@ -695,7 +980,7 @@ impl EntryPage {
                     .map_err(|error| rorm::Error::RowError(error.into_owned()))
             })
             .collect::<Result<_, rorm::Error>>()?;
-        let mut tags = read_tags(&mut *tx, collection, &on_page).await?;
+        let tags = read_tags(&mut *tx, collection, &on_page).await?;
 
         let mut entries = Vec::with_capacity(rows.len());
         for row in rows {
@@ -729,7 +1014,8 @@ impl EntryPage {
 
             let uuid = CollectionEntryUuid::from_uuid(row.get("uuid").map_err(decode)?);
             entries.push(ListedEntry {
-                tags: tags.remove(&uuid).unwrap_or_default(),
+                tags: tags.get(&uuid).cloned().unwrap_or_default(),
+                group: row.get("group_key").map_err(decode)?,
                 uuid,
                 printing: row.get("printing").map_err(decode)?,
                 quantity: row.get("quantity").map_err(decode)?,
@@ -746,15 +1032,29 @@ impl EntryPage {
         // Only offered when the page came back full: a short page is the last
         // one, and a cursor pointing past it would only cost a round trip to
         // learn that.
-        let next_cursor = (query.sort == EntrySort::Filed
+        let next_cursor = (query.group == EntryGrouping::None
+            && query.sort == EntrySort::Filed
             && entries.len() as u32 >= query.limit.min(MAX_LIMIT))
         .then(|| entries.last().map(|entry| entry.uuid))
         .flatten();
+
+        let mut groups: Vec<GroupTotal> = Vec::new();
+        for entry in &entries {
+            let Some(key) = &entry.group else { continue };
+            if groups.iter().any(|group| &group.key == key) {
+                continue;
+            }
+            if let Some(group) = totals.iter().find(|group| &group.key == key) {
+                groups.push(group.clone());
+            }
+        }
 
         Ok(EntryPage {
             entries,
             total,
             total_copies,
+            listed,
+            groups,
             next_cursor,
         })
     }

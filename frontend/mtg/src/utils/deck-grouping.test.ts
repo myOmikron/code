@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DeckCardResponse, DeckTagResponse } from "src/api/generated";
 import { groupDeck } from "src/utils/deck-grouping";
+import FIXTURE from "src/utils/card-group-keys.fixture.json";
 
 const RAMP: DeckTagResponse = { uuid: "tag-ramp", name: "Ramp", color: "lime", icon: "ramp", deck: null };
 const WINCON: DeckTagResponse = {
@@ -157,3 +158,41 @@ describe("groupDeck by type with back-face lands", () => {
         expect(groups.find((group) => group.key === "land")?.withMdfcs).toBeUndefined();
     });
 });
+
+describe("groupDeck against the keys the collection listing files under", () => {
+    const cards = FIXTURE.map((card) =>
+        costedWithIdentity(card.name, card.type_line, card.mana_value, card.color_identity),
+    );
+
+    it.each([
+        ["type", "type"],
+        ["mana", "mana"],
+        ["color", "color"],
+    ] as const)("files every card under the server's %s key", (grouping, field) => {
+        const groups = groupDeck(cards, grouping, "name", []);
+        const filed = new Map(groups.flatMap((group) => group.cards.map((card) => [card.uuid, group.key])));
+
+        for (const card of FIXTURE) expect([card.name, filed.get(card.name)]).toStrictEqual([card.name, card[field]]);
+    });
+});
+
+/**
+ * A Main-zone slot with everything the type, mana and colour groupings read
+ *
+ * @param name the card's name, doubling as the slot's id
+ * @param type its type line
+ * @param manaValue its mana value
+ * @param identity its colour identity letters
+ *
+ * @returns the slot
+ */
+function costedWithIdentity(name: string, type: string, manaValue: number, identity: string): DeckCardResponse {
+    return {
+        uuid: name,
+        printing: `printing-${name}`,
+        quantity: 1,
+        zone: "Main",
+        tags: [],
+        card: { name, type_line: type, mana_value: manaValue, color_identity: identity },
+    } as unknown as DeckCardResponse;
+}

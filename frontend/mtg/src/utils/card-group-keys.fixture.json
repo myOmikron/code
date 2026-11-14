@@ -1,0 +1,209 @@
+[
+    {
+        "name": "Llanowar Elves",
+        "type_line": "Creature — Elf Druid",
+        "mana_value": 1,
+        "color_identity": "G",
+        "type": "creature",
+        "mana": "1",
+        "color": "G"
+    },
+    {
+        "name": "Dryad Arbor",
+        "type_line": "Land Creature — Forest Dryad",
+        "mana_value": 0,
+        "color_identity": "G",
+        "type": "land",
+        "mana": "0",
+        "color": "G"
+    },
+    {
+        "name": "Darksteel Citadel",
+        "type_line": "Artifact Land",
+        "mana_value": 0,
+        "color_identity": "",
+        "type": "land",
+        "mana": "0",
+        "color": "colorless"
+    },
+    {
+        "name": "Brazen Borrower",
+        "type_line": "Legendary Creature — Faerie Rogue // Instant — Adventure",
+        "mana_value": 3,
+        "color_identity": "U",
+        "type": "creature",
+        "mana": "3",
+        "color": "U"
+    },
+    {
+        "name": "Emeria's Call",
+        "type_line": "Sorcery // Land",
+        "mana_value": 7,
+        "color_identity": "W",
+        "type": "sorcery",
+        "mana": "7",
+        "color": "W"
+    },
+    {
+        "name": "Jwari Disruption",
+        "type_line": "Instant // Land",
+        "mana_value": 2,
+        "color_identity": "U",
+        "type": "instant",
+        "mana": "2",
+        "color": "U"
+    },
+    {
+        "name": "Emrakul, the Aeons Torn",
+        "type_line": "Legendary Creature — Eldrazi",
+        "mana_value": 15,
+        "color_identity": "",
+        "type": "creature",
+        "mana": "7",
+        "color": "colorless"
+    },
+    {
+        "name": "Sol Ring",
+        "type_line": "Artifact",
+        "mana_value": 1,
+        "color_identity": "",
+        "type": "artifact",
+        "mana": "1",
+        "color": "colorless"
+    },
+    {
+        "name": "Nicol Bolas, Planeswalker",
+        "type_line": "Legendary Planeswalker — Bolas",
+        "mana_value": 8,
+        "color_identity": "UBR",
+        "type": "planeswalker",
+        "mana": "7",
+        "color": "multicolor"
+    },
+    {
+        "name": "Little Girl",
+        "type_line": "Creature — Human Child",
+        "mana_value": 0.5,
+        "color_identity": "W",
+        "type": "creature",
+        "mana": "1",
+        "color": "W"
+    },
+    {
+        "name": "Invasion of Zendikar",
+        "type_line": "Battle — Siege // Enchantment Creature — Elemental",
+        "mana_value": 4,
+        "color_identity": "G",
+        "type": "battle",
+        "mana": "4",
+        "color": "G"
+    },
+    {
+        "name": "Lightning Bolt",
+        "type_line": "Instant",
+        "mana_value": 1,
+        "color_identity": "R",
+        "type": "instant",
+        "mana": "1",
+        "color": "R"
+    },
+    {
+        "name": "Thoughtseize",
+        "type_line": "Sorcery",
+        "mana_value": 1,
+        "color_identity": "B",
+        "type": "sorcery",
+        "mana": "1",
+        "color": "B"
+    },
+    {
+        "name": "Bitterblossom",
+        "type_line": "Kindred Enchantment — Faerie",
+        "mana_value": 2,
+        "color_identity": "B",
+        "type": "enchantment",
+        "mana": "2",
+        "color": "B"
+    },
+    {
+        "name": "Golos, Tireless Pilgrim",
+        "type_line": "Legendary Artifact Creature — Golem",
+        "mana_value": 5,
+        "color_identity": "WUBRG",
+        "type": "creature",
+        "mana": "5",
+        "color": "multicolor"
+    },
+    {
+        "name": "Advantageous Proclamation",
+        "type_line": "Conspiracy",
+        "mana_value": 0,
+        "color_identity": "",
+        "type": "conspiracy",
+        "mana": "0",
+        "color": "colorless"
+    },
+    {
+        "name": "Lost Mine of Phandelver",
+        "type_line": "Dungeon",
+        "mana_value": 0,
+        "color_identity": "",
+        "type": "dungeon",
+        "mana": "0",
+        "color": "colorless"
+    },
+    {
+        "name": "Chaotic Aether",
+        "type_line": "Phenomenon",
+        "mana_value": 0,
+        "color_identity": "",
+        "type": "phenomenon",
+        "mana": "0",
+        "color": "colorless"
+    },
+    {
+        "name": "Tazeem",
+        "type_line": "Plane — Zendikar",
+        "mana_value": 0,
+        "color_identity": "",
+        "type": "plane",
+        "mana": "0",
+        "color": "colorless"
+    },
+    {
+        "name": "All in Good Time",
+        "type_line": "Scheme",
+        "mana_value": 0,
+        "color_identity": "",
+        "type": "scheme",
+        "mana": "0",
+        "color": "colorless"
+    },
+    {
+        "name": "Akroma",
+        "type_line": "Vanguard",
+        "mana_value": 0,
+        "color_identity": "",
+        "type": "vanguard",
+        "mana": "0",
+        "color": "colorless"
+    },
+    {
+        "name": "Elspeth Emblem",
+        "type_line": "Emblem — Elspeth",
+        "mana_value": 0,
+        "color_identity": "",
+        "type": "other",
+        "mana": "0",
+        "color": "colorless"
+    },
+    {
+        "name": "Boros Charm",
+        "type_line": "Instant",
+        "mana_value": 2,
+        "color_identity": "RW",
+        "type": "instant",
+        "mana": "2",
+        "color": "multicolor"
+    }
+]

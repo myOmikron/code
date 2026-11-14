@@ -8,7 +8,9 @@ One page of a collection
 Name | Type
 ------------ | -------------
 `entries` | [Array&lt;ListedEntryResponse&gt;](ListedEntryResponse.md)
+`groups` | [Array&lt;GroupTotalResponse&gt;](GroupTotalResponse.md)
 `limit` | number
+`listed` | number
 `next_cursor` | string
 `offset` | number
 `total` | number

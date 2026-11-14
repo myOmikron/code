@@ -140,6 +140,7 @@ docs/DropErrors.md
 docs/EndImpersonationErrors.md
 docs/EndTournamentRound200Response.md
 docs/EntryFeeSchema.md
+docs/EntryGrouping.md
 docs/EntrySort.md
 docs/ErrorConstant.md
 docs/ExtraTurnRule.md
@@ -204,6 +205,7 @@ docs/FormErrorResponseForSubscribePushDeviceErrors.md
 docs/FormErrorResponseForTournamentSettingsErrors.md
 docs/FormatRulesResponse.md
 docs/GetPendingOidcLoginResponse.md
+docs/GroupTotalResponse.md
 docs/ImportDeckCardsRequest.md
 docs/ImportDeckCardsResponse.md
 docs/ImportMode.md
