@@ -21,6 +21,7 @@ use crate::http::handler_frontend::collections::schema::CollectionResponse;
 use crate::http::handler_frontend::collections::schema::CollectionStatisticsResponse;
 use crate::http::handler_frontend::collections::schema::CollectionTotalsResponse;
 use crate::http::handler_frontend::collections::schema::CreateCollectionRequest;
+use crate::http::handler_frontend::collections::schema::GroupTotalResponse;
 use crate::http::handler_frontend::collections::schema::ListCardsQuery;
 use crate::http::handler_frontend::collections::schema::ListCardsResponse;
 use crate::http::handler_frontend::collections::schema::ListCollectionEntriesResponse;
@@ -268,6 +269,7 @@ pub async fn list_collection_cards(
         &mut tx,
         collection_uuid,
         &EntryQuery {
+            group: query.group,
             sort: query.sort,
             descending: query.descending,
             limit,
@@ -292,6 +294,12 @@ pub async fn list_collection_cards(
             .collect(),
         total: page.total,
         total_copies: page.total_copies,
+        listed: page.listed,
+        groups: page
+            .groups
+            .into_iter()
+            .map(GroupTotalResponse::from)
+            .collect(),
         limit,
         offset: query.offset,
         next_cursor: page.next_cursor,

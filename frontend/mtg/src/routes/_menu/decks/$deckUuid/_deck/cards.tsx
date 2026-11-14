@@ -1,19 +1,7 @@
 import { createFileRoute, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
-import {
-    Button,
-    Dialog,
-    DialogActions,
-    DialogBody,
-    DialogTitle,
-    EmptyState,
-    Label,
-    Radio,
-    RadioField,
-    RadioGroup,
-    notify,
-} from "components";
+import { Button, EmptyState, notify } from "components";
 import type { CSSProperties } from "react";
-import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CardFocus } from "src/utils/card-focus";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
@@ -64,6 +52,7 @@ import type { Printing } from "src/utils/scryfall";
 import { canBeCommander } from "src/utils/commander";
 import { useAccount } from "src/context/account";
 import { useDeckViewSettings } from "src/utils/deck-view-settings";
+import { DeckViewDialog } from "src/components/deck-view-dialog";
 import { useFlippedCards } from "src/utils/use-flipped-cards";
 import { usePointerCard } from "src/utils/use-pointer-card";
 import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
@@ -1148,52 +1137,17 @@ function RouteComponent() {
 
                     {rights.edit && <DeckTagDock tags={tags} onManage={() => setManagingTags(true)} />}
 
-                    <Dialog open={choosing !== null} onClose={() => setChoosing(null)} size={"sm"}>
-                        <DialogTitle>{choosing === "view" ? t("label.view") : t("label.grouping")}</DialogTitle>
-                        <DialogBody>
-                            {choosing === "view" ? (
-                                <RadioGroup
-                                    value={view}
-                                    onChange={(next: string) => {
-                                        setChoosing(null);
-                                        requestAnimationFrame(() => {
-                                            startTransition(() => changeView(next as DeckView));
-                                        });
-                                    }}
-                                >
-                                    {DECK_VIEWS.map((option) => (
-                                        <RadioField key={option}>
-                                            <Radio value={option} color={"lime"} />
-                                            <Label>{t(`label.view-${option}`)}</Label>
-                                        </RadioField>
-                                    ))}
-                                </RadioGroup>
-                            ) : (
-                                <RadioGroup
-                                    value={grouping}
-                                    onChange={(next: string) => {
-                                        const group = next as DeckGrouping;
-                                        setChoosing(null);
-                                        requestAnimationFrame(() => {
-                                            startTransition(() => go({ group: group === "type" ? undefined : group }));
-                                        });
-                                    }}
-                                >
-                                    {DECK_GROUPINGS.map((option) => (
-                                        <RadioField key={option}>
-                                            <Radio value={option} color={"lime"} />
-                                            <Label>{labels.grouping(option)}</Label>
-                                        </RadioField>
-                                    ))}
-                                </RadioGroup>
-                            )}
-                        </DialogBody>
-                        <DialogActions>
-                            <Button plain onClick={() => setChoosing(null)}>
-                                {tg("button.close")}
-                            </Button>
-                        </DialogActions>
-                    </Dialog>
+                    <DeckViewDialog
+                        choosing={choosing}
+                        view={view}
+                        views={DECK_VIEWS}
+                        grouping={grouping}
+                        groupings={DECK_GROUPINGS}
+                        groupingLabel={labels.grouping}
+                        onChangeView={changeView}
+                        onChangeGrouping={(group) => go({ group: group === "type" ? undefined : group })}
+                        onClose={() => setChoosing(null)}
+                    />
 
                     <AddCardsDialog
                         open={adding}

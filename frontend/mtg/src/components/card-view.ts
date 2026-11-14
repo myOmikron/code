@@ -11,16 +11,10 @@ import type { DeckTagResponse, EntrySort, ListedEntryResponse } from "src/api/ge
 import type { MenuAt } from "src/components/context-menu";
 import { unitPriceCents } from "src/utils/prices";
 
-/** How the cards are laid out */
-export type CardView = "grid" | "list" | "large" | "table";
-
-/** The views on offer, in the order they are listed. Named by `viewLabel`. */
-export const CARD_VIEWS: Array<CardView> = ["grid", "list", "large", "table"];
-
 /**
  * What every view is handed.
  *
- * The same set for all four, so switching between them changes the layout and
+ * The same set for every layout, so switching between them changes the layout and
  * nothing about what can be done from it.
  */
 export type CardViewProps = {

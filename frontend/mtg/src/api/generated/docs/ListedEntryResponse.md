@@ -12,6 +12,7 @@ Name | Type
 `condition` | [CardCondition](CardCondition.md)
 `created_at` | string
 `finish` | [CardFinish](CardFinish.md)
+`group` | string
 `printing` | string
 `purchase_price_cents` | number
 `quantity` | number

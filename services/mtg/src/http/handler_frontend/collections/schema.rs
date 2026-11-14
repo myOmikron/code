@@ -15,7 +15,9 @@ use crate::models::collection::CollectionEntry;
 use crate::models::collection::CollectionEntryUuid;
 use crate::models::collection::CollectionUuid;
 use crate::models::collection::listing::CollectionSummary;
+use crate::models::collection::listing::EntryGrouping;
 use crate::models::collection::listing::EntrySort;
+use crate::models::collection::listing::GroupTotal;
 use crate::models::collection::listing::ListedCard;
 use crate::models::collection::listing::ListedEntry;
 use crate::models::collection::listing::OnLoan;
@@ -386,6 +388,12 @@ pub struct ListCardsQuery {
     /// value from a previous response's `next_cursor`.
     #[serde(default)]
     pub after: Option<CollectionEntryUuid>,
+    /// What to break the list into groups by
+    ///
+    /// The groups come first in the order, in a fixed order of their own, and
+    /// `sort` orders the stacks inside each; `descending` only reverses that.
+    #[serde(default)]
+    pub group: EntryGrouping,
     /// What to order by
     #[serde(default)]
     pub sort: EntrySort,
@@ -492,6 +500,33 @@ pub struct ListedEntryResponse {
     pub card: Option<ListedCardResponse>,
     /// The owner's card-wide tags on the card this stack holds
     pub tags: Vec<DeckTagUuid>,
+    /// The group this row is listed under, `None` without a grouping
+    ///
+    /// A type slug, a mana value from `0` to `7` (which holds everything above),
+    /// a colour letter, `multicolor` or `colorless`, a set code or `unknown`,
+    /// a tag's id or `untagged`.
+    pub group: Option<String>,
+}
+
+/// How much of a collection one group holds, across every page
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct GroupTotalResponse {
+    /// The group's key, as an entry's `group` carries it
+    pub key: String,
+    /// How many rows are listed under it
+    pub stacks: i64,
+    /// How many copies those rows hold
+    pub copies: i64,
+}
+
+impl From<GroupTotal> for GroupTotalResponse {
+    fn from(group: GroupTotal) -> Self {
+        Self {
+            key: group.key,
+            stacks: group.stacks,
+            copies: group.copies,
+        }
+    }
 }
 
 /// One page of a collection
@@ -503,6 +538,12 @@ pub struct ListCardsResponse {
     pub total: i64,
     /// How many copies those stacks hold — the cards, not the rows
     pub total_copies: i64,
+    /// How many rows there are to page through
+    ///
+    /// `total`, except when grouping by tag lists a stack once per tag.
+    pub listed: i64,
+    /// The size of every group on this page across all pages, in the order they appear
+    pub groups: Vec<GroupTotalResponse>,
     /// The page size actually applied, which may be below what was asked for
     pub limit: u32,
     /// How many stacks were skipped
@@ -791,6 +832,7 @@ impl From<ListedEntry> for ListedEntryResponse {
             created_at: SchemaDateTime(entry.created_at),
             card: entry.card.map(ListedCardResponse::from),
             tags: entry.tags,
+            group: entry.group,
         }
     }
 }

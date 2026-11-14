@@ -82,6 +82,23 @@ export function useDeckLabels() {
         color: (letter: string): string => colorName(t, letter),
 
         /**
+         * What a mana value group is called, the last one holding everything above it
+         *
+         * @param value the group's mana value, `"7"` for the last
+         *
+         * @returns its name
+         */
+        manaValue: (value: string): string =>
+            value === "7" ? t("label.mana-value-cap", { value }) : t("label.mana-value", { value }),
+
+        /**
+         * What the group of cards of several colours is called
+         *
+         * @returns its name
+         */
+        multicolor: (): string => t("label.color-multicolor"),
+
+        /**
          * What a Commander bracket is called
          *
          * @param slug the bracket

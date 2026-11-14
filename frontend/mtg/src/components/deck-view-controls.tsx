@@ -1,5 +1,6 @@
 import {
     AdjustmentsHorizontalIcon,
+    BarsArrowDownIcon,
     CheckIcon,
     ListBulletIcon,
     RectangleStackIcon,
@@ -29,13 +30,13 @@ const ONE_COLUMN: DeckTileSize = "m";
 /**
  * The properties for {@link DeckViewControls}
  */
-export type DeckViewControlsProps = {
+export type DeckViewControlsProps<Grouping extends string = DeckGrouping, Sort extends string = DeckSort> = {
     /** How the cards are laid out */
     view: DeckView;
     /** What the list is broken up by */
-    grouping: DeckGrouping;
+    grouping: Grouping;
     /** What the cards inside a group are ordered by */
-    sort: DeckSort;
+    sort: Sort;
     /** How big the cards are drawn, only used by the grid */
     size: DeckTileSize;
     /** Records a different layout */
@@ -43,9 +44,19 @@ export type DeckViewControlsProps = {
     /** Records a different card size */
     onChangeSize: (size: DeckTileSize) => void;
     /** Records a different grouping */
-    onChangeGrouping: (grouping: DeckGrouping) => void;
+    onChangeGrouping: (grouping: Grouping) => void;
     /** Records a different order */
-    onChangeSort: (sort: DeckSort) => void;
+    onChangeSort: (sort: Sort) => void;
+    /** The layouts on offer, the deck's four unless said otherwise */
+    views?: Array<DeckView>;
+    /** The groupings on offer with their names, the deck's unless said otherwise */
+    groupings?: { options: Array<Grouping>; label: (grouping: Grouping) => string };
+    /** The orders on offer with their names, the deck's unless said otherwise */
+    sorts?: { options: Array<Sort>; label: (sort: Sort) => string };
+    /** Whether the order is reversed, left out where it cannot be */
+    descending?: boolean;
+    /** Reverses the order or puts it back, left out where it cannot be */
+    onChangeDescending?: (descending: boolean) => void;
 };
 
 /**
@@ -59,7 +70,7 @@ export type DeckViewControlsProps = {
  *
  * @returns the controls
  */
-export function DeckViewControls({
+export function DeckViewControls<Grouping extends string = DeckGrouping, Sort extends string = DeckSort>({
     view,
     grouping,
     sort,
@@ -68,9 +79,22 @@ export function DeckViewControls({
     onChangeSize,
     onChangeGrouping,
     onChangeSort,
-}: DeckViewControlsProps) {
+    views = DECK_VIEWS,
+    groupings,
+    sorts,
+    descending,
+    onChangeDescending,
+}: DeckViewControlsProps<Grouping, Sort>) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
+    const groupingOptions = groupings ?? {
+        options: DECK_GROUPINGS as Array<string> as Array<Grouping>,
+        label: (option: Grouping) => labels.grouping(option as string as DeckGrouping),
+    };
+    const sortOptions = sorts ?? {
+        options: DECK_SORTS as Array<string> as Array<Sort>,
+        label: (option: Sort) => labels.sort(option as string as DeckSort),
+    };
 
     return (
         <span className={"flex items-center gap-2"}>
@@ -79,7 +103,7 @@ export function DeckViewControls({
                     "flex items-center rounded-(--radius-control) bg-zinc-950/5 p-0.5 ring-1 ring-zinc-950/5 dark:bg-white/10 dark:ring-white/10"
                 }
             >
-                {DECK_VIEWS.map((option) => (
+                {views.map((option) => (
                     <button
                         key={option}
                         type={"button"}
@@ -152,22 +176,31 @@ export function DeckViewControls({
             <Dropdown>
                 <DropdownButton outline={true} aria-label={t("label.arrange")}>
                     <AdjustmentsHorizontalIcon />
-                    <span className={"max-sm:sr-only"}>{labels.grouping(grouping)}</span>
+                    <span className={"max-sm:sr-only"}>{groupingOptions.label(grouping)}</span>
                 </DropdownButton>
                 <DropdownMenu anchor={"bottom end"}>
-                    {DECK_GROUPINGS.map((option) => (
+                    {groupingOptions.options.map((option) => (
                         <DropdownItem key={option} onClick={() => onChangeGrouping(option)}>
                             {grouping === option ? <CheckIcon /> : <span className={"size-4"} />}
-                            <DropdownLabel>{labels.grouping(option)}</DropdownLabel>
+                            <DropdownLabel>{groupingOptions.label(option)}</DropdownLabel>
                         </DropdownItem>
                     ))}
                     <DropdownDivider />
-                    {DECK_SORTS.map((option) => (
+                    {sortOptions.options.map((option) => (
                         <DropdownItem key={option} onClick={() => onChangeSort(option)}>
                             {sort === option ? <CheckIcon /> : <span className={"size-4"} />}
-                            <DropdownLabel>{labels.sort(option)}</DropdownLabel>
+                            <DropdownLabel>{sortOptions.label(option)}</DropdownLabel>
                         </DropdownItem>
                     ))}
+                    {onChangeDescending !== undefined && (
+                        <>
+                            <DropdownDivider />
+                            <DropdownItem onClick={() => onChangeDescending(descending !== true)}>
+                                {descending === true ? <CheckIcon /> : <BarsArrowDownIcon />}
+                                <DropdownLabel>{t("label.descending")}</DropdownLabel>
+                            </DropdownItem>
+                        </>
+                    )}
                 </DropdownMenu>
             </Dropdown>
         </span>

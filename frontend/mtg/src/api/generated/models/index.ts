@@ -3195,6 +3195,41 @@ export interface EntryFeeSchema {
 }
 
 /**
+ * What a collection's list is broken into groups by
+ * 
+ * The type, mana value and colour keys follow the deck's grouping in the frontend (`deck-grouping.ts`) rule for rule, so a card lands under the same heading in both places; a shared fixture holds the two in step.
+ * @export
+ */
+export const EntryGrouping = {
+    /**
+    * One list, no headings
+    */
+    none: 'none',
+    /**
+    * The front face&#39;s primary card type
+    */
+    type: 'type',
+    /**
+    * Mana value, everything from 7 up in one group
+    */
+    mana_value: 'mana_value',
+    /**
+    * One colour, multicolour or colourless, by colour identity
+    */
+    color: 'color',
+    /**
+    * The set, newest release first
+    */
+    set: 'set',
+    /**
+    * The owner&#39;s card-wide tags, a stack listed once per tag it carries
+    */
+    tag: 'tag',
+} as const;
+export type EntryGrouping = typeof EntryGrouping[keyof typeof EntryGrouping];
+
+
+/**
  * What a collection can be ordered by
  * @export
  */
@@ -4416,6 +4451,25 @@ export interface GetPendingOidcLoginResponse {
     pending?: PendingOidcLogin | null;
 }
 /**
+ * How much of a collection one group holds, across every page
+ * @export
+ * @interface GroupTotalResponse
+ */
+export interface GroupTotalResponse {
+    /**
+     * How many copies those rows hold
+     */
+    copies: number;
+    /**
+     * The group's key, as an entry's `group` carries it
+     */
+    key: string;
+    /**
+     * How many rows are listed under it
+     */
+    stacks: number;
+}
+/**
  * A decklist to write into a deck
  * @export
  * @interface ImportDeckCardsRequest
@@ -4510,9 +4564,19 @@ export interface ListCardsResponse {
      */
     entries: Array<ListedEntryResponse>;
     /**
+     * The size of every group on this page across all pages, in the order they appear
+     */
+    groups: Array<GroupTotalResponse>;
+    /**
      * The page size actually applied, which may be below what was asked for
      */
     limit: number;
+    /**
+     * How many rows there are to page through
+     * 
+     * `total`, except when grouping by tag lists a stack once per tag.
+     */
+    listed: number;
     /**
      * Pass back as `after` to get the next page, `None` at the end
      */
@@ -4901,6 +4965,12 @@ export interface ListedEntryResponse {
      * Finish of the cards
      */
     finish: CardFinish;
+    /**
+     * The group this row is listed under, `None` without a grouping
+     * 
+     * A type slug, a mana value from `0` to `7` (which holds everything above), a colour letter, `multicolor` or `colorless`, a set code or `unknown`, a tag's id or `untagged`.
+     */
+    group?: string | null;
     /**
      * Scryfall's id of the printing
      */

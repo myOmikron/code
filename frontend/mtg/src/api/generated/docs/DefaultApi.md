@@ -8793,7 +8793,7 @@ No authorization required
 
 ## listCollectionCards
 
-> ListCardsResponse listCollectionCards(collection, after, condition, descending, finish, limit, offset, printing, rarity, search, sort)
+> ListCardsResponse listCollectionCards(collection, after, condition, descending, finish, group, limit, offset, printing, rarity, search, sort)
 
 List a page of a collection\&#39;s cards, sorted and filtered
 
@@ -8823,6 +8823,8 @@ async function example() {
     descending: true,
     // CardFinish (optional)
     finish: ...,
+    // EntryGrouping (optional)
+    group: ...,
     // number (optional)
     limit: 56,
     // number (optional)
@@ -8859,6 +8861,7 @@ example().catch(console.error);
 | **condition** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Mint, NearMint, Excellent, Good, LightPlayed, Played, Poor] |
 | **descending** | `boolean` |  | [Optional] [Defaults to `false`] |
 | **finish** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Nonfoil, Foil, Etched] |
+| **group** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: none, type, mana_value, color, set, tag] |
 | **limit** | `number` |  | [Optional] [Defaults to `60`] |
 | **offset** | `number` |  | [Optional] [Defaults to `0`] |
 | **printing** | `string` |  | [Optional] [Defaults to `undefined`] |
@@ -9367,7 +9370,7 @@ No authorization required
 
 ## listPublicCollectionCards
 
-> ListCardsResponse listPublicCollectionCards(collection, after, condition, descending, finish, limit, offset, printing, rarity, search, sort)
+> ListCardsResponse listPublicCollectionCards(collection, after, condition, descending, finish, group, limit, offset, printing, rarity, search, sort)
 
 List a page of a public collection\&#39;s cards, sorted and filtered
 
@@ -9397,6 +9400,8 @@ async function example() {
     descending: true,
     // CardFinish (optional)
     finish: ...,
+    // EntryGrouping (optional)
+    group: ...,
     // number (optional)
     limit: 56,
     // number (optional)
@@ -9433,6 +9438,7 @@ example().catch(console.error);
 | **condition** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Mint, NearMint, Excellent, Good, LightPlayed, Played, Poor] |
 | **descending** | `boolean` |  | [Optional] [Defaults to `false`] |
 | **finish** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Nonfoil, Foil, Etched] |
+| **group** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: none, type, mana_value, color, set, tag] |
 | **limit** | `number` |  | [Optional] [Defaults to `60`] |
 | **offset** | `number` |  | [Optional] [Defaults to `0`] |
 | **printing** | `string` |  | [Optional] [Defaults to `undefined`] |
@@ -9613,7 +9619,7 @@ No authorization required
 
 ## listSharedCollectionCards
 
-> ListCardsResponse listSharedCollectionCards(token, after, condition, descending, finish, limit, offset, printing, rarity, search, sort)
+> ListCardsResponse listSharedCollectionCards(token, after, condition, descending, finish, group, limit, offset, printing, rarity, search, sort)
 
 List a page of a shared collection\&#39;s cards, sorted and filtered
 
@@ -9643,6 +9649,8 @@ async function example() {
     descending: true,
     // CardFinish (optional)
     finish: ...,
+    // EntryGrouping (optional)
+    group: ...,
     // number (optional)
     limit: 56,
     // number (optional)
@@ -9679,6 +9687,7 @@ example().catch(console.error);
 | **condition** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Mint, NearMint, Excellent, Good, LightPlayed, Played, Poor] |
 | **descending** | `boolean` |  | [Optional] [Defaults to `false`] |
 | **finish** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Nonfoil, Foil, Etched] |
+| **group** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: none, type, mana_value, color, set, tag] |
 | **limit** | `number` |  | [Optional] [Defaults to `60`] |
 | **offset** | `number` |  | [Optional] [Defaults to `0`] |
 | **printing** | `string` |  | [Optional] [Defaults to `undefined`] |
