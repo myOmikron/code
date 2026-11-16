@@ -217,7 +217,7 @@ catalogs:
       version: 1.4.0
     libphonenumber-js:
       specifier: ^1.13.15
-      version: 1.13.15
+      version: 1.13.16
     mdast-util-from-markdown:
       specifier: ^2.0.2
       version: 2.1.0
@@ -432,7 +432,7 @@ importers:
         version: 31.0.0
       libphonenumber-js:
         specifier: catalog:dependencies
-        version: 1.13.15
+        version: 1.13.16
       motion:
         specifier: catalog:dependencies
         version: 14.9.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -4287,8 +4287,8 @@ packages:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
 
-  libphonenumber-js@1.13.15:
-    resolution: {integrity: sha512-AHdhEQeDFEJ4GKDAQ9AwxChy+v2kUILUB3TGQRpkXMkWePjXTU/WQEzWVQoIx/Gz8fE73Wr5SEuZCy2vk8jrMQ==}
+  libphonenumber-js@1.13.16:
+    resolution: {integrity: sha512-tIOCM9yx2Go6d5/ZANe0K+G4AZek1Ymx81HxQpf19Sri4zMP95eQbKdnUGHAvFQ4nx0PeLhFqvAfisTADXj3tQ==}
 
   lightningcss-android-arm64@1.33.0:
     resolution: {integrity: sha512-gEpRTalKdosp4Bb8qWtc2iOgE5SeIHlpS1up9bFq2wAyYhl1UdTObYiHe98zEM9SQvSoqQZ1IQD0JNpg3Ml5pg==}
@@ -9107,7 +9107,7 @@ snapshots:
       prelude-ls: 1.2.1
       type-check: 0.4.0
 
-  libphonenumber-js@1.13.15: {}
+  libphonenumber-js@1.13.16: {}
 
   lightningcss-android-arm64@1.33.0:
     optional: true
