@@ -1,6 +1,6 @@
 # Build context is the workspace root, like the Rust services:
 #   docker build -f services/mtg-graph/Dockerfile .
-FROM ghcr.io/astral-sh/uv:0.13.7-python3.14-trixie-slim@sha256:e80c05a310400cfc90af00b5b7271ef9ad24816e3265e1162af8a678e1aad099 AS build
+FROM ghcr.io/astral-sh/uv:0.13.8-python3.14-trixie-slim@sha256:81a1340fea1e72ad4a8e9a016128b0c61041cf182ea49fd788023e52842bc147 AS build
 
 WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1
