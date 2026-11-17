@@ -293,11 +293,12 @@ def read_together(*reads: Callable[[], Any]) -> list[Any]:
 def close_driver() -> None:
     """Close and discard the shared driver — process shutdown, or tests that
     repoint `settings.neo4j_uri` after a driver was already built."""
-    global _driver
+    global _driver, _creature_types
     with _driver_lock:
         if _driver is not None:
             _driver.close()
             _driver = None
+        _creature_types = None
 
 
 def verify_connectivity() -> None:
@@ -2307,6 +2308,47 @@ def channel_themes(
         ]
 
 
+_creature_types: dict[str, list[str]] | None = None
+
+
+def creature_types_by_initial() -> dict[str, list[str]]:
+    """Every creature type the graph knows, by first character.
+
+    Read once: the types only change on re-ingest.
+    """
+    global _creature_types
+    if _creature_types is None:
+        query = "MATCH (t:CreatureType) WHERE t.name <> '' RETURN t.name AS name ORDER BY name"
+        by_initial: dict[str, list[str]] = {}
+        with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+            for record in session.run(query):
+                by_initial.setdefault(record["name"][0], []).append(record["name"])
+        _creature_types = by_initial
+    return _creature_types
+
+
+def _with_text_types(rows: list[dict]) -> list[dict]:
+    """Add the creature types each row's oracle text names to its `types`.
+
+    Matched here rather than in Cypher, where it scanned every type per card.
+    A type whose first character the text lacks is not looked for.
+    """
+    by_initial = creature_types_by_initial()
+    for row in rows:
+        text = row["oracle_text"] or ""
+        row["types"] = [
+            *row["types"],
+            *(
+                name
+                for initial, names in by_initial.items()
+                if initial in text
+                for name in names
+                if name in text
+            ),
+        ]
+    return rows
+
+
 def tribe_references(oracle_ids: list[str]) -> list[dict]:
     """Which specific creature types each card is bound to, if any.
 
@@ -2320,8 +2362,8 @@ def tribe_references(oracle_ids: list[str]) -> list[dict]:
     plainly about Goblins, and rescues Dragonlord's Servant, a Goblin whose
     Dragon-ness exists only as the word in his text.
 
-    The text scan matches the graph's own CreatureType vocabulary with plain
-    CONTAINS. Type names are capitalised and oracle prose is not, so "Elf"
+    The text scan matches the graph's own CreatureType vocabulary as plain
+    substrings. Type names are capitalised and oracle prose is not, so "Elf"
     does not match "itself"; plurals match as substrings for free.
     """
     if not oracle_ids:
@@ -2330,16 +2372,13 @@ def tribe_references(oracle_ids: list[str]) -> list[dict]:
     query = """
     MATCH (c:Card) WHERE c.oracle_id IN $oracle_ids
     OPTIONAL MATCH (c)-[:IS_TYPE|CARES_ABOUT_TYPE|MAKES_TYPE]->(t:CreatureType)
-    WITH c, collect(DISTINCT t.name) AS edge_types
-    OPTIONAL MATCH (n:CreatureType) WHERE c.oracle_text CONTAINS n.name
-    WITH c, edge_types, collect(DISTINCT n.name) AS text_types
-    RETURN c.oracle_id AS oracle_id,
-           edge_types + text_types AS types,
+    WITH c, collect(DISTINCT t.name) AS types
+    RETURN c.oracle_id AS oracle_id, types,
            any(k IN coalesce(c.keywords, []) WHERE k = 'Changeling') AS changeling,
            c.oracle_text AS oracle_text
     """
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
-        return [dict(r) for r in session.run(query, oracle_ids=oracle_ids)]
+        return _with_text_types([dict(r) for r in session.run(query, oracle_ids=oracle_ids)])
 
 
 # `tribe_references` minus `IS_TYPE`. A card's type line is identity, not a
@@ -2349,11 +2388,8 @@ def tribe_references(oracle_ids: list[str]) -> list[dict]:
 ABILITY_TRIBE_REFERENCES = """
 MATCH (c:Card) WHERE c.oracle_id IN $oracle_ids
 OPTIONAL MATCH (c)-[:CARES_ABOUT_TYPE|MAKES_TYPE]->(t:CreatureType)
-WITH c, collect(DISTINCT t.name) AS edge_types
-OPTIONAL MATCH (n:CreatureType) WHERE c.oracle_text CONTAINS n.name
-WITH c, edge_types, collect(DISTINCT n.name) AS text_types
-RETURN c.oracle_id AS oracle_id,
-       edge_types + text_types AS types,
+WITH c, collect(DISTINCT t.name) AS types
+RETURN c.oracle_id AS oracle_id, types,
        any(k IN coalesce(c.keywords, []) WHERE k = 'Changeling') AS changeling,
        c.oracle_text AS oracle_text
 """
@@ -2383,7 +2419,8 @@ def ability_tribe_references(oracle_ids: list[str]) -> list[dict]:
         return []
 
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
-        return [dict(r) for r in session.run(ABILITY_TRIBE_REFERENCES, oracle_ids=oracle_ids)]
+        rows = [dict(r) for r in session.run(ABILITY_TRIBE_REFERENCES, oracle_ids=oracle_ids)]
+    return _with_text_types(rows)
 
 
 def fits_theme_among(oracle_ids: list[str], theme_ids: list[str]) -> list[dict]:

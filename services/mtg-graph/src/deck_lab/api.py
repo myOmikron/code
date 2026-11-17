@@ -315,12 +315,14 @@ def _startup_warmup() -> None:
         role_weight_ceiling,
         typal_density,
     )
+    from .graph import creature_types_by_initial
 
     steps = (
         ("resource_idf", resource_idf),
         ("resource_relative_idf", resource_relative_idf),
         ("typal_density", typal_density),
         ("role_weight_ceiling", role_weight_ceiling),
+        ("creature_types", creature_types_by_initial),
         ("facets", _facets_cached),
     )
 
