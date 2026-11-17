@@ -137,6 +137,16 @@ export function DatingVerdict(props: DatingVerdictProps) {
                         </PrimaryButton>
                         <button
                             type={"button"}
+                            onClick={() => onStartDeck("blind")}
+                            disabled={busy}
+                            className={
+                                "h-11 rounded-(--radius-control) border border-white/30 font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-400 disabled:opacity-50"
+                            }
+                        >
+                            {t("button.blind-date")}
+                        </button>
+                        <button
+                            type={"button"}
                             onClick={() => onStartDeck("build")}
                             disabled={busy}
                             className={

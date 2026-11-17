@@ -8,6 +8,7 @@
     },
     "button": {
         "answer-questions": "Profil anlegen",
+        "blind-date": "Blind Date",
         "build-anyway": "Ohne Date bauen",
         "come-back": "Nein, komm zurück",
         "continue-date": "Date fortsetzen",
@@ -28,9 +29,13 @@
         "start-deck": "Deck anfangen",
         "super-like": "Super Like",
         "swipe": "Zurück zum Swipen",
+        "swipe-rest": "Swipe den Rest",
         "unmatch": "Match auflösen"
     },
     "description": {
+        "blind-added_one": "{{count}} Karte ist schon drin.",
+        "blind-added_other": "{{count}} Karten sind schon drin.",
+        "blind-failed": "Dein Date hat dich versetzt. Das Deck gehört trotzdem dir.",
         "bring-bad": "Hm. Nicht so meins.",
         "bring-fine": "Könnte passen.",
         "bring-good": "Ja! Genau mein Typ.",
@@ -87,6 +92,8 @@
         "your-turn": "Du bist dran: Was bringst du mit?"
     },
     "heading": {
+        "blind-reveal": "Dein Date: {{name}}",
+        "blind-waiting": "Dein Date macht sich fertig …",
         "date-done": "Das lief gut.",
         "date-left": "{{name}} hat das Date verlassen.",
         "interests": "Interessen",

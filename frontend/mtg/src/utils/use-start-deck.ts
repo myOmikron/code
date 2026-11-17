@@ -10,10 +10,12 @@ export type DeckCommander = {
     name: string;
     /** The printing to put in the command zone */
     printing: string | null | undefined;
+    /** Art crop url, for a Blind Date's reveal */
+    art?: string | null;
 };
 
-/** Plan the themes on a date first, or go straight to the cards */
-export type StartMode = "date" | "build";
+/** Plan the themes on a date, roll them on a Blind Date, or go straight to the cards */
+export type StartMode = "date" | "blind" | "build";
 
 /**
  * Creates a Commander deck around a match, then opens a date or the deck.
@@ -38,6 +40,14 @@ export function useStartDeck(): (commander: DeckCommander, mode: StartMode) => P
         if (mode === "date") {
             await Api.dating.date.start(commander.commander, created.uuid);
             await navigate({ to: "/dating/date/$deckUuid", params: { deckUuid: created.uuid } });
+            return;
+        }
+        if (mode === "blind") {
+            await navigate({
+                to: "/dating/blind/$deckUuid",
+                params: { deckUuid: created.uuid },
+                search: { commander: commander.commander, name: commander.name, art: commander.art ?? undefined },
+            });
             return;
         }
         await navigate({ to: "/decks/$deckUuid/cards", params: { deckUuid: created.uuid } });

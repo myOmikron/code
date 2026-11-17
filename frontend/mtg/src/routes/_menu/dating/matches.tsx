@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { DateStatus } from "src/api/generated";
 import type { DateResponse } from "src/api/generated";
+import { DatingStartDialog } from "src/components/dating-start-dialog";
 import { ManaCost } from "src/components/mana-cost";
 import { RequireAccount } from "src/components/require-account";
 import i18n from "src/i18n";
@@ -32,10 +33,13 @@ function RouteComponent() {
     const startDeck = useStartDeck();
     const [busy, setBusy] = useState<string | null>(null);
 
+    const [starting, setStarting] = useState<DateResponse | null>(null);
+
     const commanderOf = (date: DateResponse) => ({
         commander: date.commander,
         name: date.name,
         printing: date.printing,
+        art: date.image_art_crop,
     });
 
     const act = async (date: DateResponse, action: () => Promise<unknown>) => {
@@ -105,22 +109,9 @@ function RouteComponent() {
                             {t("button.continue-date")}
                         </Button>
                     ) : (
-                        <>
-                            <Button
-                                color={"lime"}
-                                disabled={busy !== null}
-                                onClick={() => act(date, () => startDeck(commanderOf(date), "date"))}
-                            >
-                                {t("button.plan-date")}
-                            </Button>
-                            <Button
-                                plain={true}
-                                disabled={busy !== null}
-                                onClick={() => act(date, () => startDeck(commanderOf(date), "build"))}
-                            >
-                                {t("button.just-build")}
-                            </Button>
-                        </>
+                        <Button color={"lime"} disabled={busy !== null} onClick={() => setStarting(date)}>
+                            {t("button.start-deck")}
+                        </Button>
                     )}
                 </div>
             </li>
@@ -154,6 +145,16 @@ function RouteComponent() {
                     )}
                 </section>
             </div>
+            <DatingStartDialog
+                name={starting?.name ?? null}
+                busy={busy !== null}
+                onClose={() => setStarting(null)}
+                onStart={(mode) => {
+                    if (starting === null) return;
+                    const date = starting;
+                    void act(date, () => startDeck(commanderOf(date), mode));
+                }}
+            />
         </RequireAccount>
     );
 }

@@ -3,6 +3,30 @@ import { resolveLookups } from "src/utils/printing-catalog";
 import { Printing, resolvePrintings } from "src/utils/scryfall";
 
 /**
+ * Resolves card names to the printings the app would file them as.
+ *
+ * @param names card names
+ * @returns name to printing, for the names the catalog could place
+ */
+export async function resolveCardNames(names: Array<string>): Promise<Map<string, Printing>> {
+    const resolved = await resolveLookups(
+        names.map((name) => ({ name })),
+        undefined,
+        true,
+    );
+    const ids = resolved.filter((printing) => printing !== null).map((printing) => printing.id);
+    const printings = await resolvePrintings(ids);
+    const byName = new Map<string, Printing>();
+    names.forEach((name, index) => {
+        const placed = resolved[index];
+        if (placed === null) return;
+        const printing = printings.get(placed.id);
+        if (printing !== undefined) byName.set(name, printing);
+    });
+    return byName;
+}
+
+/**
  * The answer when there is nothing to resolve. One stable reference, so an
  * empty result never reads as "a map that just changed" to a caller.
  */
@@ -50,23 +74,7 @@ export type SuggestionCards = {
 export function useSuggestionCards(names: Array<string>): SuggestionCards {
     const query = useQuery({
         queryKey: ["suggestion-cards", names.join("\n")],
-        queryFn: async () => {
-            const resolved = await resolveLookups(
-                names.map((name) => ({ name })),
-                undefined,
-                true,
-            );
-            const ids = resolved.filter((printing) => printing !== null).map((printing) => printing.id);
-            const printings = await resolvePrintings(ids);
-            const byName = new Map<string, Printing>();
-            names.forEach((name, index) => {
-                const placed = resolved[index];
-                if (placed === null) return;
-                const printing = printings.get(placed.id);
-                if (printing !== undefined) byName.set(name, printing);
-            });
-            return byName;
-        },
+        queryFn: () => resolveCardNames(names),
         enabled: names.length > 0,
         // Consecutive reports overlap heavily in the names they carry, so the
         // previous name→printing map stands in while the new names resolve —

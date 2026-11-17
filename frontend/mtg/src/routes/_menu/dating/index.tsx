@@ -303,6 +303,7 @@ function RouteComponent() {
                                         commander: date.card.commander,
                                         name: date.card.name,
                                         printing: date.card.printing,
+                                        art: date.card.image_art_crop,
                                     },
                                     mode,
                                 );
