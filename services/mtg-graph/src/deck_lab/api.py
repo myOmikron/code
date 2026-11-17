@@ -371,7 +371,17 @@ app.add_middleware(UntracedRequests)
 # /facets is cached, /search is a single ~20ms query, and /health must stay
 # answerable for a load balancer — none of them are worth limiting.
 _RATE_LIMITED_PATHS = frozenset(
-    {"/suggestions", "/diagnostics", "/swaps", "/replace", "/fill", "/warm", "/combos", "/lines"}
+    {
+        "/suggestions",
+        "/diagnostics",
+        "/swaps",
+        "/replace",
+        "/fill",
+        "/warm",
+        "/combos",
+        "/lines",
+        "/dating/blind",
+    }
 )
 _RATE_LIMITER = RateLimiter(settings.rate_limit_rps, settings.rate_limit_burst)
 
@@ -670,6 +680,66 @@ def post_dating_date(request: DatingDateRequest) -> DatePlan:
     if row is None:
         raise HTTPException(status_code=404, detail="commander is not in the dating pool")
     return _answer_cached(dating_date_cache, request.commander, lambda: dating.date_plan(row))
+
+
+class DatingBlindRequest(BaseModel):
+    """A Blind Date: roll themes for the commander and fill a deck to them."""
+
+    commander: OracleId
+    bracket: float | None = Field(None, ge=1, le=5)
+    seed: int | None = None
+
+
+@app.post("/dating/blind", response_model=dating.BlindDate)
+def post_dating_blind(request: DatingBlindRequest) -> dating.BlindDate:
+    """Roll the themes, fill the deck, and say which cards go in right away."""
+    import random as random_module
+
+    from .graph import fetch_deck, fits_theme_among, inclusion_among
+    from .themes import FIT_THRESHOLD
+
+    row = _dating_pool().get(request.commander)
+    if row is None:
+        raise HTTPException(status_code=404, detail="commander is not in the dating pool")
+    rng = random_module.Random(request.seed)
+    plan = _answer_cached(dating_date_cache, request.commander, lambda: dating.date_plan(row))
+    themes = dating.roll_themes(plan, row, rng)
+    speed = 0.5 if request.bracket is None else min(1.0, max(0.0, (request.bracket - 1) / 4))
+    try:
+        result = run_fill(
+            [request.commander],
+            [row["name"]],
+            quantities={request.commander: 1},
+            commander_oracle_id=request.commander,
+            speed=speed,
+            theme_targets={theme.theme: dating.LEVEL_SHARE[theme.level] for theme in themes},
+            deck_size=99,
+            allow_network=lambda: False,
+        )
+    except SolverBusy as exc:
+        raise HTTPException(
+            status_code=429,
+            detail=str(exc),
+            headers={"Retry-After": str(int(DEFAULT_TIME_LIMIT))},
+        ) from exc
+
+    chosen = [(card.oracle_id, card.name) for card in result.chosen]
+    ids = [oid for oid, _ in chosen]
+    lands = {
+        card["oracle_id"]
+        for card in fetch_deck(dict.fromkeys(ids, 1))
+        if "Land" in (card.get("type_line") or "")
+    }
+    fitting = {
+        fit["oracle_id"]
+        for fit in fits_theme_among(ids, [t.theme for t in themes])
+        if (fit["fit"] or 0.0) >= FIT_THRESHOLD
+    }
+    inclusion = inclusion_among(request.commander, ids)
+    add_now, open_slots = dating.split_fill(chosen, lands, fitting, inclusion)
+    return dating.BlindDate(
+        themes=themes, add_now=add_now, open_slots=open_slots, solved=result.solved
+    )
 
 
 def _apply_expected_meta(diag: Diagnostics, expected_meta: list[str]) -> Diagnostics:

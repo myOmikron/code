@@ -56,6 +56,44 @@ export interface AxesPosition {
      */
     note?: string;
 }
+/**
+ * A card a Blind Date puts in the deck right away.
+ * @export
+ * @interface BlindCard
+ */
+export interface BlindCard {
+    /**
+     * 
+     */
+    oracle_id: string;
+    /**
+     * 
+     */
+    name: string;
+}
+/**
+ * A rolled, filled deck: what goes in now and how much is left to swipe.
+ * @export
+ * @interface BlindDate
+ */
+export interface BlindDate {
+    /**
+     * 
+     */
+    themes: Array<RolledTheme>;
+    /**
+     * 
+     */
+    add_now: Array<BlindCard>;
+    /**
+     * 
+     */
+    open_slots: number;
+    /**
+     * 
+     */
+    solved: boolean;
+}
 
 /**
  * User-facing composition categories, shown on the diagnostics tab.
@@ -519,6 +557,25 @@ export const DateThemeTierEnum = {
 } as const;
 export type DateThemeTierEnum = typeof DateThemeTierEnum[keyof typeof DateThemeTierEnum];
 
+/**
+ * A Blind Date: roll themes for the commander and fill a deck to them.
+ * @export
+ * @interface DatingBlindRequest
+ */
+export interface DatingBlindRequest {
+    /**
+     * 
+     */
+    commander: string;
+    /**
+     * 
+     */
+    bracket?: number | null;
+    /**
+     * 
+     */
+    seed?: number | null;
+}
 /**
  * A commander as the swipe stack shows it.
  * @export
@@ -1894,6 +1951,37 @@ export interface ResourceBalance {
      */
     wanted_cards?: Array<string>;
 }
+/**
+ * A theme a Blind Date rolled, and its level.
+ * @export
+ * @interface RolledTheme
+ */
+export interface RolledTheme {
+    /**
+     * 
+     */
+    theme: string;
+    /**
+     * 
+     */
+    label: string;
+    /**
+     * 
+     */
+    level: RolledThemeLevelEnum;
+}
+
+
+/**
+ * @export
+ */
+export const RolledThemeLevelEnum = {
+    light: 'light',
+    core: 'core',
+    allin: 'allin',
+} as const;
+export type RolledThemeLevelEnum = typeof RolledThemeLevelEnum[keyof typeof RolledThemeLevelEnum];
+
 /**
  * The scene's measured interaction profile — `MetaThreatTable`'s
  * discipline: window, decks scanned, and the date measured travel beside

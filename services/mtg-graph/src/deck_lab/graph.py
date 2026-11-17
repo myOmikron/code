@@ -1432,6 +1432,22 @@ def theme_fit_counts(oracle_ids: list[str], threshold: float) -> dict[str, int]:
         }
 
 
+def inclusion_among(commander: str, oracle_ids: list[str]) -> dict[str, float]:
+    """The commander's EDHREC inclusion rate for each of the cards it recommends."""
+    if not oracle_ids:
+        return {}
+    query = """
+    MATCH (:Card {oracle_id: $commander})-[r:RECOMMENDS]->(x:Card)
+    WHERE x.oracle_id IN $ids
+    RETURN x.oracle_id AS oracle_id, r.inclusion_rate AS rate
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return {
+            r["oracle_id"]: float(r["rate"] or 0.0)
+            for r in session.run(query, commander=commander, ids=oracle_ids)
+        }
+
+
 def recommendations_for(commander_name: str, *, limit: int = 15, min_synergy: float = 0.0):
     """Top recommendations already persisted for a commander."""
     query = """

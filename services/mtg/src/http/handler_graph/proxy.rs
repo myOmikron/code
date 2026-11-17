@@ -51,6 +51,12 @@ pub async fn post_fill(req: Request) -> Response {
     proxy("/fill", req).await
 }
 
+/// A Blind Date: rolled themes and a filled deck
+#[post("/dating/blind")]
+pub async fn post_dating_blind(req: Request) -> Response {
+    proxy("/dating/blind", req).await
+}
+
 /// Graph-backed card search
 #[post("/search")]
 pub async fn post_search(req: Request) -> Response {
