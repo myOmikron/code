@@ -1211,13 +1211,25 @@ def suggest_swaps(
     into both — and into the cut-scoring template, so a Rule 0 deck's cuts
     are judged against the same resized quotas its report shows.
     """
-    from .diagnostics import DeckEntry, diagnose
+    from .diagnostics import DeckEntry, DeckRows, diagnose
     from .eminence import apply_discount, discount_for
-    from .graph import deck_card_resources, deck_card_roles, fetch_deck, scene_play_rates
+    from .graph import (
+        deck_card_resources,
+        deck_card_roles,
+        fetch_deck,
+        read_together,
+        scene_play_rates,
+    )
     from .suggestions import apply_theme_targets, effective_commanders, suggest
 
     deck = quantities or dict.fromkeys(deck_oracle_ids, 1)
-    cards = fetch_deck(deck)
+    cards, card_roles, card_resources = read_together(
+        lambda: fetch_deck(deck),
+        lambda: deck_card_roles(deck),
+        lambda: deck_card_resources(deck),
+    )
+    # For `diagnose`, as fetched: the rows below get discount and play rates written in.
+    fetched = DeckRows([dict(card) for card in cards], card_roles, card_resources)
     # As cast, not as printed — cut scoring's curve has to bucket the way the
     # report it argues against does.
     apply_discount(
@@ -1234,8 +1246,6 @@ def suggest_swaps(
                 list(deck), effective_commanders(commander_oracle_id, commander_oracle_ids)
             ),
         )
-    card_roles = deck_card_roles(deck)
-    card_resources = deck_card_resources(deck)
 
     # The commander anchors the profile here exactly as it does in suggest()'s
     # internal diagnose — without it, cut scoring's shortfall view followed
@@ -1250,6 +1260,7 @@ def suggest_swaps(
         commander_oracle_ids=commander_oracle_ids,
         deck_size=deck_size,
         allow_network=True,
+        fetched=fetched,
     )
     wanted = {row.resource: row.gap for row in report.balance if row.gap > 0}
 

@@ -12,7 +12,9 @@ artifacts; 3 make them" — and it falls straight out of the bipartite layer.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
+from typing import NamedTuple
 
 from pydantic import BaseModel, Field
 
@@ -832,6 +834,23 @@ def build_diagnostics(
     )
 
 
+class DeckRows(NamedTuple):
+    """A deck as `fetch_deck`, `deck_card_roles` and `deck_card_resources` return it."""
+
+    cards: list[dict]
+    card_roles: list[dict]
+    resources_by_card: dict[str, dict[str, set[str]]]
+
+
+def _role_weights(card_roles: list[dict]) -> dict[str, float]:
+    """Weight per role over the deck, quantities included."""
+    terms: dict[str, list[float]] = {}
+    for entry in card_roles:
+        for role, weight in entry["roles"].items():
+            terms.setdefault(role, []).append(weight * entry["qty"])
+    return {role: math.fsum(values) for role, values in terms.items()}
+
+
 @deck_span("diagnose", deck="entries")
 def diagnose(
     entries: list[DeckEntry],
@@ -844,8 +863,12 @@ def diagnose(
     commander_oracle_ids: list[str] | None = None,
     deck_size: int = 99,
     allow_network: bool = False,
+    fetched: DeckRows | None = None,
 ) -> Diagnostics:
     """Fetch from the graph and build the report.
+
+    `fetched` is the caller's own read of this exact deck, used instead of
+    reading it again.
 
     `deck_size` is the deck's *target* card count outside the command zone —
     Rule 0 decks may aim at 60 or 150. Every quota this report grades against
@@ -882,8 +905,8 @@ def diagnose(
         deck_card_roles,
         deck_card_types,
         deck_resource_balance,
-        deck_role_weights,
         fetch_deck,
+        read_together,
     )
     from .suggestions import effective_commanders
     from .themes import deck_theme_breakdown, deck_typal_profile
@@ -891,29 +914,42 @@ def diagnose(
     effective = effective_commanders(commander_oracle_id, commander_oracle_ids)
 
     deck = {entry.oracle_id: entry.qty for entry in entries}
-    cards = fetch_deck(deck)
+    # Commanders outside the list: their names are needed below.
+    zone = {oid: 1 for oid in effective if oid not in deck}
+
+    # Themes are weighted by how much of the deck they describe, so a card
+    # present four times counts four times.
+    #
+    # `card_roles` serves the cEDH classifier, the interaction grid and the
+    # role totals.
+    if fetched is None:
+        rows, resources_by_card, card_roles, type_rows, balance = read_together(
+            lambda: fetch_deck({**deck, **zone}),
+            lambda: deck_card_resources(deck),
+            lambda: deck_card_roles(deck),
+            lambda: deck_card_types(deck),
+            lambda: deck_resource_balance(deck),
+        )
+    else:
+        seats, type_rows, balance = read_together(
+            lambda: fetch_deck(zone) if zone else [],
+            lambda: deck_card_types(deck),
+            lambda: deck_resource_balance(deck),
+        )
+        # Copies: the discount below is written into the rows.
+        rows = [*(dict(card) for card in fetched.cards), *seats]
+        resources_by_card, card_roles = fetched.resources_by_card, fetched.card_roles
+    cards = [row for row in rows if row["oracle_id"] in deck]
+    zone_rows = [row for row in rows if row["oracle_id"] not in deck]
 
     # As cast, not as printed — an eminence discount (The Ur-Dragon) moves the
     # curve and the average here exactly as the statistics tab counts them.
     from .eminence import apply_discount, discount_for
 
-    apply_discount(cards, discount_for(cards, effective))
+    apply_discount(cards, discount_for([*cards, *zone_rows], effective))
 
     found = {card["oracle_id"] for card in cards}
     unresolved = [oid for oid in deck if oid not in found]
-
-    # Themes are weighted by how much of the deck they describe, so a card
-    # present four times counts four times.
-    resources_by_card = deck_card_resources(deck)
-
-    # `card_roles` is fetched here — earlier than every prior version of this
-    # function needed it — because the cEDH sub-archetype classifier (Task E
-    # follow-up, cEDH Pro round) has to run before the type-target block
-    # below builds this deck's `conditioned_template`, and classification
-    # needs it alongside `cards`/`resources_by_card` just fetched. The single
-    # fetch still does both jobs: this classification and, further down,
-    # `build_interaction_grid`'s.
-    card_roles = deck_card_roles(deck)
 
     # `None` below bracket 5 — the same short-circuit `build_interaction_grid`
     # uses, for the same reason: a casual deck has no turbo/midrange/stax to
@@ -963,7 +999,7 @@ def diagnose(
     # creature supplies it, so a stray one floods it: Yawgmoth's "protection
     # from Humans" read 42 cards as Typal. Only a commander that cares about a
     # specific type (Krenko) keeps it; the typal profile below names the tribe.
-    types_by_card = {row["oracle_id"]: row for row in deck_card_types(deck)}
+    types_by_card = {row["oracle_id"]: row for row in type_rows}
     names_a_type = any(types_by_card.get(seat_id, {}).get("cares_type") for seat_id in effective)
     if commander_resources is not None and not names_a_type:
         commander_resources[1].discard(Resource.TRIBAL_PAYOFF)
@@ -1007,9 +1043,7 @@ def diagnose(
 
     # --- type targets: conditioned on commander and, when decisive, theme
     # or tribe -----------------------------------------------------------
-    # Resolved here because this is the one place that knows all three. The
-    # commander usually sits outside the deck entries, so its name may need
-    # one extra single-row fetch.
+    # Resolved here because this is the one place that knows all three.
     #
     # Deliberately keyed on the *primary* commander alone, even when the deck
     # fields several: each target set is one page's empirical distribution,
@@ -1020,11 +1054,8 @@ def diagnose(
     commander_name = None
     if commander_oracle_id:
         commander_name = next(
-            (c["name"] for c in cards if c["oracle_id"] == commander_oracle_id), None
+            (c["name"] for c in rows if c["oracle_id"] == commander_oracle_id), None
         )
-        if commander_name is None:
-            rows = fetch_deck({commander_oracle_id: 1})
-            commander_name = rows[0]["name"] if rows else None
 
     scale = deck_size / 99
     type_targets, type_source = resolve_type_targets(
@@ -1117,8 +1148,8 @@ def diagnose(
 
     return build_diagnostics(
         cards,
-        deck_role_weights(deck),
-        deck_resource_balance(deck),
+        _role_weights(card_roles),
+        balance,
         card_roles,
         commander_resources=commander_resources,
         theme_profile=profile,

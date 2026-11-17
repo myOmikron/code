@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     fill_max_concurrent: int = 3
     fill_acquire_timeout_seconds: float = 0.0
 
+    # Threads for graph reads a request runs side by side.
+    graph_read_workers: int = 16
+
     # Corpus scans (IDF, typal density, facets) paid at boot instead of inside
     # the first request. Runs on every --reload restart in dev too.
     warmup_on_start: bool = True

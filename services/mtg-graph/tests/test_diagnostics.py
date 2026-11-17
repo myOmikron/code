@@ -449,7 +449,6 @@ def _stub_diagnose_graph(monkeypatch, *, resources, names=None):
     monkeypatch.setattr(graph, "deck_card_roles", lambda deck: [])
     monkeypatch.setattr(graph, "deck_card_types", lambda deck: [])
     monkeypatch.setattr(graph, "deck_resource_balance", lambda deck: {})
-    monkeypatch.setattr(graph, "deck_role_weights", lambda deck: {})
     monkeypatch.setattr(diag, "resource_idf", lambda: {})
     monkeypatch.setattr(diag, "typal_density", lambda: {})
     # `build_interaction_grid`'s graph touches — no-ops below bracket 5

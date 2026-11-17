@@ -125,7 +125,6 @@ def _stub_deck_graph(monkeypatch) -> None:
     monkeypatch.setattr(graph, "deck_card_roles", lambda deck: [])
     monkeypatch.setattr(graph, "deck_card_types", lambda deck: [])
     monkeypatch.setattr(graph, "deck_resource_balance", lambda deck: {})
-    monkeypatch.setattr(graph, "deck_role_weights", lambda deck: {})
     monkeypatch.setattr(graph, "resource_scene_supply", lambda *a, **kw: 0)
     monkeypatch.setattr(diagnostics, "resource_idf", lambda: {})
     monkeypatch.setattr(diagnostics, "typal_density", lambda: {})
