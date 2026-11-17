@@ -510,14 +510,15 @@ def _fill_deck(
         primary_type,
         type_counts_from_cards,
     )
-    from .diagnostics import DeckEntry, _typed_roles, diagnose
-    from .graph import cards_role_weights, deck_card_roles, fetch_deck
+    from .diagnostics import DeckEntry, DeckRows, _typed_roles, diagnose
+    from .graph import cards_role_weights, deck_card_roles, fetch_deck, read_together
     from .suggestions import effective_commanders, suggest
     from .type_targets import conditioned_template, targets_from_report
 
     deck = quantities or dict.fromkeys(deck_oracle_ids, 1)
-    cards = fetch_deck(deck)
-    card_roles = deck_card_roles(deck)
+    cards, card_roles = read_together(lambda: fetch_deck(deck), lambda: deck_card_roles(deck))
+    # For `diagnose`, as fetched: the rows below get the discount written in.
+    fetched = DeckRows([dict(card) for card in cards], card_roles)
 
     # The command zone sits outside the 99 — every seat of it, not just the
     # anchor's.
@@ -560,6 +561,7 @@ def _fill_deck(
         commander_oracle_ids=commander_oracle_ids,
         deck_size=deck_size,
         allow_network=True,
+        fetched=fetched,
     )
 
     report = suggest(

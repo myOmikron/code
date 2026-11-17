@@ -1669,6 +1669,7 @@ def find_replacements(
         cards_theme_fits,
         deck_card_roles,
         fetch_deck,
+        read_together,
         scene_play_rates,
     )
     from .suggestions import effective_commanders, suggest
@@ -1679,7 +1680,17 @@ def find_replacements(
         return {"target": None, "replacements": [], "notes": ["The commander cannot be replaced."]}
 
     deck = quantities or dict.fromkeys(deck_oracle_ids, 1)
-    cards = fetch_deck(deck)
+    cards, card_roles = read_together(lambda: fetch_deck(deck), lambda: deck_card_roles(deck))
+    # For `suggest`'s own diagnosis of the deck without the target, as fetched:
+    # the rows below get discount and play rates written in.
+    without_target = None
+    if list(deck) == list(deck_oracle_ids):
+        from .diagnostics import DeckRows
+
+        without_target = DeckRows(
+            [dict(card) for card in cards if card["oracle_id"] != target_oracle_id],
+            [row for row in card_roles if row["oracle_id"] != target_oracle_id],
+        )
     # As cast, not as printed — the shape deltas below bucket the deck's own
     # rows, and the adds arrive already discounted from `suggest`.
     from .eminence import apply_discount, discount_for
@@ -1695,7 +1706,6 @@ def find_replacements(
             list(deck), effective_commanders(commander_oracle_id, commander_oracle_ids)
         )
         apply_play_rates(cards, scene_rates)
-    card_roles = deck_card_roles(deck)
 
     target = next((c for c in cards if c["oracle_id"] == target_oracle_id), None)
     if target is None:
@@ -1761,6 +1771,7 @@ def find_replacements(
         identity=identity,
         deck_size=deck_size,
         allow_network=allow_network,
+        fetched=without_target,
     )
 
     # The target is reachable as a candidate here — `remaining` drops it from

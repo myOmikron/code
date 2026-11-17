@@ -835,11 +835,14 @@ def build_diagnostics(
 
 
 class DeckRows(NamedTuple):
-    """A deck as `fetch_deck`, `deck_card_roles` and `deck_card_resources` return it."""
+    """A deck as `fetch_deck`, `deck_card_roles` and `deck_card_resources` return it.
+
+    The resources may be left out; `diagnose` then reads them itself.
+    """
 
     cards: list[dict]
     card_roles: list[dict]
-    resources_by_card: dict[str, dict[str, set[str]]]
+    resources_by_card: dict[str, dict[str, set[str]]] | None = None
 
 
 def _role_weights(card_roles: list[dict]) -> dict[str, float]:
@@ -931,14 +934,16 @@ def diagnose(
             lambda: deck_resource_balance(deck),
         )
     else:
-        seats, type_rows, balance = read_together(
+        held = fetched.resources_by_card
+        seats, type_rows, balance, resources_by_card = read_together(
             lambda: fetch_deck(zone) if zone else [],
             lambda: deck_card_types(deck),
             lambda: deck_resource_balance(deck),
+            lambda: deck_card_resources(deck) if held is None else held,
         )
         # Copies: the discount below is written into the rows.
         rows = [*(dict(card) for card in fetched.cards), *seats]
-        resources_by_card, card_roles = fetched.resources_by_card, fetched.card_roles
+        card_roles = fetched.card_roles
     cards = [row for row in rows if row["oracle_id"] in deck]
     zone_rows = [row for row in rows if row["oracle_id"] not in deck]
 

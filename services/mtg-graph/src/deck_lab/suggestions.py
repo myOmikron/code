@@ -56,7 +56,7 @@ from .type_targets import CEDH_MIN_DECKS
 from .vocabulary import Bucket, Resource, Role
 
 if TYPE_CHECKING:
-    from .diagnostics import Diagnostics
+    from .diagnostics import DeckRows, Diagnostics
     from .themes import Theme
 
 log = structlog.get_logger(__name__)
@@ -2949,13 +2949,16 @@ def suggest(
     deck_size: int = 99,
     channels: set[str] | None = None,
     diagnostics: Diagnostics | None = None,
+    fetched: DeckRows | None = None,
     combos: dict | None = None,
     allow_network: bool = True,
 ) -> SuggestionReport:
     """Union the retrieval channels and rank the result.
 
-    `combos` is the caller's own `deck_combos` answer for this deck, used
-    instead of looking the combos up again.
+    `fetched` is the caller's own read of this exact deck, for the `diagnose`
+    made here when no `diagnostics` came along. `combos` is the caller's own
+    `deck_combos` answer for this deck, used instead of looking the combos up
+    again.
 
     `identity` is the deck's claimed colours (Rule 0 house rules) — WUBRG
     letters. `None` derives from the commander; `[]` is a deliberate
@@ -3365,6 +3368,7 @@ def suggest(
             commander_oracle_ids=commander_oracle_ids,
             deck_size=deck_size,
             allow_network=True,
+            fetched=fetched,
         )
     # --- Theme targets: "how much of this theme", read against the report --
     # Resolved before anything reads the preference lists, so every consumer
