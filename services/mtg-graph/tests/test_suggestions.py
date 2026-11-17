@@ -2665,6 +2665,33 @@ def test_the_ability_tribe_references_query_never_reads_is_type():
     assert "IS_TYPE" not in graph.ABILITY_TRIBE_REFERENCES
 
 
+def test_types_named_in_the_text_join_the_ones_on_the_edges(monkeypatch):
+    """The text half of both lookups: capitalised type names as substrings,
+    so a plural counts and "itself" does not name an Elf."""
+    from deck_lab import graph
+
+    monkeypatch.setattr(
+        graph,
+        "creature_types_by_initial",
+        lambda: {"D": ["Dragon"], "E": ["Elf"], "G": ["Goblin"]},
+    )
+    rows = [
+        {"oracle_id": "grenade", "types": [], "oracle_text": "Sacrifice a Goblin: deal 5."},
+        {"oracle_id": "servant", "types": ["Goblin"], "oracle_text": "Dragons cost {1} less."},
+        {"oracle_id": "mirror", "types": [], "oracle_text": "Copy it, except it's itself."},
+        {"oracle_id": "vanilla", "types": ["Elf"], "oracle_text": None},
+    ]
+
+    types = {row["oracle_id"]: row["types"] for row in graph._with_text_types(rows)}
+
+    assert types == {
+        "grenade": ["Goblin"],
+        "servant": ["Goblin", "Dragon"],
+        "mirror": [],
+        "vanilla": ["Elf"],
+    }
+
+
 def test_a_goblin_king_shaped_bridge_row_survives_without_tribes_and_dies_with_them(monkeypatch):
     """The suggest()-level version of the unit tests above: the same bridge
     row survives a tribeless deck and is dropped once the deck has a tribe
