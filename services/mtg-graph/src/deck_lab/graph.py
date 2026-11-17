@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import contextvars
-import threading
 from collections.abc import Callable, Iterable, Iterator
-from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import contextmanager
 from threading import Lock
 from typing import Any
@@ -33,7 +30,7 @@ SCHEMA_STATEMENTS = [
     "CREATE INDEX card_edhrec_rank IF NOT EXISTS FOR (c:Card) ON (c.edhrec_rank)",
     "CREATE INDEX card_playability IF NOT EXISTS FOR (c:Card) ON (c.playability)",
     "CREATE INDEX card_game_changer IF NOT EXISTS FOR (c:Card) ON (c.game_changer)",
-    # The fixing-lands channel starts from the ~1,200 lands instead of every card.
+    # The fixing-lands channel starts from the lands.
     "CREATE INDEX card_is_land IF NOT EXISTS FOR (c:Card) ON (c.is_land)",
     # The search box types into 32k cards. `card_name` above is a RANGE index,
     # which a `CONTAINS` predicate cannot use, so name search was a full label
@@ -253,41 +250,6 @@ def driver() -> Iterator[TracedDriver]:
                     auth=(settings.neo4j_user, settings.neo4j_password),
                 )
     yield TracedDriver(_driver)
-
-
-# Shared by every request: when it is full, reads queue rather than open more sockets.
-_READ_POOL = ThreadPoolExecutor(
-    max_workers=settings.graph_read_workers, thread_name_prefix="graph-read"
-)
-_pooled = threading.local()
-
-
-def _run_pooled[T](read: Callable[..., T], *args: Any, **kwargs: Any) -> T:
-    _pooled.active = True
-    return read(*args, **kwargs)
-
-
-def start_read[T](read: Callable[..., T], *args: Any, **kwargs: Any) -> Future[T]:
-    """Start a graph read on the shared pool; `.result()` collects it.
-
-    It runs in the caller's context, so its spans stay below the caller's.
-    Called from a pooled read it runs inline: a pooled read waiting on the
-    pool could wait forever.
-    """
-    if getattr(_pooled, "active", False):
-        done: Future[T] = Future()
-        try:
-            done.set_result(read(*args, **kwargs))
-        except Exception as error:  # noqa: BLE001 — handed to whoever collects the future
-            done.set_exception(error)
-        return done
-    return _READ_POOL.submit(contextvars.copy_context().run, _run_pooled, read, *args, **kwargs)
-
-
-def read_together(*reads: Callable[[], Any]) -> list[Any]:
-    """Run independent graph reads at once; their results in argument order."""
-    started = [start_read(read) for read in reads[1:]]
-    return [reads[0](), *(future.result() for future in started)]
 
 
 def close_driver() -> None:
@@ -1578,14 +1540,14 @@ LIMIT $limit
 # The channel that justifies the graph: cards supplying a resource the deck
 # wants more of than it makes. Producers match the wanted resource *or anything
 # narrower*, which is what the BROADER hierarchy is for.
-# Filtered after the aggregation: a card reached over several paths is checked once.
+# The hard filter runs once per card, after the aggregation.
 CHANNEL_BRIDGE = f"""
 UNWIND $wanted AS want
 MATCH (c:Card)-[:PRODUCES]->(:Resource)-[:BROADER*0..]->(r:Resource {{name: want.resource}})
 WITH c, collect(DISTINCT want.resource)[0..3] AS resources, max(want.gap) AS gap
 WHERE {_HARD_FILTER}
 WITH c, resources, gap
-ORDER BY gap DESC, coalesce(c.edhrec_rank, 999999) ASC
+ORDER BY gap DESC, coalesce(c.edhrec_rank, 999999) ASC, c.name ASC
 RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
        c.type_line AS type_line, c.price_usd AS price_usd,
        resources, gap,
@@ -1671,8 +1633,6 @@ RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
 # Which of a given set of cards fit any of the given themes, and how well.
 # The exclusion pass asks this about the assembled pool: no hard filter, no
 # ordering, no limit — membership is the question, the pool is already chosen.
-#
-# From the cards, not per theme: each card's few edges are walked once.
 FITS_THEME_AMONG = """
 MATCH (c:Card) WHERE c.oracle_id IN $oracle_ids
 MATCH (c)-[f:FITS_THEME]->(t:Theme) WHERE t.id IN $theme_ids
@@ -1765,7 +1725,7 @@ LIMIT $limit
 # while excluding a dead one, which the colourless identity of every fetch
 # would otherwise wave through (Scalding Tarn finds nothing there).
 # `$fetch_types` is the identity's basic type names ("Plains", "Swamp", …).
-# `= true` rather than the bare property, which no index answers.
+# `= true`: `card_is_land` does not answer the bare property.
 _FIXING_LAND = """
       c.is_land = true
       AND (
@@ -1791,11 +1751,13 @@ _FIXING_LAND = """
 # (Solemn Simulacrum, Wayfarer's Bauble) still carries the role and still
 # passes this filter — an accepted imprecision, not solved here (see the
 # plan's Task 0).
-_TUTOR_TO_NONLAND = """
+_TUTOR_ROLE = "(:Role {name: 'tutor'})"
+
+_TUTOR_TO_NONLAND = f"""
       NOT c.is_land
-      AND EXISTS {
-        MATCH (c)-[:FILLS_ROLE]->(:Role {name: 'tutor'})
-      }
+      AND EXISTS {{
+        MATCH (c)-[:FILLS_ROLE]->{_TUTOR_ROLE}
+      }}
 """
 
 CHANNEL_FIXING = f"""
@@ -1805,7 +1767,7 @@ RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
        c.type_line AS type_line, c.price_usd AS price_usd,
        c.edhrec_rank AS edhrec_rank, c.rarity AS rarity, c.playability AS playability,
        coalesce(c.game_changer, false) AS game_changer
-ORDER BY coalesce(c.edhrec_rank, 999999) ASC
+ORDER BY coalesce(c.edhrec_rank, 999999) ASC, c.name ASC
 LIMIT $limit
 """
 
@@ -1823,9 +1785,9 @@ RETURN coalesce(sum(row.qty), 0) AS fixing
 # Bauble — the accepted residual of the role gate) come back with an empty
 # list and never collect combo-scale value they cannot deliver.
 #
-# Starts at the role: `_TUTOR_TO_NONLAND` on a bare `(c:Card)` tests every card.
+# `_TUTOR_TO_NONLAND`, starting at the role node.
 CHANNEL_TUTORS = f"""
-MATCH (:Role {{name: 'tutor'}})<-[:FILLS_ROLE]-(c:Card)
+MATCH {_TUTOR_ROLE}<-[:FILLS_ROLE]-(c:Card)
 WHERE NOT c.is_land AND {_HARD_FILTER}
 RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
        c.type_line AS type_line, c.price_usd AS price_usd,
@@ -1833,7 +1795,7 @@ RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
        coalesce(c.game_changer, false) AS game_changer,
        [ (c)-[:PRODUCES]->(r:Resource)
          WHERE r.name IN ['tutor_to_hand', 'tutor_to_top'] | r.name ] AS joker_destinations
-ORDER BY coalesce(c.edhrec_rank, 999999) ASC
+ORDER BY coalesce(c.edhrec_rank, 999999) ASC, c.name ASC
 LIMIT $limit
 """
 
@@ -2330,7 +2292,6 @@ def creature_types_by_initial() -> dict[str, list[str]]:
 def _with_text_types(rows: list[dict]) -> list[dict]:
     """Add the creature types each row's oracle text names to its `types`.
 
-    Matched here rather than in Cypher, where it scanned every type per card.
     A type whose first character the text lacks is not looked for.
     """
     by_initial = creature_types_by_initial()
@@ -2437,8 +2398,8 @@ def fits_theme_among(oracle_ids: list[str], theme_ids: list[str]) -> list[dict]:
             dict(r)
             for r in session.run(FITS_THEME_AMONG, oracle_ids=oracle_ids, theme_ids=theme_ids)
         ]
-    asked = {theme_id: index for index, theme_id in enumerate(theme_ids)}
-    return sorted(rows, key=lambda row: asked[row["theme_id"]])
+    position = {theme_id: index for index, theme_id in enumerate(theme_ids)}
+    return sorted(rows, key=lambda row: position[row["theme_id"]])
 
 
 def theme_share_among(oracle_ids: list[str], themes: list[dict]) -> list[dict]:
@@ -2917,22 +2878,6 @@ RETURN c.oracle_id AS oracle_id, row.qty AS qty,
        collect([role.name, f.weight]) AS roles
 """
 
-# Producers expand *up* the hierarchy: a card making Treasure also supplies
-# ritual_mana and artifact_matters, so it satisfies anything wanting those.
-DECK_PRODUCED = """
-UNWIND $rows AS row
-MATCH (c:Card {oracle_id: row.oracle_id})-[:PRODUCES]->(:Resource)-[:BROADER*0..]->(r:Resource)
-RETURN r.name AS resource, count(DISTINCT c) AS cards, collect(DISTINCT c.name) AS names
-"""
-
-# Consumers stay exact. A card wanting `artifact_matters` wants the general
-# thing; expanding it downward would claim it specifically wants Treasures.
-DECK_WANTED = """
-UNWIND $rows AS row
-MATCH (c:Card {oracle_id: row.oracle_id})-[:CARES_ABOUT]->(r:Resource)
-RETURN r.name AS resource, count(DISTINCT c) AS cards, collect(DISTINCT c.name) AS names
-"""
-
 
 def _deck_rows(deck: dict[str, int]) -> list[dict[str, Any]]:
     return [{"oracle_id": oid, "qty": qty} for oid, qty in deck.items()]
@@ -3040,40 +2985,15 @@ def deck_card_roles(deck: dict[str, int]) -> list[dict[str, Any]]:
     return out
 
 
-def _empty_balance_entry() -> dict[str, Any]:
-    return {"produced": 0, "wanted": 0, "produced_cards": [], "wanted_cards": []}
-
-
-def deck_resource_balance(deck: dict[str, int]) -> dict[str, dict[str, Any]]:
-    """Per resource: how many deck cards supply it, how many want it — and which."""
-    rows = _deck_rows(deck)
-    balance: dict[str, dict[str, Any]] = {}
-
-    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
-        for record in session.run(DECK_PRODUCED, rows=rows):
-            entry = balance.setdefault(record["resource"], _empty_balance_entry())
-            entry["produced"] = record["cards"]
-            entry["produced_cards"] = sorted(record["names"])
-        for record in session.run(DECK_WANTED, rows=rows):
-            entry = balance.setdefault(record["resource"], _empty_balance_entry())
-            entry["wanted"] = record["cards"]
-            entry["wanted_cards"] = sorted(record["names"])
-
-    return balance
-
-
 # Per-card creature types, the other axis. No hierarchy to expand: creature
 # types are flat, which is precisely why they are not Resource members.
 DECK_CARD_TYPES = """
 UNWIND $rows AS row
 MATCH (c:Card {oracle_id: row.oracle_id})
-OPTIONAL MATCH (c)-[:IS_TYPE]->(i:CreatureType)
-WITH c, row.qty AS qty, collect(DISTINCT i.name) AS is_type
-OPTIONAL MATCH (c)-[:CARES_ABOUT_TYPE]->(w:CreatureType)
-WITH c, qty, is_type, collect(DISTINCT w.name) AS cares_type
-OPTIONAL MATCH (c)-[:MAKES_TYPE]->(m:CreatureType)
-RETURN c.oracle_id AS oracle_id, qty, is_type, cares_type,
-       collect(DISTINCT m.name) AS makes_type
+RETURN c.oracle_id AS oracle_id, row.qty AS qty,
+       [(c)-[:IS_TYPE]->(t:CreatureType) | t.name] AS is_type,
+       [(c)-[:CARES_ABOUT_TYPE]->(t:CreatureType) | t.name] AS cares_type,
+       [(c)-[:MAKES_TYPE]->(t:CreatureType) | t.name] AS makes_type
 """
 
 # Bodies and payoffs per creature type, over the whole corpus. Feeds
@@ -3113,13 +3033,18 @@ def typal_corpus_counts() -> tuple[dict[str, int], dict[str, int]]:
 # Per-card resources, expanded up the hierarchy in Cypher so a Treasure producer
 # already carries artifact_token and artifact_matters. Used by the theme layer
 # and by the cut scorer, which removes one card at a time.
+#
+# `wants` is the cares-about side unexpanded: a card wanting `artifact_matters`
+# wants the general thing, and expanding it would claim it wants Treasures.
+# The lists keep the order the graph returns, which the balance report shows.
 DECK_CARD_RESOURCES = """
 UNWIND $rows AS row
 MATCH (c:Card {oracle_id: row.oracle_id})
 OPTIONAL MATCH (c)-[:PRODUCES]->(:Resource)-[:BROADER*0..]->(p:Resource)
 WITH c, collect(DISTINCT p.name) AS produces
 OPTIONAL MATCH (c)-[:CARES_ABOUT]->(:Resource)-[:BROADER*0..]->(w:Resource)
-RETURN c.oracle_id AS oracle_id, produces, collect(DISTINCT w.name) AS cares_about
+RETURN c.oracle_id AS oracle_id, produces, collect(DISTINCT w.name) AS cares_about,
+       [(c)-[:CARES_ABOUT]->(d:Resource) | d.name] AS wants
 """
 
 RESOURCE_CORPUS_COUNTS = """
@@ -3139,6 +3064,8 @@ def deck_card_resources(deck: dict[str, int]) -> dict[str, dict[str, set[str]]]:
             record["oracle_id"]: {
                 "produces": {r for r in record["produces"] if r},
                 "cares_about": {r for r in record["cares_about"] if r},
+                "produces_ordered": [r for r in record["produces"] if r],
+                "wants": list(record["wants"]),
             }
             for record in session.run(DECK_CARD_RESOURCES, rows=_deck_rows(deck))
         }

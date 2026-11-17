@@ -20,7 +20,7 @@ when a colour identity or a budget makes some bucket unreachable.
 from __future__ import annotations
 
 import threading
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass, field
 
 import structlog
@@ -427,6 +427,7 @@ def fill_deck(
     pool_filter: PoolFilter | None = None,
     pool_size: int = 300,
     allow_network: bool | Callable[[], bool] = True,
+    cold_seats: Collection[str] | Callable[[], Collection[str]] | None = None,
 ) -> FillResult:
     """Fill an incomplete deck to `deck_size`, respecting the chosen ratios.
 
@@ -446,7 +447,9 @@ def fill_deck(
     `allow_network` and `identity` thread through to the `suggest()` call
     inside — see its doc comment. `allow_network` may also be a callable,
     resolved only once the gate is held: the API's cold-commander probe costs
-    a graph query, which must not run on the rejection path.
+    a graph query, which must not run on the rejection path. `cold_seats` is
+    that probe's answer, deferred the same way; a cold seat turns
+    `allow_network` off.
     """
     if not _FILL_GATE.acquire(timeout=settings.fill_acquire_timeout_seconds):
         raise SolverBusy(f"{settings.fill_max_concurrent} fills already running")
@@ -454,6 +457,9 @@ def fill_deck(
     try:
         if callable(allow_network):
             allow_network = allow_network()
+        if callable(cold_seats):
+            cold_seats = cold_seats()
+            allow_network = allow_network and not cold_seats
         return _fill_deck(
             deck_oracle_ids,
             deck_card_names,
@@ -475,6 +481,7 @@ def fill_deck(
             pool_filter=pool_filter,
             pool_size=pool_size,
             allow_network=allow_network,
+            cold_seats=cold_seats,
         )
     finally:
         _FILL_GATE.release()
@@ -502,6 +509,7 @@ def _fill_deck(
     pool_filter: PoolFilter | None = None,
     pool_size: int = 300,
     allow_network: bool = True,
+    cold_seats: Collection[str] | None = None,
 ) -> FillResult:
     """The fill itself, once a slot is held. Call `fill_deck`, not this."""
     from .composition import (
@@ -510,15 +518,14 @@ def _fill_deck(
         primary_type,
         type_counts_from_cards,
     )
-    from .diagnostics import DeckEntry, DeckRows, _typed_roles, diagnose
-    from .graph import cards_role_weights, deck_card_roles, fetch_deck, read_together
-    from .suggestions import effective_commanders, suggest
+    from .diagnostics import DeckEntry, _typed_roles, diagnose, read_deck_rows
+    from .graph import cards_role_weights
+    from .suggestions import Known, effective_commanders, suggest
     from .type_targets import conditioned_template, targets_from_report
 
     deck = quantities or dict.fromkeys(deck_oracle_ids, 1)
-    cards, card_roles = read_together(lambda: fetch_deck(deck), lambda: deck_card_roles(deck))
-    # For `diagnose`, as fetched: the rows below get the discount written in.
-    fetched = DeckRows([dict(card) for card in cards], card_roles)
+    cards, card_roles, _ = rows = read_deck_rows(deck, resources=False)
+    as_read = rows.snapshot()
 
     # The command zone sits outside the 99 — every seat of it, not just the
     # anchor's.
@@ -561,7 +568,7 @@ def _fill_deck(
         commander_oracle_ids=commander_oracle_ids,
         deck_size=deck_size,
         allow_network=True,
-        fetched=fetched,
+        fetched=as_read,
     )
 
     report = suggest(
@@ -588,6 +595,7 @@ def _fill_deck(
         identity=identity,
         deck_size=deck_size,
         diagnostics=diagnostics,
+        known=Known(cold_seats=cold_seats),
         allow_network=allow_network,
     )
 

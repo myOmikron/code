@@ -64,7 +64,7 @@ from .search import search as run_search
 from .solver import DEFAULT_TIME_LIMIT, FillResult, SolverBusy
 from .solver import fill_deck as run_fill
 from .spellbook import deck_combos as run_combos
-from .suggestions import SuggestionReport, suggest
+from .suggestions import Known, SuggestionReport, suggest
 from .tracing import (
     TELEMETRY,
     UntracedRequests,
@@ -859,8 +859,8 @@ class SuggestionsRequest(BaseModel):
     deck_size: int = Field(99, ge=1, le=250)
 
 
-def _cold_commander_allow_network(oracle_id: str | None, extras: list[str] | None = None) -> bool:
-    """False (and warms scheduled) when any effective commander is EDHREC-cold.
+def _cold_seats(oracle_id: str | None, extras: list[str] | None = None) -> tuple[str, ...]:
+    """The effective commanders without an EDHREC page, a warm scheduled for each.
 
     Shared by every handler that can hit a cold commander mid-request:
     scheduling the warm here means the inline EDHREC fetch (up to 30s) never
@@ -871,18 +871,20 @@ def _cold_commander_allow_network(oracle_id: str | None, extras: list[str] | Non
     Every seat is checked individually — a cold extra schedules its own warm,
     and one cold seat is enough to turn the inline fetch off for the whole
     request (a Rule 0 deck may field up to eight, and N×30s inline is exactly
-    what this probe exists to prevent).
+    what this probe exists to prevent). The handlers pass the answer on, so
+    nothing below asks the graph the same question again.
     """
     from .graph import has_recommendations
     from .suggestions import effective_commanders
 
-    allow = True
-    for commander in effective_commanders(oracle_id, extras):
-        if has_recommendations(commander):
-            continue
+    cold = tuple(
+        commander
+        for commander in effective_commanders(oracle_id, extras)
+        if not has_recommendations(commander)
+    )
+    for commander in cold:
         _schedule_warm(commander)
-        allow = False
-    return allow
+    return cold
 
 
 @app.post("/suggestions", response_model=SuggestionReport)
@@ -893,6 +895,7 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
     key = _suggestions_key(request)
 
     def compute() -> SuggestionReport:
+        cold = _cold_seats(request.commander_oracle_id, request.commander_oracle_ids)
         return suggest(
             [entry.oracle_id for entry in request.cards],
             request.card_names,
@@ -910,9 +913,8 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
             excluded=request.excluded,
             identity=request.identity,
             deck_size=request.deck_size,
-            allow_network=_cold_commander_allow_network(
-                request.commander_oracle_id, request.commander_oracle_ids
-            ),
+            known=Known(cold_seats=cold),
+            allow_network=not cold,
         )
 
     # See the doc comment on get_or_compute: it folds in the /warm generation
@@ -1581,6 +1583,7 @@ class SwapsResponse(BaseModel):
 @app.post("/swaps", response_model=SwapsResponse)
 def post_swaps(request: SwapsRequest) -> SwapsResponse:
     pool_filter = _pool(request.max_price, request.pool_query)
+    cold = _cold_seats(request.commander_oracle_id, request.commander_oracle_ids)
     result = run_swaps(
         [entry.oracle_id for entry in request.cards],
         request.card_names,
@@ -1600,9 +1603,8 @@ def post_swaps(request: SwapsRequest) -> SwapsResponse:
         limit=request.limit,
         per_add=request.per_add,
         pool_filter=pool_filter,
-        allow_network=_cold_commander_allow_network(
-            request.commander_oracle_id, request.commander_oracle_ids
-        ),
+        allow_network=not cold,
+        cold_seats=cold,
     )
     adds, cuts = result["adds"], result["cuts"]
     grouped = [s for group in adds.groups for s in group.suggestions]
@@ -1659,6 +1661,7 @@ class ReplaceResponse(BaseModel):
 def post_replace(request: ReplaceRequest) -> ReplaceResponse:
     """Alternatives to one card the user has marked, each with its shape delta."""
     pool_filter = _pool(request.max_price, request.pool_query)
+    cold = _cold_seats(request.commander_oracle_id, request.commander_oracle_ids)
     result = run_replacements(
         [entry.oracle_id for entry in request.cards],
         request.card_names,
@@ -1676,9 +1679,8 @@ def post_replace(request: ReplaceRequest) -> ReplaceResponse:
         excluded=request.excluded,
         identity=request.identity,
         deck_size=request.deck_size,
-        allow_network=_cold_commander_allow_network(
-            request.commander_oracle_id, request.commander_oracle_ids
-        ),
+        allow_network=not cold,
+        cold_seats=cold,
     )
     target = result["target"]
     return ReplaceResponse(
@@ -1748,7 +1750,7 @@ def post_fill(request: FillRequest) -> FillResult:
             identity=request.identity,
             # Deferred: resolved inside run_fill only once the concurrency
             # gate is held, so the 429 rejection path stays free of graph work.
-            allow_network=lambda: _cold_commander_allow_network(
+            cold_seats=lambda: _cold_seats(
                 request.commander_oracle_id, request.commander_oracle_ids
             ),
         )

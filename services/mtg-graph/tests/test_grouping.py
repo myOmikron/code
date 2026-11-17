@@ -249,7 +249,7 @@ def test_focus_no_matches_note_fires_when_nothing_matches(monkeypatch):
 # --- EDHREC leaves the request path (Task 12) ------------------------------
 # `allow_network=False` is what `/suggestions` et al. pass once they have
 # scheduled a background warm for a cold commander instead of paying the
-# inline fetch (up to 30s) themselves — see `api.py::_cold_commander_allow_network`.
+# inline fetch (up to 30s) themselves, see `api.py::_cold_seats`.
 
 
 def _edhrec_suggest(monkeypatch, *, has_recommendations: bool, tombstoned: bool, **kwargs):

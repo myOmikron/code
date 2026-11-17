@@ -448,7 +448,6 @@ def _stub_diagnose_graph(monkeypatch, *, resources, names=None):
     monkeypatch.setattr(graph, "deck_card_resources", lambda deck: resources)
     monkeypatch.setattr(graph, "deck_card_roles", lambda deck: [])
     monkeypatch.setattr(graph, "deck_card_types", lambda deck: [])
-    monkeypatch.setattr(graph, "deck_resource_balance", lambda deck: {})
     monkeypatch.setattr(diag, "resource_idf", lambda: {})
     monkeypatch.setattr(diag, "typal_density", lambda: {})
     # `build_interaction_grid`'s graph touches — no-ops below bracket 5
@@ -484,6 +483,66 @@ def test_role_totals_come_from_the_per_card_roles():
     )
 
     assert _role_weights(roles) == {"ramp": 2.0, "fixing": 0.5}
+
+
+def test_the_balance_counts_supply_expanded_and_demand_exact():
+    from deck_lab.diagnostics import _resource_balance
+
+    cards = [_card("Smothering Tithe", 4), _card("Reckless Fireweaver", 2), _card("Bear", 2)]
+    resources = {
+        "Smothering Tithe": {
+            "produces": {"treasure", "artifact_matters"},
+            "produces_ordered": ["treasure", "artifact_matters"],
+            "cares_about": set(),
+            "wants": [],
+        },
+        "Reckless Fireweaver": {
+            "produces": set(),
+            "produces_ordered": [],
+            "cares_about": {"artifact_matters", "permanent_matters"},
+            "wants": ["artifact_matters", "etb_trigger"],
+        },
+    }
+
+    balance = _resource_balance(cards, resources)
+
+    assert balance == {
+        "treasure": {
+            "produced": 1,
+            "wanted": 0,
+            "produced_cards": ["Smothering Tithe"],
+            "wanted_cards": [],
+        },
+        "artifact_matters": {
+            "produced": 1,
+            "wanted": 1,
+            "produced_cards": ["Smothering Tithe"],
+            "wanted_cards": ["Reckless Fireweaver"],
+        },
+        "etb_trigger": {
+            "produced": 0,
+            "wanted": 1,
+            "produced_cards": [],
+            "wanted_cards": ["Reckless Fireweaver"],
+        },
+    }
+    # As the graph returned them, supplied ones first.
+    assert list(balance) == ["treasure", "artifact_matters", "etb_trigger"]
+
+
+def test_a_deck_without_one_card_keeps_the_other_rows():
+    from deck_lab.diagnostics import DeckRows
+
+    rows = DeckRows(
+        [_card("a", 1), _card("b", 2)],
+        _card_roles(("a", {"ramp": 1.0}, 1), ("b", {}, 1)),
+        {"a": {"produces": {"ramp"}}, "b": {"produces": set()}},
+    )
+
+    assert rows.without("a") == DeckRows(
+        [_card("b", 2)], _card_roles(("b", {}, 1)), {"b": {"produces": set()}}
+    )
+    assert DeckRows(rows.cards, rows.card_roles).without("a").resources_by_card is None
 
 
 def test_rows_the_caller_fetched_are_not_read_again(monkeypatch):

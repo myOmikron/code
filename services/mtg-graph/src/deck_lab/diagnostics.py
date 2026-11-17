@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping, Sequence
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from pydantic import BaseModel, Field
 
@@ -37,7 +37,7 @@ from .interaction import InteractionGrid, discount_board_wipe
 from .meta import MetaGradeReport, SceneInteractionProfile, grade_deck
 from .themes import ThemeEvidence
 from .themes import consistency as theme_consistency
-from .tracing import deck_span
+from .tracing import deck_span, tracer
 from .vocabulary import Bucket, Resource, Role
 
 
@@ -837,12 +837,41 @@ def build_diagnostics(
 class DeckRows(NamedTuple):
     """A deck as `fetch_deck`, `deck_card_roles` and `deck_card_resources` return it.
 
-    The resources may be left out; `diagnose` then reads them itself.
+    `diagnose` takes them as read from the graph: a caller that writes a
+    discount or play rates into its cards hands over a `snapshot` taken
+    before. The resources may be left out; `diagnose` then reads them itself.
     """
 
     cards: list[dict]
     card_roles: list[dict]
     resources_by_card: dict[str, dict[str, set[str]]] | None = None
+
+    def snapshot(self) -> DeckRows:
+        """These rows, the cards copied."""
+        return self._replace(cards=[dict(card) for card in self.cards])
+
+    def without(self, oracle_id: str) -> DeckRows:
+        """The same deck minus one card."""
+        resources = self.resources_by_card
+        return DeckRows(
+            [card for card in self.cards if card["oracle_id"] != oracle_id],
+            [row for row in self.card_roles if row["oracle_id"] != oracle_id],
+            resources and {oid: sides for oid, sides in resources.items() if oid != oracle_id},
+        )
+
+
+def read_deck_rows(deck: dict[str, int], *, resources: bool = True) -> DeckRows:
+    """Read a deck's rows from the graph, side by side."""
+    from .graph import deck_card_resources, deck_card_roles, fetch_deck
+    from .reads import read_together
+
+    return DeckRows(
+        *read_together(
+            lambda: fetch_deck(deck),
+            lambda: deck_card_roles(deck),
+            lambda: deck_card_resources(deck) if resources else None,
+        )
+    )
 
 
 def _role_weights(card_roles: list[dict]) -> dict[str, float]:
@@ -852,6 +881,35 @@ def _role_weights(card_roles: list[dict]) -> dict[str, float]:
         for role, weight in entry["roles"].items():
             terms.setdefault(role, []).append(weight * entry["qty"])
     return {role: math.fsum(values) for role, values in terms.items()}
+
+
+def _resource_balance(
+    cards: list[dict], resources_by_card: dict[str, dict[str, set[str]]]
+) -> dict[str, dict[str, Any]]:
+    """Per resource: how many deck cards supply it, how many want it, and which.
+
+    Supply counts a card for everything broader than what it makes: a Treasure
+    maker also supplies `artifact_matters`. Demand stays exact (`wants`).
+    Resources come in the order the graph returned them, supplied ones first:
+    rows with equal gaps keep that order in the report.
+    """
+    suppliers: dict[str, dict[str, str]] = {}
+    consumers: dict[str, dict[str, str]] = {}
+    for card in cards:
+        sides = resources_by_card.get(card["oracle_id"], {})
+        for resource in sides.get("produces_ordered", sorted(sides.get("produces", ()))):
+            suppliers.setdefault(resource, {})[card["oracle_id"]] = card["name"]
+        for resource in sides.get("wants", ()):
+            consumers.setdefault(resource, {})[card["oracle_id"]] = card["name"]
+    return {
+        resource: {
+            "produced": len(suppliers.get(resource, ())),
+            "wanted": len(consumers.get(resource, ())),
+            "produced_cards": sorted(set(suppliers.get(resource, {}).values())),
+            "wanted_cards": sorted(set(consumers.get(resource, {}).values())),
+        }
+        for resource in dict.fromkeys((*suppliers, *consumers))
+    }
 
 
 @deck_span("diagnose", deck="entries")
@@ -903,14 +961,8 @@ def diagnose(
     suggestion, swap, and fill paths pass True; they already tolerate lazy
     EDHREC ingest.
     """
-    from .graph import (
-        deck_card_resources,
-        deck_card_roles,
-        deck_card_types,
-        deck_resource_balance,
-        fetch_deck,
-        read_together,
-    )
+    from .graph import deck_card_resources, deck_card_roles, deck_card_types, fetch_deck
+    from .reads import read_together
     from .suggestions import effective_commanders
     from .themes import deck_theme_breakdown, deck_typal_profile
 
@@ -926,20 +978,18 @@ def diagnose(
     # `card_roles` serves the cEDH classifier, the interaction grid and the
     # role totals.
     if fetched is None:
-        rows, resources_by_card, card_roles, type_rows, balance = read_together(
+        rows, resources_by_card, card_roles, type_rows = read_together(
             lambda: fetch_deck({**deck, **zone}),
             lambda: deck_card_resources(deck),
             lambda: deck_card_roles(deck),
             lambda: deck_card_types(deck),
-            lambda: deck_resource_balance(deck),
         )
     else:
-        held = fetched.resources_by_card
-        seats, type_rows, balance, resources_by_card = read_together(
+        given = fetched.resources_by_card
+        seats, type_rows, resources_by_card = read_together(
             lambda: fetch_deck(zone) if zone else [],
             lambda: deck_card_types(deck),
-            lambda: deck_resource_balance(deck),
-            lambda: deck_card_resources(deck) if held is None else held,
+            lambda: deck_card_resources(deck) if given is None else given,
         )
         # Copies: the discount below is written into the rows.
         rows = [*(dict(card) for card in fetched.cards), *seats]
@@ -1009,12 +1059,13 @@ def diagnose(
     if commander_resources is not None and not names_a_type:
         commander_resources[1].discard(Resource.TRIBAL_PAYOFF)
 
-    profile, theme_evidence = deck_theme_breakdown(
-        card_resources,
-        resource_idf(),
-        commander=commander_resources,
-        seats=max(len(effective), 1),
-    )
+    with tracer.start_as_current_span("diagnose.themes"):
+        profile, theme_evidence = deck_theme_breakdown(
+            card_resources,
+            resource_idf(),
+            commander=commander_resources,
+            seats=max(len(effective), 1),
+        )
 
     # --- the typal axis, same shape, different data ------------------------
     # Computed before the type-target block below because that block's
@@ -1063,14 +1114,15 @@ def diagnose(
         )
 
     scale = deck_size / 99
-    type_targets, type_source = resolve_type_targets(
-        commander_name,
-        profile,
-        speed=speed,
-        allow_fetch=allow_network,
-        scale=scale,
-        typal_profile=typal_profile,
-    )
+    with tracer.start_as_current_span("diagnose.type_targets"):
+        type_targets, type_source = resolve_type_targets(
+            commander_name,
+            profile,
+            speed=speed,
+            allow_fetch=allow_network,
+            scale=scale,
+            typal_profile=typal_profile,
+        )
     template = conditioned_template(
         speed,
         overrides,
@@ -1151,28 +1203,29 @@ def diagnose(
     # Neo4j.
     tapped_lands = tapped_land_counts(cards, speed)
 
-    return build_diagnostics(
-        cards,
-        _role_weights(card_roles),
-        balance,
-        card_roles,
-        commander_resources=commander_resources,
-        theme_profile=profile,
-        theme_evidence=theme_evidence,
-        typal_profile=typal_profile,
-        typal_counts=typal_counts,
-        commander_anchored=commander_resources is not None or commander_types is not None,
-        speed=speed,
-        overrides=overrides,
-        curve=curve,
-        requested=len(deck),
-        unresolved=unresolved,
-        template=template,
-        interaction_grid=interaction_grid,
-        tapped_lands=tapped_lands,
-        defaults=defaults,
-        type_source=type_source,
-        cedh_class=cedh_class,
-        meta_grade=meta_grade,
-        cedh_position=cedh_position,
-    )
+    with tracer.start_as_current_span("diagnose.report"):
+        return build_diagnostics(
+            cards,
+            _role_weights(card_roles),
+            _resource_balance(cards, resources_by_card),
+            card_roles,
+            commander_resources=commander_resources,
+            theme_profile=profile,
+            theme_evidence=theme_evidence,
+            typal_profile=typal_profile,
+            typal_counts=typal_counts,
+            commander_anchored=commander_resources is not None or commander_types is not None,
+            speed=speed,
+            overrides=overrides,
+            curve=curve,
+            requested=len(deck),
+            unresolved=unresolved,
+            template=template,
+            interaction_grid=interaction_grid,
+            tapped_lands=tapped_lands,
+            defaults=defaults,
+            type_source=type_source,
+            cedh_class=cedh_class,
+            meta_grade=meta_grade,
+            cedh_position=cedh_position,
+        )

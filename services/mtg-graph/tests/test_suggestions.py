@@ -2211,8 +2211,8 @@ def test_the_report_names_every_commander(monkeypatch):
 
 
 def test_channel_edhrec_runs_once_per_effective_commander(monkeypatch):
-    """One query per seat, anchor first; an extra the graph does not know is
-    skipped rather than queried — it has no page to ask for."""
+    """One query per seat, side by side; an extra the graph does not know is
+    skipped rather than queried: it has no page to ask for."""
     from deck_lab import graph
     from deck_lab.suggestions import suggest
 
@@ -2237,7 +2237,35 @@ def test_channel_edhrec_runs_once_per_effective_commander(monkeypatch):
         include_combos=False,
     )
 
-    assert asked == ["cmdr", "partner"]
+    assert sorted(asked) == ["cmdr", "partner"]
+
+
+def test_seats_the_caller_found_cold_are_not_asked_about_again(monkeypatch):
+    from deck_lab import edhrec, graph
+    from deck_lab.suggestions import Known, suggest
+
+    _stub_partners(monkeypatch)
+
+    def asked_again(oracle_id):
+        raise AssertionError(f"{oracle_id}: the caller already said which seats are cold")
+
+    monkeypatch.setattr(graph, "has_recommendations", asked_again)
+    monkeypatch.setattr(graph, "channel_edhrec", lambda *args, **kwargs: [])
+    monkeypatch.setattr(edhrec, "is_tombstoned", lambda name: False)
+
+    report = suggest(
+        ["cmdr", "partner"],
+        [],
+        commander_oracle_id="cmdr",
+        commander_oracle_ids=["partner"],
+        diagnostics=_EmptyDiagnostics(),
+        channels={"edhrec_synergy"},
+        include_combos=False,
+        known=Known(cold_seats=("partner",)),
+        allow_network=False,
+    )
+
+    assert [note.code for note in report.notes][:2] == ["edhrec-missing", "edhrec-pending"]
 
 
 def _edhrec_row(oracle_id, name):

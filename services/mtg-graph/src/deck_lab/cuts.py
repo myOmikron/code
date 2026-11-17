@@ -24,7 +24,7 @@ Two traps, both of which produce plausible-looking nonsense:
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Collection, Iterable, Mapping
 from enum import StrEnum
 
 import structlog
@@ -48,7 +48,7 @@ from .poolquery import PoolFilter
 from .profiles import CardProfile
 from .suggestions import Phrase, _theme_share_spec
 from .themes import FIT_THRESHOLD
-from .tracing import deck_span
+from .tracing import deck_span, tracer
 from .vocabulary import (
     BUCKET_ROLES,
     COMMAND_ZONE_RESOURCES,
@@ -1175,6 +1175,11 @@ def _theme_shares(
     return shares
 
 
+def _same_cards(deck: dict[str, int], deck_oracle_ids: list[str]) -> bool:
+    """Whether the quantities name exactly the listed cards, which is what `suggest` reads."""
+    return list(deck) == list(deck_oracle_ids)
+
+
 @deck_span("swaps", deck="deck_oracle_ids")
 def suggest_swaps(
     deck_oracle_ids: list[str],
@@ -1199,11 +1204,12 @@ def suggest_swaps(
     per_add: int = 3,
     pool_filter: PoolFilter | None = None,
     allow_network: bool = True,
+    cold_seats: Collection[str] | None = None,
 ) -> dict:
     """Adds paired with the cuts that make room for them.
 
-    `allow_network` and `identity` thread straight through to the `suggest()`
-    call below — see its doc comment. The `diagnose()` call just above stays
+    `allow_network`, `cold_seats` and `identity` thread straight through to the
+    `suggest()` call below (see its doc comment). The `diagnose()` call just above stays
     unconditional: it only ever touches the small, now-tombstoned theme-page
     fetch, and diagnostics is colour-blind anyway.
 
@@ -1211,25 +1217,14 @@ def suggest_swaps(
     into both — and into the cut-scoring template, so a Rule 0 deck's cuts
     are judged against the same resized quotas its report shows.
     """
-    from .diagnostics import DeckEntry, DeckRows, diagnose
+    from .diagnostics import DeckEntry, diagnose, read_deck_rows
     from .eminence import apply_discount, discount_for
-    from .graph import (
-        deck_card_resources,
-        deck_card_roles,
-        fetch_deck,
-        read_together,
-        scene_play_rates,
-    )
-    from .suggestions import apply_theme_targets, effective_commanders, suggest
+    from .graph import scene_play_rates
+    from .suggestions import Known, apply_theme_targets, effective_commanders, suggest
 
     deck = quantities or dict.fromkeys(deck_oracle_ids, 1)
-    cards, card_roles, card_resources = read_together(
-        lambda: fetch_deck(deck),
-        lambda: deck_card_roles(deck),
-        lambda: deck_card_resources(deck),
-    )
-    # For `diagnose`, as fetched: the rows below get discount and play rates written in.
-    fetched = DeckRows([dict(card) for card in cards], card_roles, card_resources)
+    cards, card_roles, card_resources = rows = read_deck_rows(deck)
+    as_read = rows.snapshot()
     # As cast, not as printed — cut scoring's curve has to bucket the way the
     # report it argues against does.
     apply_discount(
@@ -1260,7 +1255,7 @@ def suggest_swaps(
         commander_oracle_ids=commander_oracle_ids,
         deck_size=deck_size,
         allow_network=True,
-        fetched=fetched,
+        fetched=as_read,
     )
     wanted = {row.resource: row.gap for row in report.balance if row.gap > 0}
 
@@ -1369,36 +1364,38 @@ def suggest_swaps(
     share_rows = _theme_share_rows(
         [*(pinned_themes or []), *(excluded_themes or []), *targets_read.trims], list(deck)
     )
-    cuts = score_cuts(
-        cards,
-        card_roles,
-        card_resources,
-        wanted,
-        template,
-        protected=defended,
-        pinned_share=_theme_shares(pinned_themes, share_rows),
-        excluded_share=_trim_shares(
-            _theme_shares(excluded_themes, share_rows), targets_read.trims, share_rows
-        ),
-        # The stranded prosecution reads production off the same balance the
-        # report shows — a resource absent from it has no producers either.
-        produced_counts={row.resource: row.produced for row in report.balance},
-        combo_partners=combo_partners,
-        tutor_floor_ids=tutor_floor_ids,
-    )
+    with tracer.start_as_current_span("swaps.cuts"):
+        cuts = score_cuts(
+            cards,
+            card_roles,
+            card_resources,
+            wanted,
+            template,
+            protected=defended,
+            pinned_share=_theme_shares(pinned_themes, share_rows),
+            excluded_share=_trim_shares(
+                _theme_shares(excluded_themes, share_rows), targets_read.trims, share_rows
+            ),
+            # The stranded prosecution reads production off the same balance the
+            # report shows — a resource absent from it has no producers either.
+            produced_counts={row.resource: row.produced for row in report.balance},
+            combo_partners=combo_partners,
+            tutor_floor_ids=tutor_floor_ids,
+        )
 
     # The same defences, for the same reason: a card too weak to bare-cut but
     # still commander/keep, tutor-floor, or combo-locked is too weak to trade
     # away as well. These never join `cuts` — they exist only for `pair_swaps`
     # below to reach when a short bucket hides a genuinely bad card.
-    upgrades = upgrade_candidates(
-        cards,
-        card_roles,
-        template,
-        protected=defended,
-        tutor_floor_ids=tutor_floor_ids,
-        combo_partners=combo_partners,
-    )
+    with tracer.start_as_current_span("swaps.upgrades"):
+        upgrades = upgrade_candidates(
+            cards,
+            card_roles,
+            template,
+            protected=defended,
+            tutor_floor_ids=tutor_floor_ids,
+            combo_partners=combo_partners,
+        )
 
     adds = suggest(
         deck_oracle_ids,
@@ -1422,8 +1419,9 @@ def suggest_swaps(
         # Same deck, quantities, speed, overrides, and commander as the
         # diagnose above — handing it over halves the round trips /swaps pays.
         diagnostics=report,
-        # Looked up above for the same cards.
-        combos=combos if list(deck) == list(deck_oracle_ids) else None,
+        known=Known(
+            combos=combos if _same_cards(deck, deck_oracle_ids) else None, cold_seats=cold_seats
+        ),
         allow_network=allow_network,
     )
 
@@ -1438,25 +1436,26 @@ def suggest_swaps(
         else {}
     )
 
-    swaps = pair_swaps(
-        [
-            {
-                "oracle_id": s.oracle_id,
-                "name": s.name,
-                "playability": add_rates.get(s.oracle_id, s.playability),
-                "game_changer": s.game_changer,
-            }
-            for s in adds.suggestions
-        ],
-        cuts,
-        add_roles,
-        cut_roles,
-        per_add=per_add,
-        # The same rows the composition report shows, so a swap can answer the
-        # shortfall the reader is looking at rather than only preserving shape.
-        buckets=report.buckets,
-        upgrades=upgrades,
-    )
+    with tracer.start_as_current_span("swaps.pairs"):
+        swaps = pair_swaps(
+            [
+                {
+                    "oracle_id": s.oracle_id,
+                    "name": s.name,
+                    "playability": add_rates.get(s.oracle_id, s.playability),
+                    "game_changer": s.game_changer,
+                }
+                for s in adds.suggestions
+            ],
+            cuts,
+            add_roles,
+            cut_roles,
+            per_add=per_add,
+            # The same rows the composition report shows, so a swap can answer the
+            # shortfall the reader is looking at rather than only preserving shape.
+            buckets=report.buckets,
+            upgrades=upgrades,
+        )
 
     return {"adds": adds, "cuts": cuts, "swaps": swaps}
 
@@ -1653,6 +1652,7 @@ def find_replacements(
     identity: list[str] | None = None,
     deck_size: int = 99,
     allow_network: bool = True,
+    cold_seats: Collection[str] | None = None,
 ) -> dict:
     """Alternatives to one card the user has marked.
 
@@ -1661,18 +1661,12 @@ def find_replacements(
     the card stops being filtered out as "already in the deck" and its own
     replacements become reachable. No new query is needed.
 
-    `allow_network`, `identity`, `pinned_themes`, and `excluded_themes` thread
-    straight through to the `suggest()` call below.
+    `allow_network`, `cold_seats`, `identity`, `pinned_themes`, and
+    `excluded_themes` thread straight through to the `suggest()` call below.
     """
-    from .graph import (
-        cards_role_weights,
-        cards_theme_fits,
-        deck_card_roles,
-        fetch_deck,
-        read_together,
-        scene_play_rates,
-    )
-    from .suggestions import effective_commanders, suggest
+    from .diagnostics import read_deck_rows
+    from .graph import cards_role_weights, cards_theme_fits, fetch_deck, scene_play_rates
+    from .suggestions import Known, effective_commanders, suggest
 
     # Any seat in the command zone is refused, not just the anchor's — a
     # co-commander is no more replaceable than the commander itself.
@@ -1680,17 +1674,8 @@ def find_replacements(
         return {"target": None, "replacements": [], "notes": ["The commander cannot be replaced."]}
 
     deck = quantities or dict.fromkeys(deck_oracle_ids, 1)
-    cards, card_roles = read_together(lambda: fetch_deck(deck), lambda: deck_card_roles(deck))
-    # For `suggest`'s own diagnosis of the deck without the target, as fetched:
-    # the rows below get discount and play rates written in.
-    without_target = None
-    if list(deck) == list(deck_oracle_ids):
-        from .diagnostics import DeckRows
-
-        without_target = DeckRows(
-            [dict(card) for card in cards if card["oracle_id"] != target_oracle_id],
-            [row for row in card_roles if row["oracle_id"] != target_oracle_id],
-        )
+    cards, card_roles, _ = rows = read_deck_rows(deck, resources=False)
+    as_read = rows.snapshot()
     # As cast, not as printed — the shape deltas below bucket the deck's own
     # rows, and the adds arrive already discounted from `suggest`.
     from .eminence import apply_discount, discount_for
@@ -1771,7 +1756,10 @@ def find_replacements(
         identity=identity,
         deck_size=deck_size,
         allow_network=allow_network,
-        fetched=without_target,
+        known=Known(
+            rows=as_read.without(target_oracle_id) if _same_cards(deck, deck_oracle_ids) else None,
+            cold_seats=cold_seats,
+        ),
     )
 
     # The target is reachable as a candidate here — `remaining` drops it from

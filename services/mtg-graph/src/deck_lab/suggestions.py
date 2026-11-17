@@ -32,10 +32,10 @@ from __future__ import annotations
 
 import contextvars
 import math
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Collection, Iterable, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import structlog
 from pydantic import BaseModel, Field
@@ -2872,47 +2872,92 @@ def _build_groups(
     return sorted(groups, key=order)
 
 
-class _Ahead:
-    """Graph reads started before the code that uses them, so they overlap.
+class Known(NamedTuple):
+    """What a caller already read about this exact deck, so `suggest` need not."""
 
-    `take` repeats the call it wants. An early start with other arguments is
-    not used, so the answer is always that of the call as written at `take`.
-    """
-
-    def __init__(self) -> None:
-        self._started: list[tuple[Callable[..., Any], tuple, dict, Future]] = []
-
-    def start(self, read: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
-        from .graph import start_read
-
-        self._started.append((read, args, kwargs, start_read(read, *args, **kwargs)))
-
-    def take[T](self, read: Callable[..., T], *args: Any, **kwargs: Any) -> T:
-        for index, (started, its_args, its_kwargs, future) in enumerate(self._started):
-            if started is read and its_args == args and its_kwargs == kwargs:
-                del self._started[index]
-                return future.result()
-        return read(*args, **kwargs)
+    # For the `diagnose` made here when no `diagnostics` came along.
+    rows: DeckRows | None = None
+    # `deck_combos`' answer.
+    combos: dict | None = None
+    # The commanders without an EDHREC page. `None` asks the graph.
+    cold_seats: Collection[str] | None = None
 
 
-def _role_gap_asks(report: Diagnostics) -> list[tuple[Any, Bucket, list[dict]]]:
-    """Per bucket the deck is short on: its report row, and the roles to retrieve."""
+class _RoleAsk(NamedTuple):
+    """A bucket the deck is short on, and the roles to retrieve for it."""
+
+    row: Any
+    bucket: Bucket
+    wanted: list[dict]
+
+
+class _SeatPage(NamedTuple):
+    """One commander's EDHREC page, its reads under way."""
+
+    name: str
+    cold: bool
+    ingest_failed: bool
+    rows: Future
+    cedh_rows: Future | None
+
+
+class _ComboCompletions(NamedTuple):
+    """The combos one card short of complete, and the cards they miss."""
+
+    complete: int
+    notes: list[Phrase]
+    by_name: dict[str, list]
+    rows: list[dict]
+
+
+def _role_gap_asks(report: Diagnostics) -> list[_RoleAsk]:
     from .vocabulary import BUCKET_ROLES
 
     asks = []
-    for bucket_report in report.buckets:
-        if bucket_report.status != "low":
+    for row in report.buckets:
+        if row.status != "low":
             continue
         try:
-            bucket = Bucket(bucket_report.bucket)
+            bucket = Bucket(row.bucket)
         except ValueError:
             continue
         wanted = [
-            {"role": str(role), "bucket": str(bucket), "shortfall": bucket_report.deviation}
+            {"role": str(role), "bucket": str(bucket), "shortfall": row.deviation}
             for role in BUCKET_ROLES[bucket]
         ]
-        asks.append((bucket_report, bucket, wanted))
+        asks.append(_RoleAsk(row, bucket, wanted))
     return asks
+
+
+def _count_then_rows(
+    target: Callable[[], float], count: Callable[[], float], rows: Callable[[], list[dict]]
+) -> tuple[float, float, list[dict] | None]:
+    """`(target, count, rows)`: the rows are only read when the count is under the target."""
+    goal, counted = target(), count()
+    return goal, counted, (rows() if counted < goal else None)
+
+
+def _combo_completions(
+    combos: Callable[[], dict],
+    speed: float,
+    balance: list,
+    rows: Callable[[list[str]], list[dict]],
+) -> _ComboCompletions:
+    found = combos()
+    one_short = [c for c in found["almost_included"] if len(c.missing) == 1]
+    one_short, hidden_note = _gate_combos_for_bracket(one_short, speed)
+    one_short, payoff_note = _gate_combos_for_payoff(one_short, balance)
+
+    by_name: dict[str, list] = {}
+    for combo in one_short:
+        by_name.setdefault(combo.missing[0], []).append(combo)
+
+    return _ComboCompletions(
+        complete=len(found.get("included") or []),
+        notes=[note for note in (hidden_note, payoff_note) if note],
+        by_name=by_name,
+        rows=rows(list(by_name)),
+    )
 
 
 def effective_commanders(primary: str | None, extras: list[str] | None) -> list[str]:
@@ -2949,16 +2994,12 @@ def suggest(
     deck_size: int = 99,
     channels: set[str] | None = None,
     diagnostics: Diagnostics | None = None,
-    fetched: DeckRows | None = None,
-    combos: dict | None = None,
+    known: Known | None = None,
     allow_network: bool = True,
 ) -> SuggestionReport:
     """Union the retrieval channels and rank the result.
 
-    `fetched` is the caller's own read of this exact deck, for the `diagnose`
-    made here when no `diagnostics` came along. `combos` is the caller's own
-    `deck_combos` answer for this deck, used instead of looking the combos up
-    again.
+    `known` is what the caller already read about this exact deck.
 
     `identity` is the deck's claimed colours (Rule 0 house rules) — WUBRG
     letters. `None` derives from the commander; `[]` is a deliberate
@@ -3010,17 +3051,28 @@ def suggest(
         cards_theme_fits,
         channel_bridge,
         channel_edhrec,
+        channel_fixing,
+        channel_resource_supply,
         channel_roles,
-        channel_theme,
         channel_themes,
+        channel_tutors,
         channel_typal,
+        deck_fixing_count,
+        deck_page_overlap,
+        deck_resource_count,
+        deck_tutor_count,
         find_commander,
         fits_theme_among,
         has_recommendations,
         has_recommendations_cedh,
         is_legal_commander,
+        resource_identity_supply,
+        resource_scene_supply,
         theme_share_among,
     )
+    from .reads import start_read
+
+    known = known or Known()
 
     notes: list[Phrase] = []
     # Said, not silent — the same contract as the identity override below:
@@ -3186,20 +3238,14 @@ def suggest(
     # so it starts here and is collected at channel 5, overlapping it with
     # EDHREC and every graph query in between.
     combo_scale = _power_scale(speed)
+    combos_run = include_combos and "combo_completion" in enabled and combo_scale > 0.0
     combo_future: Future | None = None
-    if include_combos and "combo_completion" in enabled and combo_scale > 0.0:
+    if combos_run and known.combos is None:
         from .spellbook import deck_combos
 
-        if combos is not None:
-            combo_future = Future()
-            combo_future.set_result(combos)
-        else:
-            combo_future = _SPELLBOOK_POOL.submit(
-                contextvars.copy_context().run,
-                deck_combos,
-                deck_oracle_ids,
-                deck_card_names or None,
-            )
+        combo_future = _SPELLBOOK_POOL.submit(
+            contextvars.copy_context().run, deck_combos, deck_oracle_ids, deck_card_names or None
+        )
 
     # --- Channel 1: EDHREC ------------------------------------------------
     # Fetched on demand. The plan always called for lazy per-commander loading;
@@ -3213,23 +3259,24 @@ def suggest(
     # a card two pages both recommend keeps one row and gains provenance, each
     # entry naming the seat that recommended it.
     #
-    # The union of every seat's page, best inclusion kept — the raw material
-    # for the corroboration boost below (and its self-gate: with the channel
-    # disabled or the page cold this stays empty and nothing fires).
-    page_inclusion: dict[str, float] = {}
+    # Each seat's rows are read here and merged below, once the reads that
+    # need the report are under way too.
+    seat_pages: list[_SeatPage] = []
     # Seats seen with a page: asked once, a page does not go away mid-request.
-    with_page: set[str] = set()
+    seats_with_page: set[str] = set()
     if "edhrec_synergy" in enabled:
-        multi = len(effective) > 1
         for seat_id in effective:
             seat = commander_by_id.get(seat_id)
             if seat is None:
                 # An extra the graph does not know — simply absent, as the
                 # fetch above documents. It has no name to ingest or note.
                 continue
-            cold = not has_recommendations(seat_id)
+            if known.cold_seats is not None:
+                cold = seat_id in known.cold_seats
+            else:
+                cold = not has_recommendations(seat_id)
             if not cold:
-                with_page.add(seat_id)
+                seats_with_page.add(seat_id)
             ingest_failed = False
             if cold and allow_network:
                 try:
@@ -3240,7 +3287,9 @@ def suggest(
                     log.warning("suggestions.edhrec_failed", commander=seat["name"], error=str(exc))
                     ingest_failed = True
 
-            edhrec_rows = channel_edhrec(seat_id, retrieval_deck, identity, pool_filter=pool_filter)
+            edhrec_read = start_read(
+                channel_edhrec, seat_id, retrieval_deck, identity, pool_filter=pool_filter
+            )
 
             # --- cEDH subpage, retrieved before the casual page is priced --
             # `is_cedh(speed)` is the deck's own claim to bracket 5 — the
@@ -3261,7 +3310,7 @@ def suggest(
             # appended after them, because whether the cEDH page answered is
             # what decides the casual page's price — see
             # `EDHREC_CASUAL_SCALE_AT_CEDH`.
-            cedh_rows: list[dict] = []
+            cedh_read: Future | None = None
             if is_cedh(speed):
                 from .edhrec import load_bracket_counts
 
@@ -3280,66 +3329,16 @@ def suggest(
                                 error=str(exc),
                             )
 
-                    cedh_rows = channel_edhrec(
-                        seat_id, retrieval_deck, identity, pool_filter=pool_filter, cedh=True
+                    cedh_read = start_read(
+                        channel_edhrec,
+                        seat_id,
+                        retrieval_deck,
+                        identity,
+                        pool_filter=pool_filter,
+                        cedh=True,
                     )
 
-            # A deck that claimed cEDH and got a cEDH answer should not then
-            # be ranked mostly by what casual decks play. Full voice whenever
-            # the cEDH page said nothing, so no deck ever loses evidence it
-            # would have had before this channel existed.
-            casual_scale = EDHREC_CASUAL_SCALE_AT_CEDH if cedh_rows else 1.0
-
-            if not edhrec_rows:
-                from .edhrec import is_tombstoned
-
-                # Three-way: cold and EDHREC has not already said no reads as
-                # "on its way" (the warm — inline above or scheduled by the
-                # caller — has not landed yet); everything else (already
-                # ingested with nothing useful, tombstoned, or the inline fetch
-                # itself just failed) reads as the older, flatter "missing" —
-                # asking again would not change the answer.
-                if cold and not ingest_failed and not is_tombstoned(seat["name"]):
-                    notes.append(
-                        phrase(
-                            "edhrec-pending",
-                            f"EDHREC statistics for {seat['name']} are on their way — "
-                            "ask again in a moment.",
-                            commander=seat["name"],
-                        )
-                    )
-                else:
-                    notes.append(
-                        phrase(
-                            "edhrec-missing",
-                            f"EDHREC has no deck statistics for {seat['name']}, "
-                            "so suggestions come from card mechanics and combos only.",
-                            commander=seat["name"],
-                        )
-                    )
-            for row in edhrec_rows:
-                rate = row.get("inclusion_rate") or 0.0
-                if rate > page_inclusion.get(row["oracle_id"], 0.0):
-                    page_inclusion[row["oracle_id"]] = rate
-                _merge(
-                    pool,
-                    row,
-                    _edhrec_provenance(
-                        row,
-                        commander=seat["name"] if multi else None,
-                        scale=casual_scale,
-                    ),
-                )
-
-            for row in cedh_rows:
-                rate = row.get("inclusion_rate") or 0.0
-                if rate > page_inclusion.get(row["oracle_id"], 0.0):
-                    page_inclusion[row["oracle_id"]] = rate
-                _merge(
-                    pool,
-                    row,
-                    _edhrec_provenance(row, commander=seat["name"] if multi else None, cedh=True),
-                )
+            seat_pages.append(_SeatPage(seat["name"], cold, ingest_failed, edhrec_read, cedh_read))
 
     # --- Channel 2: resource bridge --------------------------------------
     # The resource bridge asks what the deck is short of, and "short of" is
@@ -3368,7 +3367,7 @@ def suggest(
             commander_oracle_ids=commander_oracle_ids,
             deck_size=deck_size,
             allow_network=True,
-            fetched=fetched,
+            fetched=known.rows,
         )
     # --- Theme targets: "how much of this theme", read against the report --
     # Resolved before anything reads the preference lists, so every consumer
@@ -3403,43 +3402,8 @@ def suggest(
     # what gates every use of it below.
     deck_tribes = [] if tribes_silenced else [row.creature_type for row in report.typal[:3]]
 
-    # Everything below that needs only the report starts now and is collected
-    # where it is used, so these reads overlap the bridge and each other.
-    ahead = _Ahead()
-    role_asks = _role_gap_asks(report) if "role_gap" in enabled else []
-    for _, _, role_wanted in role_asks:
-        ahead.start(
-            channel_roles,
-            role_wanted,
-            retrieval_deck,
-            identity,
-            limit=PER_BUCKET_LIMIT,
-            pool_filter=pool_filter,
-            ceilings=role_weight_ceiling(),
-        )
-    wanted_types = [
-        {"creature_type": row.creature_type, "share": row.share} for row in report.typal[:3]
-    ]
-    typal_runs = "typal_bridge" in enabled and bool(report.typal) and not tribes_silenced
-    if typal_runs:
-        ahead.start(channel_typal, wanted_types, retrieval_deck, identity, pool_filter=pool_filter)
-    if page_inclusion:
-        from .graph import deck_page_overlap
-
-        ahead.start(deck_page_overlap, effective, retrieval_deck)
-    held = {oid: counts.get(oid, 1) for oid in deck_oracle_ids}
-    if "tutor_access" in enabled:
-        from .graph import deck_tutor_count
-
-        ahead.start(deck_tutor_count, held)
-    if "fixing_lands" in enabled and len(identity) >= 2:
-        from .graph import deck_fixing_count
-
-        ahead.start(deck_fixing_count, held, _basic_names(identity))
-
-    # The focus and the standing theme preferences, resolved here so their
-    # reads can start too. What they have to say is said further down, where
-    # their channels run.
+    # The focus and the standing theme preferences. Their notes are said
+    # further down, where their channels run.
     from .themes import THEMES
 
     theme_notes: list[Phrase] = []
@@ -3459,26 +3423,196 @@ def suggest(
             parsed_focus = Focus(kind="theme", value=theme.id, label=theme.label)
     focus_theme = parsed_focus.value if parsed_focus and parsed_focus.kind == "theme" else None
     pins, outs = _resolve_theme_prefs(pinned_themes, excluded_themes, focus_theme, theme_notes)
-    if focus_theme:
-        ahead.start(channel_theme, focus_theme, retrieval_deck, identity, pool_filter=pool_filter)
-    if pins:
-        ahead.start(
-            channel_themes, [t.id for t in pins], retrieval_deck, identity, pool_filter=pool_filter
+
+    # Every read from here to the bridge needs only the report. Each starts
+    # now and is collected where its rows are merged, so they overlap the
+    # bridge and each other.
+    def themes_read(theme_ids: list[str]) -> Future:
+        return start_read(
+            channel_themes, theme_ids, retrieval_deck, identity, pool_filter=pool_filter
         )
+
+    role_reads = [
+        (
+            ask,
+            start_read(
+                channel_roles,
+                ask.wanted,
+                retrieval_deck,
+                identity,
+                limit=PER_BUCKET_LIMIT,
+                pool_filter=pool_filter,
+                ceilings=role_weight_ceiling(),
+            ),
+        )
+        for ask in (_role_gap_asks(report) if "role_gap" in enabled else [])
+    ]
+    typal_read: Future | None = None
+    if "typal_bridge" in enabled and report.typal and not tribes_silenced:
+        wanted_types = [
+            {"creature_type": row.creature_type, "share": row.share} for row in report.typal[:3]
+        ]
+        typal_read = start_read(
+            channel_typal, wanted_types, retrieval_deck, identity, pool_filter=pool_filter
+        )
+    focus_read = themes_read([focus_theme]) if focus_theme else None
+    pin_read = themes_read([t.id for t in pins]) if pins else None
+    detected_read: Future | None = None
+    share_by_theme: dict[str, float] = {}
+    declared = {t.id for t in pins} | {t.id for t in outs}
+    if focus_theme:
+        declared.add(focus_theme)
     if "theme_fit" in enabled:
-        declared = {t.id for t in pins} | {t.id for t in outs}
-        if focus_theme:
-            declared.add(focus_theme)
         targets = _detected_theme_targets(report.themes, declared)
         share_by_theme = {t.theme: t.share for t in targets}
         if share_by_theme:
-            ahead.start(
-                channel_themes,
-                list(share_by_theme),
-                retrieval_deck,
-                identity,
-                pool_filter=pool_filter,
+            detected_read = themes_read(list(share_by_theme))
+
+    # A count against a target, and the channel's rows when the count is short.
+    held = {oid: counts.get(oid, 1) for oid in deck_oracle_ids}
+    size_scale = deck_size / 99
+
+    def supply_read(resource: Resource, target: Callable[[], float]) -> Future:
+        return start_read(
+            _count_then_rows,
+            target,
+            lambda: deck_resource_count(resource, held),
+            lambda: channel_resource_supply(
+                resource, retrieval_deck, identity, pool_filter=pool_filter
+            ),
+        )
+
+    tutor_read: Future | None = None
+    if "tutor_access" in enabled:
+        tutor_read = start_read(
+            _count_then_rows,
+            lambda: _tutor_target(speed, deck_size_scale=size_scale),
+            lambda: deck_tutor_count(held),
+            lambda: channel_tutors(retrieval_deck, identity, pool_filter=pool_filter),
+        )
+    fixing_read: Future | None = None
+    if "fixing_lands" in enabled and len(identity) >= 2:
+        fetch_types = _basic_names(identity)
+        # Per-99 tuning like every quota, resized to the deck's target size.
+        fixing_target = round(FIXING_LANDS_PER_COLOR * len(identity) * deck_size / 99)
+        fixing_read = start_read(
+            _count_then_rows,
+            lambda: fixing_target,
+            lambda: deck_fixing_count(held, fetch_types),
+            lambda: channel_fixing(
+                retrieval_deck, identity, fetch_types, limit=FIXING_LIMIT, pool_filter=pool_filter
+            ),
+        )
+    fast_mana_read = free_spell_read = protection_read = None
+    if speed >= SPEED_BRACKET_FOUR:
+        if "fast_mana" in enabled:
+            fast_mana_read = supply_read(
+                Resource.FAST_MANA, lambda: _fast_mana_target(speed, deck_size_scale=size_scale)
             )
+        if "free_spell" in enabled:
+            # Deck-agnostic and identity-only, so one query answers for the
+            # whole request regardless of what is already in the 99, see
+            # `resource_identity_supply`.
+            free_spell_read = supply_read(
+                Resource.FREE_SPELL,
+                lambda: _free_spell_target(
+                    speed,
+                    resource_identity_supply(Resource.FREE_SPELL, identity),
+                    deck_size_scale=size_scale,
+                ),
+            )
+        if "proactive_protection" in enabled and is_cedh(speed):
+            # Identity-only and deck-agnostic like `free_spell`'s, but asked
+            # of the scene rather than the catalog: a card the format does
+            # not play is not supply, however castable it is.
+            protection_read = supply_read(
+                Resource.PROACTIVE_PROTECTION,
+                lambda: _proactive_protection_target(
+                    speed,
+                    resource_scene_supply(
+                        Resource.PROACTIVE_PROTECTION,
+                        identity,
+                        min_share=PROACTIVE_PROTECTION_MIN_SHARE,
+                    ),
+                    deck_size_scale=size_scale,
+                ),
+            )
+    completions_read: Future | None = None
+    if combos_run:
+        completions_read = start_read(
+            _combo_completions,
+            (lambda: known.combos) if combo_future is None else combo_future.result,
+            speed,
+            report.balance,
+            lambda names: cards_by_name(names, retrieval_deck, identity, pool_filter=pool_filter),
+        )
+
+    # --- Channel 1, collected ----------------------------------------------
+    # The union of every seat's page, best inclusion kept: the raw material
+    # for the corroboration boost below (and its self-gate: with the channel
+    # disabled or the page cold this stays empty and nothing fires).
+    page_inclusion: dict[str, float] = {}
+    multi = len(effective) > 1
+    for page in seat_pages:
+        edhrec_rows = page.rows.result()
+        cedh_rows = page.cedh_rows.result() if page.cedh_rows is not None else []
+
+        # A deck that claimed cEDH and got a cEDH answer should not then
+        # be ranked mostly by what casual decks play. Full voice whenever
+        # the cEDH page said nothing, so no deck ever loses evidence it
+        # would have had before this channel existed.
+        casual_scale = EDHREC_CASUAL_SCALE_AT_CEDH if cedh_rows else 1.0
+
+        if not edhrec_rows:
+            from .edhrec import is_tombstoned
+
+            # Three-way: cold and EDHREC has not already said no reads as
+            # "on its way" (the warm, inline above or scheduled by the
+            # caller, has not landed yet); everything else (already
+            # ingested with nothing useful, tombstoned, or the inline fetch
+            # itself just failed) reads as the older, flatter "missing":
+            # asking again would not change the answer.
+            if page.cold and not page.ingest_failed and not is_tombstoned(page.name):
+                notes.append(
+                    phrase(
+                        "edhrec-pending",
+                        f"EDHREC statistics for {page.name} are on their way — "
+                        "ask again in a moment.",
+                        commander=page.name,
+                    )
+                )
+            else:
+                notes.append(
+                    phrase(
+                        "edhrec-missing",
+                        f"EDHREC has no deck statistics for {page.name}, "
+                        "so suggestions come from card mechanics and combos only.",
+                        commander=page.name,
+                    )
+                )
+        for row in edhrec_rows:
+            rate = row.get("inclusion_rate") or 0.0
+            if rate > page_inclusion.get(row["oracle_id"], 0.0):
+                page_inclusion[row["oracle_id"]] = rate
+            _merge(
+                pool,
+                row,
+                _edhrec_provenance(row, commander=page.name if multi else None, scale=casual_scale),
+            )
+
+        for row in cedh_rows:
+            rate = row.get("inclusion_rate") or 0.0
+            if rate > page_inclusion.get(row["oracle_id"], 0.0):
+                page_inclusion[row["oracle_id"]] = rate
+            _merge(
+                pool,
+                row,
+                _edhrec_provenance(row, commander=page.name if multi else None, cedh=True),
+            )
+
+    overlap_read = (
+        start_read(deck_page_overlap, effective, retrieval_deck) if page_inclusion else None
+    )
 
     if "resource_bridge" in enabled:
         # `wanted` stays a fact — the "no gaps" note below still reads the
@@ -3564,30 +3698,21 @@ def suggest(
     # one-or-two-card drag on the fraction, accepted; the floor has room for
     # it.
     page_aligned = False
-    if page_inclusion:
-        deck_n, hits = ahead.take(deck_page_overlap, effective, retrieval_deck)
-        page_aligned = _page_aligned(deck_n, hits)
+    if overlap_read is not None:
+        page_aligned = _page_aligned(*overlap_read.result())
 
     # Queried per bucket, not once across all of them. A half-built deck is
     # short on everything, and a single query ordered by shortfall gives every
     # slot to the largest gap — 120 mana sources and nothing else. Each short
     # bucket gets its own allowance so all of them are represented.
-    for bucket_report, bucket, role_wanted in role_asks:
+    for (bucket_report, bucket, _), role_read in role_reads:
         label = str(bucket).replace("_", " ")
         bucket_reasons[f"bucket:{label}"] = (
             f"{bucket_report.coverage} against {bucket_report.low}-{bucket_report.high}"
             f" — {bucket_report.deviation} short"
         )
 
-        rows = ahead.take(
-            channel_roles,
-            role_wanted,
-            retrieval_deck,
-            identity,
-            limit=PER_BUCKET_LIMIT,
-            pool_filter=pool_filter,
-            ceilings=role_weight_ceiling(),
-        )
+        rows = role_read.result()
         # Gated to synergy_wincon — every other bucket is scored exactly as
         # before. Within it, a deck with no tribe and no qualifying theme
         # contributes nothing either, which keeps a Morophon-style pile
@@ -3640,7 +3765,7 @@ def suggest(
             from .graph import land_name_payoffs, oracle_ids_for_names
 
             payoffs = land_name_payoffs(list({*effective, *deck_oracle_ids}))
-            # Exact names: the case-blind lookup scans every card per name.
+            # By exact name: these are our own constants.
             basic_ids = oracle_ids_for_names(_suggested_land_names(identity, bool(payoffs)))
             # Lands-as-payoff evidence, either kind: a name-counting payoff
             # in the deck, or a landfall share in the theme profile.
@@ -3678,17 +3803,10 @@ def suggest(
     # lands, this one says when they are the wrong ones — so it fires on the
     # fixing count, never on the Land row, and the two argue independently.
     # "Fixing" is structural, not a tag; see `_FIXING_LAND` in graph.py.
-    if "fixing_lands" in enabled and len(identity) >= 2:
-        from .graph import channel_fixing
-
-        fetch_types = _basic_names(identity)
-        fixing_count = ahead.take(deck_fixing_count, held, fetch_types)
-        # Per-99 tuning like every quota, resized to the deck's target size.
-        fixing_target = round(FIXING_LANDS_PER_COLOR * len(identity) * deck_size / 99)
-        if fixing_count < fixing_target:
-            for row in channel_fixing(
-                retrieval_deck, identity, fetch_types, limit=FIXING_LIMIT, pool_filter=pool_filter
-            ):
+    if fixing_read is not None:
+        fixing_target, fixing_count, fixing_rows = fixing_read.result()
+        if fixing_rows is not None:
+            for row in fixing_rows:
                 _merge(
                     pool, row, _fixing_provenance(row, fixing_count, fixing_target, len(identity))
                 )
@@ -3702,10 +3820,8 @@ def suggest(
     # this fires only for decks that actually have a tribe. `deck_typal_profile`
     # applies a share floor; anything reaching here is a real constraint rather
     # than the two Elves in a deck that is not an Elf deck.
-    if typal_runs:
-        for row in ahead.take(
-            channel_typal, wanted_types, retrieval_deck, identity, pool_filter=pool_filter
-        ):
+    if typal_read is not None:
+        for row in typal_read.result():
             _merge(pool, row, _typal_provenance(row))
 
     # --- Channel 5: combo completion -------------------------------------
@@ -3729,30 +3845,16 @@ def suggest(
             )
         else:
             try:
-                combo_result = combo_future.result()
-                complete_combos = len(combo_result.get("included") or [])
-                combos = combo_result["almost_included"]
-                one_short = [c for c in combos if len(c.missing) == 1]
-                one_short, hidden_note = _gate_combos_for_bracket(one_short, speed)
-                if hidden_note:
-                    notes.append(hidden_note)
-                one_short, payoff_note = _gate_combos_for_payoff(one_short, report.balance)
-                if payoff_note:
-                    notes.append(payoff_note)
-
-                by_name: dict[str, list] = {}
-                for combo in one_short:
-                    by_name.setdefault(combo.missing[0], []).append(combo)
-
-                rows = cards_by_name(
-                    list(by_name), retrieval_deck, identity, pool_filter=pool_filter
-                )
+                completions = completions_read.result()
+                complete_combos = completions.complete
+                notes.extend(completions.notes)
+                by_name = completions.by_name
                 # Strongest lines first, then the cap — every completion
                 # scores the same flat boosted number, so without this order
                 # the cut between shown and hidden would be arbitrary. See
                 # COMBO_SUGGESTION_LIMIT for why there is a cap at all.
                 ranked = sorted(
-                    rows,
+                    completions.rows,
                     key=lambda row: (
                         -max(c.popularity for c in by_name[row["matched"]]),
                         -(row.get("playability") or 0.0),
@@ -3793,12 +3895,9 @@ def suggest(
     # after channel 5 because the target has a second input: the deck's own
     # complete-combo count from the block above raises it (`_tutor_target`) —
     # lines have to be found before they are played.
-    if "tutor_access" in enabled:
-        from .graph import channel_tutors
-
+    if tutor_read is not None:
         tutor_scale = _tutor_scale(speed)
-        tutor_count = ahead.take(deck_tutor_count, held)
-        bracket_target = _tutor_target(speed, deck_size_scale=deck_size / 99)
+        bracket_target, tutor_count, tutor_rows = tutor_read.result()
         tutor_target = _tutor_target(
             speed, deck_size_scale=deck_size / 99, complete_combos=complete_combos
         )
@@ -3814,7 +3913,10 @@ def suggest(
         # 3, the same line real completions stop being scored at.
         joker_armed = complete_combos >= TUTOR_JOKER_MIN_LINES and combo_scale > 0.0
         if short or joker_armed:
-            for row in channel_tutors(retrieval_deck, identity, pool_filter=pool_filter):
+            # Already read when the count was short of the bracket's own target.
+            if tutor_rows is None:
+                tutor_rows = channel_tutors(retrieval_deck, identity, pool_filter=pool_filter)
+            for row in tutor_rows:
                 if short:
                     _merge(
                         pool,
@@ -3848,77 +3950,26 @@ def suggest(
     # below that speed does not pay two graph round trips for a channel
     # guaranteed to merge nothing, the same reasoning `combo_scale == 0.0`
     # already applies to the combo channel above.
-    if speed >= SPEED_BRACKET_FOUR and (
-        "fast_mana" in enabled or "free_spell" in enabled or "proactive_protection" in enabled
+    for supply, label, provenance in (
+        (fast_mana_read, "fast mana", _fast_mana_provenance),
+        (free_spell_read, "free interaction", _free_spell_provenance),
+        (protection_read, "proactive protection", _proactive_protection_provenance),
     ):
-        from .graph import (
-            channel_resource_supply,
-            deck_resource_count,
-            resource_identity_supply,
-            resource_scene_supply,
+        if supply is None:
+            continue
+        target, count, rows = supply.result()
+        if rows is None:
+            continue
+        for row in rows:
+            _merge(pool, row, provenance(row, count, target))
+        bucket_reasons.setdefault(
+            f"bucket:{label}", f"{count:.0f} {label} against ~{target:.0f} at this bracket"
         )
-
-        if "fast_mana" in enabled:
-            fast_mana_count = deck_resource_count(Resource.FAST_MANA, held)
-            fast_mana_target = _fast_mana_target(speed, deck_size_scale=deck_size / 99)
-            if fast_mana_count < fast_mana_target:
-                for row in channel_resource_supply(
-                    Resource.FAST_MANA, retrieval_deck, identity, pool_filter=pool_filter
-                ):
-                    _merge(pool, row, _fast_mana_provenance(row, fast_mana_count, fast_mana_target))
-                bucket_reasons.setdefault(
-                    "bucket:fast mana",
-                    f"{fast_mana_count:.0f} fast mana against ~{fast_mana_target:.0f} "
-                    "at this bracket",
-                )
-
-        if "free_spell" in enabled:
-            # Deck-agnostic and identity-only, so one query answers for the
-            # whole request regardless of what is already in the 99 — see
-            # `resource_identity_supply`.
-            castable = resource_identity_supply(Resource.FREE_SPELL, identity)
-            free_spell_count = deck_resource_count(Resource.FREE_SPELL, held)
-            free_spell_target = _free_spell_target(speed, castable, deck_size_scale=deck_size / 99)
-            if free_spell_count < free_spell_target:
-                for row in channel_resource_supply(
-                    Resource.FREE_SPELL, retrieval_deck, identity, pool_filter=pool_filter
-                ):
-                    _merge(
-                        pool, row, _free_spell_provenance(row, free_spell_count, free_spell_target)
-                    )
-                bucket_reasons.setdefault(
-                    "bucket:free interaction",
-                    f"{free_spell_count:.0f} free interaction against ~{free_spell_target:.0f} "
-                    "at this bracket",
-                )
-
-        if "proactive_protection" in enabled and is_cedh(speed):
-            # Identity-only and deck-agnostic like `free_spell`'s, but asked
-            # of the scene rather than the catalog — a card the format does
-            # not play is not supply, however castable it is.
-            supply = resource_scene_supply(
-                Resource.PROACTIVE_PROTECTION,
-                identity,
-                min_share=PROACTIVE_PROTECTION_MIN_SHARE,
-            )
-            held_count = deck_resource_count(Resource.PROACTIVE_PROTECTION, held)
-            target = _proactive_protection_target(speed, supply, deck_size_scale=deck_size / 99)
-            if held_count < target:
-                for row in channel_resource_supply(
-                    Resource.PROACTIVE_PROTECTION, retrieval_deck, identity, pool_filter=pool_filter
-                ):
-                    _merge(pool, row, _proactive_protection_provenance(row, held_count, target))
-                bucket_reasons.setdefault(
-                    "bucket:proactive protection",
-                    f"{held_count:.0f} proactive protection against ~{target:.0f} at this bracket",
-                )
 
     # --- Focus: what the user asked for more of ---------------------------
     # Resolved above, with the theme preferences; their notes belong here.
-    if focus_theme:
-        for row in ahead.take(
-            channel_theme, focus_theme, retrieval_deck, identity, pool_filter=pool_filter
-        ):
+    if focus_read is not None:
+        for row in focus_read.result():
             _merge(pool, row, _theme_provenance(row))
 
     # --- Theme preferences: standing per-deck state, not a per-request ask --
@@ -3932,12 +3983,7 @@ def suggest(
     # theme loops below run their type-blind rows past it — pinning "Typal"
     # in a Dragons deck means more typal cards, not other tribes' lords.
 
-    for row in _drop_off_tribe_rows(
-        ahead.take(
-            channel_themes, [t.id for t in pins], retrieval_deck, identity, pool_filter=pool_filter
-        ),
-        deck_tribes,
-    ):
+    for row in _drop_off_tribe_rows(pin_read.result() if pin_read else [], deck_tribes):
         _merge(pool, row, _theme_provenance(row))
 
     # --- Detected themes: typal's trigger, generalised ---------------------
@@ -3950,16 +3996,7 @@ def suggest(
     # nothing when the channel never ran.
     voiced: dict[str, tuple[str, float]] = {}
     if "theme_fit" in enabled:
-        rows = _drop_off_tribe_rows(
-            ahead.take(
-                channel_themes,
-                list(share_by_theme),
-                retrieval_deck,
-                identity,
-                pool_filter=pool_filter,
-            ),
-            deck_tribes,
-        )
+        rows = _drop_off_tribe_rows(detected_read.result() if detected_read else [], deck_tribes)
         for row in rows:
             _merge(pool, row, _detected_theme_provenance(row, share_by_theme[row["theme_id"]]))
 
@@ -3999,7 +4036,7 @@ def suggest(
         voice_floor = 2 * FIT_THRESHOLD  # REPLACE_THEME_FLOOR's bar
         for seat_id in effective:
             seat = commander_by_id.get(seat_id)
-            if seat is None or seat_id in with_page or has_recommendations(seat_id):
+            if seat is None or seat_id in seats_with_page or has_recommendations(seat_id):
                 continue
             fits = cards_theme_fits([seat_id]).get(seat_id, {})
             strongest = sorted(

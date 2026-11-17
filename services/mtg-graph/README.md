@@ -107,7 +107,7 @@ The built-in rate limiter is best-effort for exactly that reason. It stops one
 client from monopolising a worker; a fronting proxy or CDN is what actually
 shields the service, and belongs in front of this.
 
-Startup warms the three IDF caches and the facet list (`WARMUP_ON_START`,
+Startup warms the corpus caches and the facet list (`WARMUP_ON_START`,
 default on). Each step is fail-soft: an unreachable graph at boot costs a slow
 first request, not a dead worker.
 

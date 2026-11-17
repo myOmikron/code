@@ -84,6 +84,13 @@ def _cases(commander: str, cards: list[dict], names: list[str]) -> list[tuple[st
             {**full, "theme_targets": {"landfall": 0.3, "tokens": 0.0}},
         ),
         ("suggestions focus", "/suggestions", {**full, "focus": "theme:counters"}),
+        ("suggestions pool", "/suggestions", {**full, "pool_query": "cmc>=6"}),
+        ("swaps budget", "/swaps", {**full, "max_price": 0.5}),
+        (
+            "swaps five colours pool",
+            "/swaps",
+            {**full, "identity": list("WUBRG"), "pool_query": "t:enchantment"},
+        ),
         ("replace", "/replace", {**full, "target_oracle_id": cards[0]["oracle_id"]}),
         ("fill", "/fill", {**full, "cards": cards[:50]}),
     ]
@@ -109,14 +116,19 @@ def run(out: str, runs: int, commander: str | None) -> None:
             client.post(path, json=body).raise_for_status()  # warm
             walls, counts = [], []
             queries: dict[str, list[float]] = defaultdict(list)
+            others: dict[str, list[float]] = defaultdict(list)
             for _ in range(runs):
                 exporter.clear()
                 start = time.perf_counter()
                 response = client.post(path, json=body)
                 walls.append((time.perf_counter() - start) * 1000)
                 response.raise_for_status()
-                spans = [s for s in exporter.get_finished_spans() if s.name == "neo4j"]
+                finished = exporter.get_finished_spans()
+                spans = [s for s in finished if s.name == "neo4j"]
                 counts.append(len(spans))
+                for span in finished:
+                    if span.name != "neo4j":
+                        others[span.name].append((span.end_time - span.start_time) / 1e6)
                 for span in spans:
                     text = " ".join(span.attributes["db.query.text"].split())
                     queries[text].append((span.end_time - span.start_time) / 1e6)
@@ -132,6 +144,7 @@ def run(out: str, runs: int, commander: str | None) -> None:
                         ),
                         key=lambda row: -row["ms"],
                     ),
+                    "spans_ms": {name: round(sum(ms) / runs, 1) for name, ms in others.items()},
                     "response": response.json(),
                 }
             )
