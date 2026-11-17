@@ -1318,10 +1318,12 @@ def suggest_swaps(
     # must not break cuts, hence the guard.
     combo_partners: dict[str, list[str]] = {}
     complete_lines = 0
+    combos = None
     try:
         from .spellbook import deck_combos
 
-        included = deck_combos(list(deck), deck_card_names or None)["included"]
+        combos = deck_combos(list(deck), deck_card_names or None)
+        included = combos["included"]
         complete_lines = len(included)
         deck_ids = set(deck)
         for combo in included:
@@ -1420,6 +1422,8 @@ def suggest_swaps(
         # Same deck, quantities, speed, overrides, and commander as the
         # diagnose above — handing it over halves the round trips /swaps pays.
         diagnostics=report,
+        # Looked up above for the same cards.
+        combos=combos if list(deck) == list(deck_oracle_ids) else None,
         allow_network=allow_network,
     )
 
