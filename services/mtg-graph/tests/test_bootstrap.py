@@ -7,6 +7,8 @@ graph, which shows up as role coverage reading 0 rather than as an error.
 
 from __future__ import annotations
 
+from dataclasses import asdict
+
 import pytest
 
 from deck_lab.bootstrap import Outcome, State, Step, bootstrap, build_steps
@@ -121,6 +123,33 @@ def test_unreachable_graph_reports_instead_of_raising(monkeypatch):
 
     assert [(o.step, o.ran) for o in outcomes] == [("graph", False)]
     assert "nowhere:7687" in outcomes[0].error
+
+
+def test_a_start_applies_the_schema_even_when_nothing_is_loaded(monkeypatch):
+    """An index a release adds has to arrive with it: the ingests that used to
+    be the only ones applying the schema are skipped on a loaded graph."""
+    from deck_lab import bootstrap as module
+
+    applied: list[bool] = []
+    monkeypatch.setattr("deck_lab.graph.bootstrap_state", lambda: asdict(FULL))
+    monkeypatch.setattr("deck_lab.graph.apply_schema", lambda: applied.append(True))
+    outcomes = module.bootstrap(steps=_recording()[0])
+
+    assert applied == [True]
+    assert all(not o.ran for o in outcomes)
+
+
+def test_a_schema_that_will_not_apply_does_not_stop_the_start(monkeypatch):
+    from deck_lab import bootstrap as module
+
+    def explode() -> None:
+        raise RuntimeError("index population failed")
+
+    monkeypatch.setattr("deck_lab.graph.bootstrap_state", lambda: asdict(FULL))
+    monkeypatch.setattr("deck_lab.graph.apply_schema", explode)
+    outcomes = module.bootstrap(steps=_recording()[0])
+
+    assert all(not o.error for o in outcomes)
 
 
 @pytest.mark.parametrize("name", EXPECTED_ORDER)

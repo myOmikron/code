@@ -33,6 +33,8 @@ SCHEMA_STATEMENTS = [
     "CREATE INDEX card_edhrec_rank IF NOT EXISTS FOR (c:Card) ON (c.edhrec_rank)",
     "CREATE INDEX card_playability IF NOT EXISTS FOR (c:Card) ON (c.playability)",
     "CREATE INDEX card_game_changer IF NOT EXISTS FOR (c:Card) ON (c.game_changer)",
+    # The fixing-lands channel starts from the ~1,200 lands instead of every card.
+    "CREATE INDEX card_is_land IF NOT EXISTS FOR (c:Card) ON (c.is_land)",
     # The search box types into 32k cards. `card_name` above is a RANGE index,
     # which a `CONTAINS` predicate cannot use, so name search was a full label
     # scan; this is what makes it a lookup. Both fields are indexed together so
@@ -1762,8 +1764,9 @@ LIMIT $limit
 # while excluding a dead one, which the colourless identity of every fetch
 # would otherwise wave through (Scalding Tarn finds nothing there).
 # `$fetch_types` is the identity's basic type names ("Plains", "Swamp", …).
+# `= true` rather than the bare property, which no index answers.
 _FIXING_LAND = """
-      c.is_land
+      c.is_land = true
       AND (
         c.oracle_text CONTAINS 'any color'
         OR size(c.color_identity) >= 2
