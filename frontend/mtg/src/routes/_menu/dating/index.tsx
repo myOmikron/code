@@ -188,7 +188,7 @@ function RouteComponent() {
 
                 {!profileNeeded && <DatingColorFilter selected={colors} onToggle={toggleColor} />}
 
-                <div className={"relative min-h-0 flex-1"}>
+                <div className={"relative isolate min-h-0 flex-1"}>
                     {loading ? (
                         <Text className={"pt-10 text-center"}>{t("description.loading")}</Text>
                     ) : profileNeeded ? (

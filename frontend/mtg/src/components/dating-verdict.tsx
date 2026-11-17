@@ -134,9 +134,16 @@ export function DatingVerdict(props: DatingVerdictProps) {
                         {t("button.start-deck")}
                     </PrimaryButton>
                 ) : (
-                    <Button outline={true} onClick={onComeBack} disabled={busy} className={"text-white!"}>
+                    <button
+                        type={"button"}
+                        onClick={onComeBack}
+                        disabled={busy}
+                        className={
+                            "h-11 rounded-(--radius-control) border-2 border-lime-400 font-semibold text-lime-400 transition-colors hover:bg-lime-400/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-400 disabled:opacity-50"
+                        }
+                    >
                         {t("button.come-back")}
-                    </Button>
+                    </button>
                 )}
                 <Button plain={true} onClick={onKeepSwiping} disabled={busy} className={"text-white!"}>
                     {t("button.keep-swiping")}
