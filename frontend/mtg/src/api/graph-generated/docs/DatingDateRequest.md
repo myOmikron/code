@@ -1,0 +1,15 @@
+
+# DatingDateRequest
+
+The commander a date is planned with.
+
+## Properties
+
+Name | Type
+------------ | -------------
+`commander` | string
+
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+

@@ -44,6 +44,12 @@ BUDGET_TIER_FACTOR = 4.0
 INTERESTS_SHOWN = 3
 # Keeps a zero dimension from zeroing the whole geometric mean.
 SCORE_FLOOR = 0.05
+# A theme counts as supported when this share of the commander's recommended
+# cards fits it; measured top themes sit at 0.15 to 0.35, the median at 0.04.
+SUPPORT_HIGH = 0.12
+SUPPORT_MID = 0.06
+SUPPORT_SAMPLE = 200
+PROPOSALS = 3
 # One card in this many is picked for compatibility instead of popularity.
 YOUR_TYPE_EVERY = 5
 YOUR_TYPE_SAMPLE = 40
@@ -57,6 +63,22 @@ class Interest(BaseModel):
     label: str
     theme: str | None
     share: float
+
+
+class DateTheme(BaseModel):
+    """A theme on a date, and how much the commander supports it."""
+
+    theme: str
+    label: str
+    support: float
+    tier: Literal["high", "mid", "low"]
+
+
+class DatePlan(BaseModel):
+    """What a commander brings to a date: its proposals and its view of every theme."""
+
+    proposals: list[DateTheme]
+    themes: list[DateTheme]
 
 
 class DatingCommander(BaseModel):
@@ -417,3 +439,54 @@ def stack(
         candidates.remove(pick)
         out.append(commander_card(pick, your_type=your_type))
     return out
+
+
+def _tier(support: float) -> Literal["high", "mid", "low"]:
+    if support >= SUPPORT_HIGH:
+        return "high"
+    if support >= SUPPORT_MID:
+        return "mid"
+    return "low"
+
+
+def date_plan(
+    row: dict,
+    *,
+    recommended: Callable[[str, int], list[str]] | None = None,
+    fit_counts: Callable[[list[str], float], dict[str, int]] | None = None,
+) -> DatePlan:
+    """The commander's proposals (its mapped interests, topped up by support) and every theme."""
+    from .themes import FIT_THRESHOLD
+
+    if recommended is None:
+        from .graph import recommended_ids as recommended
+    if fit_counts is None:
+        from .graph import theme_fit_counts as fit_counts
+
+    ids = recommended(row["oracle_id"], SUPPORT_SAMPLE)
+    counts = fit_counts(ids, FIT_THRESHOLD) if ids else {}
+    total = max(len(ids), 1)
+    themes = sorted(
+        (
+            DateTheme(
+                theme=theme_id,
+                label=theme.label,
+                support=round(counts.get(theme_id, 0) / total, 3),
+                tier=_tier(counts.get(theme_id, 0) / total),
+            )
+            for theme_id, theme in THEMES.items()
+        ),
+        key=lambda theme: -theme.support,
+    )
+    by_id = {theme.theme: theme for theme in themes}
+
+    proposals: list[DateTheme] = []
+    for interest in interests(row):
+        if interest.theme in by_id and by_id[interest.theme] not in proposals:
+            proposals.append(by_id[interest.theme])
+    for theme in themes:
+        if len(proposals) >= PROPOSALS:
+            break
+        if theme not in proposals:
+            proposals.append(theme)
+    return DatePlan(proposals=proposals[:PROPOSALS], themes=themes)

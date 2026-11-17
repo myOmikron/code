@@ -242,3 +242,50 @@ def test_profile_endpoint_builds_from_answers(monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["colors"] == {"G": 1.0}
+
+
+def plan_for(row_overrides: dict, counts: dict[str, int], total: int = 100):
+    return dating.date_plan(
+        row("krenko", **row_overrides),
+        recommended=lambda oid, limit: [f"c{index}" for index in range(total)],
+        fit_counts=lambda ids, threshold: counts,
+    )
+
+
+def test_a_date_proposes_the_mapped_interests_first():
+    plan = plan_for(
+        {
+            "tags": ["goblins", "tokens", "ramp"],
+            "tag_labels": ["Goblins", "Tokens", "Ramp"],
+            "tag_counts": [900, 800, 700],
+        },
+        {"tokens": 30, "aggro": 20, "tribal": 25},
+    )
+
+    assert [theme.theme for theme in plan.proposals] == ["tribal", "tokens", "aggro"]
+
+
+def test_support_is_the_share_of_recommended_cards_that_fit():
+    plan = plan_for({}, {"tokens": 30, "mill": 7, "lifegain": 2})
+    by_id = {theme.theme: theme for theme in plan.themes}
+
+    assert by_id["tokens"].support == 0.3
+    assert by_id["tokens"].tier == "high"
+    assert by_id["mill"].tier == "mid"
+    assert by_id["lifegain"].tier == "low"
+    assert len(plan.themes) == len(dating.THEMES)
+
+
+def test_date_endpoint_answers_for_a_pool_commander(pool, monkeypatch):
+    from deck_lab import graph
+    from deck_lab.cache import dating_date_cache
+
+    dating_date_cache.clear()
+    monkeypatch.setattr(graph, "recommended_ids", lambda oid, limit: ["a", "b"])
+    monkeypatch.setattr(graph, "theme_fit_counts", lambda ids, threshold: {"aristocrats": 1})
+
+    response = client.post("/dating/date", json={"commander": "teysa"})
+
+    assert response.status_code == 200
+    assert response.json()["proposals"][0]["theme"] == "aristocrats"
+    assert client.post("/dating/date", json={"commander": "nobody"}).status_code == 404

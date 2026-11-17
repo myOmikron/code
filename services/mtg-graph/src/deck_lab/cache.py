@@ -176,3 +176,10 @@ dating_pool_cache = LruTtlCache(
     max_entries=1,
     ttl_seconds=settings.facets_cache_ttl_seconds,
 )
+
+# A commander's date plan: its proposals and theme support. Changes only on re-ingest.
+dating_date_cache = LruTtlCache(
+    "dating_date",
+    max_entries=512,
+    ttl_seconds=settings.facets_cache_ttl_seconds,
+)

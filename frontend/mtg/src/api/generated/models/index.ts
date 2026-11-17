@@ -1124,6 +1124,19 @@ export interface AdvisorSettingsResponse {
     themes: ThemePrefs;
 }
 /**
+ * Answer the Commander's proposal
+ * @export
+ * @interface AnswerDateRequest
+ */
+export interface AnswerDateRequest {
+    /**
+     * How much of the proposed theme
+     */
+    level: ThemeLevel;
+}
+
+
+/**
  * The response that is sent in a case of an error the caller should report to an admin
  * @export
  * @interface ApiErrorResponse
@@ -1284,6 +1297,23 @@ export interface BracketRulesResponse {
      * The slug the client turns into a name
      */
     slug: string;
+}
+
+
+/**
+ * Bring a theme of the account's own
+ * @export
+ * @interface BringThemeRequest
+ */
+export interface BringThemeRequest {
+    /**
+     * How much of it; never `avoid`
+     */
+    level: ThemeLevel;
+    /**
+     * A theme id from the palette
+     */
+    theme: string;
 }
 
 
@@ -2175,6 +2205,27 @@ export interface CurrentRoundResponse {
      */
     timer?: RoundTimerResponse | null;
 }
+
+/**
+ * Where a date stands
+ * @export
+ */
+export const DateProgress = {
+    /**
+    * Turns are still to be taken
+    */
+    Active: 'Active',
+    /**
+    * Chemistry hit zero and the Commander left
+    */
+    Left: 'Left',
+    /**
+    * Planned; the theme levels are on the deck
+    */
+    Done: 'Done',
+} as const;
+export type DateProgress = typeof DateProgress[keyof typeof DateProgress];
+
 /**
  * A date that got past a pass
  * @export
@@ -2210,6 +2261,10 @@ export interface DateResponse {
      */
     name: string;
     /**
+     * The deck of a date that is not finished yet
+     */
+    open_date?: string | null;
+    /**
      * The Default printing, to add it to a deck
      */
     printing?: string | null;
@@ -2229,6 +2284,59 @@ export interface DateResponse {
      * Swiped up
      */
     super_like: boolean;
+}
+
+
+/**
+ * A date and what can happen next
+ * @export
+ * @interface DateSessionResponse
+ */
+export interface DateSessionResponse {
+    /**
+     * 0 to 100
+     */
+    chemistry: number;
+    /**
+     * The Commander's oracle id
+     */
+    commander: string;
+    /**
+     * The deck being planned
+     */
+    deck: string;
+    /**
+     * Art crop url
+     */
+    image_art_crop?: string | null;
+    /**
+     * Card name
+     */
+    name: string;
+    /**
+     * Whose turn is next, `None` once over
+     */
+    next?: TurnBy | null;
+    /**
+     * What the account may bring on its turn
+     */
+    palette: Array<DateThemeResponse>;
+    /**
+     * What the Commander proposes on its turn
+     */
+    proposal?: DateThemeResponse | null;
+    /**
+     * The round, from 1 to 3
+     */
+    round: number;
+    /**
+     * Where the date stands
+     */
+    status: DateProgress;
+    /**
+     * The turns so far
+     */
+    turns: Array<DateTurnResponse>;
 }
 
 
@@ -2256,6 +2364,50 @@ export const DateStatus = {
     Unmatched: 'Unmatched',
 } as const;
 export type DateStatus = typeof DateStatus[keyof typeof DateStatus];
+
+/**
+ * A theme on a date
+ * @export
+ * @interface DateThemeResponse
+ */
+export interface DateThemeResponse {
+    /**
+     * The theme's label
+     */
+    label: string;
+    /**
+     * Advisor theme id
+     */
+    theme: string;
+}
+/**
+ * One turn taken
+ * @export
+ * @interface DateTurnResponse
+ */
+export interface DateTurnResponse {
+    /**
+     * Whose turn it was
+     */
+    by: TurnBy;
+    /**
+     * What it did to the chemistry
+     */
+    delta: number;
+    /**
+     * The theme's label
+     */
+    label: string;
+    /**
+     * The level it ended at
+     */
+    level: ThemeLevel;
+    /**
+     * Advisor theme id
+     */
+    theme: string;
+}
+
 
 /**
  * Every date, split by how it went
@@ -8988,6 +9140,17 @@ export interface StartAddPasskeyResponse {
     options: any | null;
 }
 /**
+ * Start a date on a deck that has the Commander
+ * @export
+ * @interface StartDateRequest
+ */
+export interface StartDateRequest {
+    /**
+     * The deck being planned
+     */
+    deck: string;
+}
+/**
  * @type StartLogin200Response
  * 
  * @export
@@ -10231,6 +10394,23 @@ export interface TournamentSummaryResponse {
     visibility: Visibility;
 }
 
+
+
+/**
+ * Whose turn it was
+ * @export
+ */
+export const TurnBy = {
+    /**
+    * The Commander proposed, the account answered
+    */
+    Commander: 'Commander',
+    /**
+    * The account brought a theme
+    */
+    Player: 'Player',
+} as const;
+export type TurnBy = typeof TurnBy[keyof typeof TurnBy];
 
 /**
  * Request to change some of a stack's fields

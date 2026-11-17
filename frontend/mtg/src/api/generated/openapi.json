@@ -4725,6 +4725,409 @@
                 }
             }
         },
+        "/api/frontend/v1/dating/dates/{commander}/plan": {
+            "post": {
+                "summary": "Plan a deck's themes on a date with its Commander",
+                "description": "Plan a deck's themes on a date with its Commander",
+                "operationId": "start_date",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "commander",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StartDateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DateSessionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/dating/date/{deck}": {
+            "get": {
+                "summary": "The date planning a deck",
+                "description": "The date planning a deck",
+                "operationId": "get_date",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true,
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/DateSessionResponse"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/dating/date/{deck}/answer": {
+            "post": {
+                "summary": "Answer the Commander's proposal with a level",
+                "description": "Answer the Commander's proposal with a level",
+                "operationId": "answer_date",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AnswerDateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DateSessionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/dating/date/{deck}/bring": {
+            "post": {
+                "summary": "Bring a theme from the palette",
+                "description": "Bring a theme from the palette",
+                "operationId": "bring_theme",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BringThemeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DateSessionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/dating/date/{deck}/date-night": {
+            "post": {
+                "summary": "\"That's all, date night\": finish with the themes so far",
+                "description": "\"That's all, date night\": finish with the themes so far",
+                "operationId": "date_night",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DateSessionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/dating/date/{deck}/come-back": {
+            "post": {
+                "summary": "\"No, come back\": the Commander returns to a date it left",
+                "description": "\"No, come back\": the Commander returns to a date it left",
+                "operationId": "come_back_to_date",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DateSessionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/decks/formats": {
             "get": {
                 "summary": "What the offered formats ask of a deck",
@@ -17898,6 +18301,23 @@
                     "themes"
                 ]
             },
+            "AnswerDateRequest": {
+                "description": "Answer the Commander's proposal",
+                "type": "object",
+                "properties": {
+                    "level": {
+                        "description": "How much of the proposed theme",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ThemeLevel"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "level"
+                ]
+            },
             "ApiErrorResponse": {
                 "description": "The response that is sent in a case of an error the caller should report to an admin",
                 "type": "object",
@@ -18120,6 +18540,32 @@
                     "mass_land_denial",
                     "number",
                     "slug"
+                ]
+            },
+            "BringThemeRequest": {
+                "description": "Bring a theme of the account's own",
+                "type": "object",
+                "properties": {
+                    "level": {
+                        "description": "How much of it; never `avoid`",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ThemeLevel"
+                            }
+                        ]
+                    },
+                    "theme": {
+                        "description": "A theme id from the palette",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "level",
+                    "theme"
                 ]
             },
             "BugReportAccount": {
@@ -19412,6 +19858,32 @@
                     "number"
                 ]
             },
+            "DateProgress": {
+                "description": "Where a date stands",
+                "oneOf": [
+                    {
+                        "description": "Turns are still to be taken",
+                        "type": "string",
+                        "enum": [
+                            "Active"
+                        ]
+                    },
+                    {
+                        "description": "Chemistry hit zero and the Commander left",
+                        "type": "string",
+                        "enum": [
+                            "Left"
+                        ]
+                    },
+                    {
+                        "description": "Planned; the theme levels are on the deck",
+                        "type": "string",
+                        "enum": [
+                            "Done"
+                        ]
+                    }
+                ]
+            },
             "DateResponse": {
                 "description": "A date that got past a pass",
                 "type": "object",
@@ -19450,6 +19922,12 @@
                     "name": {
                         "description": "Card name",
                         "type": "string"
+                    },
+                    "open_date": {
+                        "nullable": true,
+                        "description": "The deck of a date that is not finished yet",
+                        "type": "string",
+                        "format": "uuid"
                     },
                     "printing": {
                         "nullable": true,
@@ -19494,6 +19972,91 @@
                     "super_like"
                 ]
             },
+            "DateSessionResponse": {
+                "description": "A date and what can happen next",
+                "type": "object",
+                "properties": {
+                    "chemistry": {
+                        "description": "0 to 100",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "commander": {
+                        "description": "The Commander's oracle id",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "deck": {
+                        "description": "The deck being planned",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "image_art_crop": {
+                        "nullable": true,
+                        "description": "Art crop url",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "Card name",
+                        "type": "string"
+                    },
+                    "next": {
+                        "nullable": true,
+                        "description": "Whose turn is next, `None` once over",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TurnBy"
+                            }
+                        ]
+                    },
+                    "palette": {
+                        "description": "What the account may bring on its turn",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DateThemeResponse"
+                        }
+                    },
+                    "proposal": {
+                        "nullable": true,
+                        "description": "What the Commander proposes on its turn",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DateThemeResponse"
+                            }
+                        ]
+                    },
+                    "round": {
+                        "description": "The round, from 1 to 3",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "status": {
+                        "description": "Where the date stands",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DateProgress"
+                            }
+                        ]
+                    },
+                    "turns": {
+                        "description": "The turns so far",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DateTurnResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "chemistry",
+                    "commander",
+                    "deck",
+                    "name",
+                    "palette",
+                    "round",
+                    "status",
+                    "turns"
+                ]
+            },
             "DateStatus": {
                 "description": "Where a date with a Commander stands",
                 "oneOf": [
@@ -19525,6 +20088,66 @@
                             "Unmatched"
                         ]
                     }
+                ]
+            },
+            "DateThemeResponse": {
+                "description": "A theme on a date",
+                "type": "object",
+                "properties": {
+                    "label": {
+                        "description": "The theme's label",
+                        "type": "string"
+                    },
+                    "theme": {
+                        "description": "Advisor theme id",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "label",
+                    "theme"
+                ]
+            },
+            "DateTurnResponse": {
+                "description": "One turn taken",
+                "type": "object",
+                "properties": {
+                    "by": {
+                        "description": "Whose turn it was",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TurnBy"
+                            }
+                        ]
+                    },
+                    "delta": {
+                        "description": "What it did to the chemistry",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "label": {
+                        "description": "The theme's label",
+                        "type": "string"
+                    },
+                    "level": {
+                        "description": "The level it ended at",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ThemeLevel"
+                            }
+                        ]
+                    },
+                    "theme": {
+                        "description": "Advisor theme id",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "by",
+                    "delta",
+                    "label",
+                    "level",
+                    "theme"
                 ]
             },
             "DatesResponse": {
@@ -29071,6 +29694,23 @@
                     "options"
                 ]
             },
+            "StartDateRequest": {
+                "description": "Start a date on a deck that has the Commander",
+                "type": "object",
+                "properties": {
+                    "deck": {
+                        "description": "The deck being planned",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "deck"
+                ]
+            },
             "StartLoginErrors": {
                 "description": "Why a login could not be started",
                 "type": "object",
@@ -30626,6 +31266,25 @@
                 "description": "Wrapper for the primary key of a [`Tournament`]",
                 "type": "string",
                 "format": "uuid"
+            },
+            "TurnBy": {
+                "description": "Whose turn it was",
+                "oneOf": [
+                    {
+                        "description": "The Commander proposed, the account answered",
+                        "type": "string",
+                        "enum": [
+                            "Commander"
+                        ]
+                    },
+                    {
+                        "description": "The account brought a theme",
+                        "type": "string",
+                        "enum": [
+                            "Player"
+                        ]
+                    }
+                ]
             },
             "UpdateCollectionEntryRequest": {
                 "description": "Request to change some of a stack's fields\n\nEvery field is optional and an omitted one is left alone. The two nullable ones are wrapped twice so that `null` can mean \"clear this\": with a single `Option` a cleared price and an untouched one arrive as the same value.",

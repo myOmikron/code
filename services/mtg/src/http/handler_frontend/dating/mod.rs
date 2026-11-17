@@ -20,6 +20,12 @@ pub fn initialize_routes() -> GalvynRouter {
             .handler(handler::reset_dating_passes)
             .handler(handler::get_dating_profile)
             .handler(handler::update_dating_profile)
+            .handler(handler::start_date)
+            .handler(handler::get_date)
+            .handler(handler::answer_date)
+            .handler(handler::bring_theme)
+            .handler(handler::date_night)
+            .handler(handler::come_back_to_date)
             .wrap(AccountRequiredLayer),
     )
 }

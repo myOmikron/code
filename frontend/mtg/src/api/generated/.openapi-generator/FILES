@@ -55,6 +55,7 @@ docs/AdminSyncsResponse.md
 docs/AdminUnlockAccountErrors.md
 docs/AdminUnlockAccountRequest.md
 docs/AdvisorSettingsResponse.md
+docs/AnswerDateRequest.md
 docs/ApiErrorResponse.md
 docs/ArrangeRoundErrors.md
 docs/ArrangeRoundRequest.md
@@ -63,6 +64,7 @@ docs/BracketFlagsEntryResponse.md
 docs/BracketFlagsRequest.md
 docs/BracketFlagsResponse.md
 docs/BracketRulesResponse.md
+docs/BringThemeRequest.md
 docs/BugReportAccount.md
 docs/BugReportImageInfo.md
 docs/BugReportState.md
@@ -101,8 +103,12 @@ docs/CreateScannerSessionRequest.md
 docs/CreateTournament200Response.md
 docs/CreateWatchListRequest.md
 docs/CurrentRoundResponse.md
+docs/DateProgress.md
 docs/DateResponse.md
+docs/DateSessionResponse.md
 docs/DateStatus.md
+docs/DateThemeResponse.md
+docs/DateTurnResponse.md
 docs/DatesResponse.md
 docs/DatingAnswers.md
 docs/DatingCardResponse.md
@@ -418,6 +424,7 @@ docs/StandingResponse.md
 docs/StandingsResponse.md
 docs/StarMpcFillImageRequest.md
 docs/StartAddPasskeyResponse.md
+docs/StartDateRequest.md
 docs/StartLogin200Response.md
 docs/StartLoginErrors.md
 docs/StartLoginRequest.md
@@ -471,6 +478,7 @@ docs/TournamentSettingsRequest.md
 docs/TournamentState.md
 docs/TournamentStateResponse.md
 docs/TournamentSummaryResponse.md
+docs/TurnBy.md
 docs/UpdateCollectionEntryRequest.md
 docs/UpdateCollectionRequest.md
 docs/UpdateDeckCardRequest.md

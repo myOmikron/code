@@ -1404,6 +1404,34 @@ def commander_salts(oracle_ids: list[str]) -> dict[str, float]:
         return {r["oracle_id"]: float(r["salt"]) for r in session.run(query, ids=oracle_ids)}
 
 
+def recommended_ids(oracle_id: str, limit: int) -> list[str]:
+    """The commander's most-included recommended cards."""
+    query = """
+    MATCH (:Card {oracle_id: $oid})-[r:RECOMMENDS]->(x:Card)
+    RETURN x.oracle_id AS oracle_id
+    ORDER BY r.inclusion_rate DESC
+    LIMIT $limit
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [r["oracle_id"] for r in session.run(query, oid=oracle_id, limit=limit)]
+
+
+def theme_fit_counts(oracle_ids: list[str], threshold: float) -> dict[str, int]:
+    """How many of the cards fit each theme at `threshold` or above."""
+    if not oracle_ids:
+        return {}
+    query = """
+    UNWIND $ids AS oid
+    MATCH (:Card {oracle_id: oid})-[f:FITS_THEME]->(t:Theme)
+    WHERE f.fit >= $threshold
+    RETURN t.id AS theme, count(*) AS n
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return {
+            r["theme"]: int(r["n"]) for r in session.run(query, ids=oracle_ids, threshold=threshold)
+        }
+
+
 def recommendations_for(commander_name: str, *, limit: int = 15, min_synergy: float = 0.0):
     """Top recommendations already persisted for a commander."""
     query = """

@@ -9,6 +9,10 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::models::dating::DateStatus;
+use crate::models::dating::date::DateProgress;
+use crate::models::dating::date::TurnBy;
+use crate::models::deck::DeckUuid;
+use crate::models::deck::advisor::ThemeLevel;
 
 /// Which way a Commander was swiped
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -172,6 +176,8 @@ pub struct DateResponse {
     pub shared: Option<String>,
     /// When the swipe happened
     pub created_at: SchemaDateTime,
+    /// The deck of a date that is not finished yet
+    pub open_date: Option<Uuid>,
 }
 
 /// Every date, split by how it went
@@ -222,4 +228,78 @@ pub struct DatingProfileResponse {
     pub budget_eur: Option<f64>,
     /// Average salt of the account's Commanders
     pub salt: Option<f64>,
+}
+
+/// Start a date on a deck that has the Commander
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct StartDateRequest {
+    /// The deck being planned
+    pub deck: DeckUuid,
+}
+
+/// Answer the Commander's proposal
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct AnswerDateRequest {
+    /// How much of the proposed theme
+    pub level: ThemeLevel,
+}
+
+/// Bring a theme of the account's own
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct BringThemeRequest {
+    /// A theme id from the palette
+    pub theme: MaxStr<64>,
+    /// How much of it; never `avoid`
+    pub level: ThemeLevel,
+}
+
+/// A theme on a date
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DateThemeResponse {
+    /// Advisor theme id
+    pub theme: String,
+    /// The theme's label
+    pub label: String,
+}
+
+/// One turn taken
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DateTurnResponse {
+    /// Whose turn it was
+    pub by: TurnBy,
+    /// Advisor theme id
+    pub theme: String,
+    /// The theme's label
+    pub label: String,
+    /// The level it ended at
+    pub level: ThemeLevel,
+    /// What it did to the chemistry
+    pub delta: i32,
+}
+
+/// A date and what can happen next
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DateSessionResponse {
+    /// The deck being planned
+    pub deck: Uuid,
+    /// The Commander's oracle id
+    pub commander: Uuid,
+    /// Card name
+    pub name: String,
+    /// Art crop url
+    pub image_art_crop: Option<String>,
+    /// Where the date stands
+    pub status: DateProgress,
+    /// 0 to 100
+    pub chemistry: i32,
+    /// Whose turn is next, `None` once over
+    pub next: Option<TurnBy>,
+    /// The round, from 1 to 3
+    pub round: i32,
+    /// What the Commander proposes on its turn
+    pub proposal: Option<DateThemeResponse>,
+    /// What the account may bring on its turn
+    pub palette: Vec<DateThemeResponse>,
+    /// The turns so far
+    pub turns: Vec<DateTurnResponse>,
 }

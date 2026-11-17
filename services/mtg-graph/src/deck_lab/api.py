@@ -22,6 +22,7 @@ from pydantic import AfterValidator, BaseModel, Field
 from . import dating
 from .cache import (
     LruTtlCache,
+    dating_date_cache,
     dating_pool_cache,
     diagnostics_cache,
     facets_cache,
@@ -33,6 +34,7 @@ from .cuts import CutCandidate, Replacement, Swap
 from .cuts import find_replacements as run_replacements
 from .cuts import suggest_swaps as run_swaps
 from .dating import (
+    DatePlan,
     DatingCommander,
     DatingDeck,
     DatingProfile,
@@ -555,6 +557,7 @@ def _schedule_warm(oracle_id: str) -> str:
                     diagnostics_cache.clear()
                     suggestions_cache.clear()
                     dating_pool_cache.clear()
+                    dating_date_cache.clear()
             except Exception as exc:  # noqa: BLE001 — unofficial API, a warm-up must not raise
                 log.warning("warm.edhrec_failed", commander=name, error=str(exc))
             finally:
@@ -652,6 +655,21 @@ def post_dating_verdict(request: DatingVerdictRequest) -> DatingVerdict:
     if row is None:
         raise HTTPException(status_code=404, detail="commander is not in the dating pool")
     return dating.verdict(request.profile, dating.commander_card(row))
+
+
+class DatingDateRequest(BaseModel):
+    """The commander a date is planned with."""
+
+    commander: OracleId
+
+
+@app.post("/dating/date", response_model=DatePlan)
+def post_dating_date(request: DatingDateRequest) -> DatePlan:
+    """What the commander brings to a date."""
+    row = _dating_pool().get(request.commander)
+    if row is None:
+        raise HTTPException(status_code=404, detail="commander is not in the dating pool")
+    return _answer_cached(dating_date_cache, request.commander, lambda: dating.date_plan(row))
 
 
 def _apply_expected_meta(diag: Diagnostics, expected_meta: list[str]) -> Diagnostics:

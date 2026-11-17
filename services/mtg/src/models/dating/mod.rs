@@ -32,6 +32,7 @@ use crate::models::deck::Deck;
 use crate::models::deck::listing::DeckSummary;
 use crate::models::row::decode;
 
+pub mod date;
 pub(in crate::models) mod db;
 pub mod remote;
 
