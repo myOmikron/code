@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import contextvars
+import threading
 from collections.abc import Callable, Iterable, Iterator
+from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import contextmanager
 from threading import Lock
 from typing import Any
@@ -248,6 +251,41 @@ def driver() -> Iterator[TracedDriver]:
                     auth=(settings.neo4j_user, settings.neo4j_password),
                 )
     yield TracedDriver(_driver)
+
+
+# Shared by every request: when it is full, reads queue rather than open more sockets.
+_READ_POOL = ThreadPoolExecutor(
+    max_workers=settings.graph_read_workers, thread_name_prefix="graph-read"
+)
+_pooled = threading.local()
+
+
+def _run_pooled[T](read: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+    _pooled.active = True
+    return read(*args, **kwargs)
+
+
+def start_read[T](read: Callable[..., T], *args: Any, **kwargs: Any) -> Future[T]:
+    """Start a graph read on the shared pool; `.result()` collects it.
+
+    It runs in the caller's context, so its spans stay below the caller's.
+    Called from a pooled read it runs inline: a pooled read waiting on the
+    pool could wait forever.
+    """
+    if getattr(_pooled, "active", False):
+        done: Future[T] = Future()
+        try:
+            done.set_result(read(*args, **kwargs))
+        except Exception as error:  # noqa: BLE001 — handed to whoever collects the future
+            done.set_exception(error)
+        return done
+    return _READ_POOL.submit(contextvars.copy_context().run, _run_pooled, read, *args, **kwargs)
+
+
+def read_together(*reads: Callable[[], Any]) -> list[Any]:
+    """Run independent graph reads at once; their results in argument order."""
+    started = [start_read(read) for read in reads[1:]]
+    return [reads[0](), *(future.result() for future in started)]
 
 
 def close_driver() -> None:
@@ -2825,12 +2863,6 @@ RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
        row.qty AS qty
 """
 
-DECK_ROLE_WEIGHTS = """
-UNWIND $rows AS row
-MATCH (c:Card {oracle_id: row.oracle_id})-[f:FILLS_ROLE]->(role:Role)
-RETURN role.name AS role, sum(f.weight * row.qty) AS weight
-"""
-
 # Per card, so bucket coverage can cap a card's contribution to one bucket at
 # its strongest role. Summing deck-level role totals double-counts any card
 # holding two roles in the same bucket.
@@ -2947,13 +2979,6 @@ def fetch_deck(deck: dict[str, int]) -> list[dict[str, Any]]:
     """Look up deck cards by oracle_id. Missing ids are simply absent."""
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         return [dict(r) for r in session.run(DECK_CARDS, rows=_deck_rows(deck))]
-
-
-def deck_role_weights(deck: dict[str, int]) -> dict[str, float]:
-    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
-        return {
-            r["role"]: r["weight"] for r in session.run(DECK_ROLE_WEIGHTS, rows=_deck_rows(deck))
-        }
 
 
 def deck_card_roles(deck: dict[str, int]) -> list[dict[str, Any]]:
