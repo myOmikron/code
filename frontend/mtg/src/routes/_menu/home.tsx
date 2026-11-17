@@ -4,6 +4,7 @@ import {
     ArrowRightIcon,
     BellAlertIcon,
     ChevronRightIcon,
+    FireIcon,
     GlobeAltIcon,
     HeartIcon,
     QueueListIcon,
@@ -500,6 +501,14 @@ function RouteComponent() {
                             title={t("heading.action-life")}
                             description={t("description.action-life")}
                         />
+                        <div className={"sm:col-span-2 lg:col-span-4"}>
+                            <GameToolCard
+                                to={"/dating"}
+                                icon={FireIcon}
+                                title={t("heading.action-dating")}
+                                description={t("description.action-dating")}
+                            />
+                        </div>
                     </div>
                 )}
             </section>

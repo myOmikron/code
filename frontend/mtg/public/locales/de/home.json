@@ -11,6 +11,7 @@
     },
     "description": {
         "action-build": "Bauen, tunen, Sideboard sortieren",
+        "action-dating": "Swipe durch Commander. Sie swipen zurück.",
         "action-file": "Einräumen, ausleihen, wiederfinden",
         "action-life": "Leben zählen, ohne Zettel",
         "action-watch": "Preise im Blick behalten",
@@ -27,6 +28,7 @@
     },
     "heading": {
         "action-build": "Deck bauen",
+        "action-dating": "Command Zone Dating",
         "action-file": "Sammlung",
         "action-life": "Lifecounter",
         "action-watch": "Preisalarme",

@@ -11,6 +11,7 @@
     },
     "description": {
         "action-build": "Build, tune, sort the sideboard",
+        "action-dating": "Swipe through Commanders. They swipe back.",
         "action-file": "File it, lend it, find it again",
         "action-life": "Track life without a scrap of paper",
         "action-watch": "Keep an eye on prices",
@@ -27,6 +28,7 @@
     },
     "heading": {
         "action-build": "Build a deck",
+        "action-dating": "Command Zone Dating",
         "action-file": "Collection",
         "action-life": "Life counter",
         "action-watch": "Price alarms",
