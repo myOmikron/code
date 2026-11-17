@@ -1668,11 +1668,12 @@ RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
 # Which of a given set of cards fit any of the given themes, and how well.
 # The exclusion pass asks this about the assembled pool: no hard filter, no
 # ordering, no limit — membership is the question, the pool is already chosen.
+#
+# From the cards, not per theme: each card's few edges are walked once.
 FITS_THEME_AMONG = """
-UNWIND $theme_ids AS tid
-MATCH (c:Card)-[f:FITS_THEME]->(:Theme {id: tid})
-WHERE c.oracle_id IN $oracle_ids
-RETURN c.oracle_id AS oracle_id, tid AS theme_id, f.fit AS fit
+MATCH (c:Card) WHERE c.oracle_id IN $oracle_ids
+MATCH (c)-[f:FITS_THEME]->(t:Theme) WHERE t.id IN $theme_ids
+RETURN c.oracle_id AS oracle_id, t.id AS theme_id, f.fit AS fit
 """
 
 # The exclusion pass's other half. `FITS_THEME_AMONG.fit` is theme-normalised
@@ -2385,17 +2386,19 @@ def ability_tribe_references(oracle_ids: list[str]) -> list[dict]:
 def fits_theme_among(oracle_ids: list[str], theme_ids: list[str]) -> list[dict]:
     """FITS_THEME membership of the given cards in the given themes.
 
-    One round trip: at most 19 UNWIND rows against an indexed id lookup,
-    trivial next to the channel queries. Empty input asks nothing.
+    Rows come grouped by theme, in the order of `theme_ids`. Empty input asks
+    nothing.
     """
     if not oracle_ids or not theme_ids:
         return []
 
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
-        return [
+        rows = [
             dict(r)
             for r in session.run(FITS_THEME_AMONG, oracle_ids=oracle_ids, theme_ids=theme_ids)
         ]
+    asked = {theme_id: index for index, theme_id in enumerate(theme_ids)}
+    return sorted(rows, key=lambda row: asked[row["theme_id"]])
 
 
 def theme_share_among(oracle_ids: list[str], themes: list[dict]) -> list[dict]:
