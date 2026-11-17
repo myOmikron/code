@@ -1537,11 +1537,13 @@ LIMIT $limit
 # The channel that justifies the graph: cards supplying a resource the deck
 # wants more of than it makes. Producers match the wanted resource *or anything
 # narrower*, which is what the BROADER hierarchy is for.
+# Filtered after the aggregation: a card reached over several paths is checked once.
 CHANNEL_BRIDGE = f"""
 UNWIND $wanted AS want
 MATCH (c:Card)-[:PRODUCES]->(:Resource)-[:BROADER*0..]->(r:Resource {{name: want.resource}})
-WHERE {_HARD_FILTER}
 WITH c, collect(DISTINCT want.resource)[0..3] AS resources, max(want.gap) AS gap
+WHERE {_HARD_FILTER}
+WITH c, resources, gap
 ORDER BY gap DESC, coalesce(c.edhrec_rank, 999999) ASC
 RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
        c.type_line AS type_line, c.price_usd AS price_usd,
@@ -1581,27 +1583,24 @@ LIMIT $limit
 # A card filling two of the bucket's roles is still returned exactly once, at
 # its strongest normalised role: `_merge` appends provenance unconditionally,
 # so a second row would count the same shortfall twice.
+#
+# The slice holds nodes, so only the cards that survive it are read.
 CHANNEL_ROLES = f"""
 UNWIND $wanted AS want
 MATCH (c:Card)-[f:FILLS_ROLE]->(r:Role)
 WHERE r.name = want.role AND {_HARD_FILTER}
 WITH want, c, max(f.weight) / coalesce($ceilings[want.role], 1.0) AS weight
 ORDER BY weight DESC, coalesce(c.edhrec_rank, 999999) ASC
-WITH want, collect({{
-    oracle_id: c.oracle_id, name: c.name, cmc: c.cmc,
-    type_line: c.type_line, price_usd: c.price_usd, weight: weight,
-    edhrec_rank: c.edhrec_rank, rarity: c.rarity, playability: c.playability,
-    game_changer: coalesce(c.game_changer, false)
-}})[0..$limit] AS rows
+WITH want, collect([c, weight])[0..$limit] AS rows
 UNWIND rows AS row
-WITH row, want.bucket AS bucket, want.shortfall AS shortfall
-ORDER BY row.weight DESC
-WITH row.oracle_id AS oracle_id, bucket, shortfall, head(collect(row)) AS best
-RETURN oracle_id, best.name AS name, best.cmc AS cmc,
-       best.type_line AS type_line, best.price_usd AS price_usd,
-       bucket, shortfall, best.weight AS weight,
-       best.edhrec_rank AS edhrec_rank, best.rarity AS rarity,
-       best.playability AS playability, best.game_changer AS game_changer
+WITH row[0] AS c, row[1] AS weight, want.bucket AS bucket, want.shortfall AS shortfall
+ORDER BY weight DESC
+WITH c, bucket, shortfall, head(collect(weight)) AS weight
+RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
+       c.type_line AS type_line, c.price_usd AS price_usd,
+       bucket, shortfall, weight,
+       c.edhrec_rank AS edhrec_rank, c.rarity AS rarity,
+       c.playability AS playability, coalesce(c.game_changer, false) AS game_changer
 """
 
 # Retrieval by theme. Only possible because theme fit is precomputed as
@@ -1619,17 +1618,13 @@ MATCH (c:Card)-[f:FITS_THEME]->(t:Theme {{id: tid}})
 WHERE {_HARD_FILTER}
 WITH t, c, f
 ORDER BY f.fit * (0.25 + c.playability) DESC
-WITH t, collect({{
-    oracle_id: c.oracle_id, name: c.name, cmc: c.cmc,
-    type_line: c.type_line, price_usd: c.price_usd,
-    playability: c.playability, game_changer: coalesce(c.game_changer, false),
-    fit: f.fit, theme_id: t.id, theme_label: t.label
-}})[0..$limit] AS rows
+WITH t, collect([c, f.fit])[0..$limit] AS rows
 UNWIND rows AS row
-RETURN row.oracle_id AS oracle_id, row.name AS name, row.cmc AS cmc,
-       row.type_line AS type_line, row.price_usd AS price_usd,
-       row.playability AS playability, row.game_changer AS game_changer,
-       row.fit AS fit, row.theme_id AS theme_id, row.theme_label AS theme_label
+WITH t, row[0] AS c, row[1] AS fit
+RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
+       c.type_line AS type_line, c.price_usd AS price_usd,
+       c.playability AS playability, coalesce(c.game_changer, false) AS game_changer,
+       fit, t.id AS theme_id, t.label AS theme_label
 """
 
 # Which of a given set of cards fit any of the given themes, and how well.
@@ -1784,9 +1779,11 @@ RETURN coalesce(sum(row.qty), 0) AS fixing
 # so the land-fetchers that share `Role.TUTOR` (Solemn Simulacrum, Wayfarer's
 # Bauble — the accepted residual of the role gate) come back with an empty
 # list and never collect combo-scale value they cannot deliver.
+#
+# Starts at the role: `_TUTOR_TO_NONLAND` on a bare `(c:Card)` tests every card.
 CHANNEL_TUTORS = f"""
-MATCH (c:Card)
-WHERE {_TUTOR_TO_NONLAND} AND {_HARD_FILTER}
+MATCH (:Role {{name: 'tutor'}})<-[:FILLS_ROLE]-(c:Card)
+WHERE NOT c.is_land AND {_HARD_FILTER}
 RETURN c.oracle_id AS oracle_id, c.name AS name, c.cmc AS cmc,
        c.type_line AS type_line, c.price_usd AS price_usd,
        c.edhrec_rank AS edhrec_rank, c.rarity AS rarity, c.playability AS playability,
