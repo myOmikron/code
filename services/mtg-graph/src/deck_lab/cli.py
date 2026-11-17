@@ -102,12 +102,21 @@ def warm_edhrec(
     delay: float = typer.Option(
         1.0, help="Seconds between network fetches — json.edhrec.com is unofficial."
     ),
+    every_hours: float | None = typer.Option(
+        None, "--every-hours", help="Repeat forever, this many hours apart."
+    ),
 ) -> None:
     """Pre-fetch EDHREC for the most-played commanders."""
+    import time
+
     from .edhrec import warm_top_commanders
 
-    for key, value in warm_top_commanders(top, delay_seconds=delay).items():
-        typer.echo(f"{key:>12}: {value:,}")
+    while True:
+        for key, value in warm_top_commanders(top, delay_seconds=delay).items():
+            typer.echo(f"{key:>12}: {value:,}")
+        if every_hours is None:
+            return
+        time.sleep(every_hours * 3600)
 
 
 @app.command("ingest-combos")

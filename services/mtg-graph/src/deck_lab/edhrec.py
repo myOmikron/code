@@ -16,8 +16,8 @@ This is the project's riskiest dependency and it is deliberately quarantined:
   and `archetype_profiles.measure_tag` are the two sanctioned exceptions:
   operator-run, throttled walks — of the most-played commanders, and of one
   tag's commander×tag subpages, respectively — so those fetches happen on a
-  CLI run rather than inside a user's request. Nothing else may crawl, and
-  nothing crawls automatically.
+  CLI run rather than inside a user's request. Nothing else may crawl; the
+  production stack repeats the commander walk weekly (`graph-warm`).
 
 Schema as observed 2026-08-04 (`atraxa-praetors-voice`):
 
