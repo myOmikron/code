@@ -474,6 +474,40 @@ def _stub_diagnose_graph(monkeypatch, *, resources, names=None):
     return resolved
 
 
+def test_role_totals_come_from_the_per_card_roles():
+    from deck_lab.diagnostics import _role_weights
+
+    roles = _card_roles(
+        ("rock", {"ramp": 1.0, "fixing": 0.5}, 1),
+        ("forest", {"ramp": 0.25}, 4),
+        ("bear", {}, 2),
+    )
+
+    assert _role_weights(roles) == {"ramp": 2.0, "fixing": 0.5}
+
+
+def test_rows_the_caller_fetched_are_not_read_again(monkeypatch):
+    from deck_lab import graph
+    from deck_lab.diagnostics import DeckEntry, DeckRows, diagnose
+
+    _stub_diagnose_graph(monkeypatch, resources={}, names={"cmd": "The Ur-Dragon"})
+    asked: list[dict] = []
+    stubbed = graph.fetch_deck
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: asked.append(deck) or stubbed(deck))
+    dragon = {**_card("dragon", 5), "type_line": "Creature — Dragon"}
+    fetched = DeckRows(cards=[dragon], card_roles=[], resources_by_card={})
+
+    report = diagnose(
+        [DeckEntry(oracle_id="dragon", qty=1)], commander_oracle_id="cmd", fetched=fetched
+    )
+
+    # Only the commander, which sits outside the list.
+    assert asked == [{"cmd": 1}]
+    # The eminence discount went into the report, not into the caller's row.
+    assert report.average_mv == 4
+    assert dragon["cmc"] == 5
+
+
 def test_a_theme_only_the_second_commander_fits_gets_the_anchor(monkeypatch):
     """Union anchoring: the landfall payoff the primary cannot claim is the
     partner's whole strategy, and the deck's landfall share must rise for it.
