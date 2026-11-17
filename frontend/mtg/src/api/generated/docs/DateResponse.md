@@ -14,6 +14,7 @@ Name | Type
 `image_art_crop` | string
 `image_normal` | string
 `name` | string
+`open_date` | string
 `printing` | string
 `reason` | [RejectReason](RejectReason.md)
 `shared` | string

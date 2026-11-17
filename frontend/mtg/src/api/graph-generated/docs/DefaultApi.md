@@ -7,6 +7,7 @@ All URIs are relative to */api/graph*
 | [**getFacets**](DefaultApi.md#getfacets) | **GET** /facets | Get Facets |
 | [**health**](DefaultApi.md#health) | **GET** /health | Health |
 | [**postCombos**](DefaultApi.md#postcombos) | **POST** /combos | Post Combos |
+| [**postDatingDate**](DefaultApi.md#postdatingdate) | **POST** /dating/date | Post Dating Date |
 | [**postDatingProfile**](DefaultApi.md#postdatingprofile) | **POST** /dating/profile | Post Dating Profile |
 | [**postDatingStack**](DefaultApi.md#postdatingstack) | **POST** /dating/stack | Post Dating Stack |
 | [**postDatingVerdict**](DefaultApi.md#postdatingverdict) | **POST** /dating/verdict | Post Dating Verdict |
@@ -186,6 +187,74 @@ example().catch(console.error);
 ### Return type
 
 [**CombosResponse**](CombosResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## postDatingDate
+
+> DatePlan postDatingDate(DatingDateRequest)
+
+Post Dating Date
+
+What the commander brings to a date.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { PostDatingDateRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // DatingDateRequest
+    DatingDateRequest: ...,
+  } satisfies PostDatingDateRequest;
+
+  try {
+    const data = await api.postDatingDate(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **DatingDateRequest** | [DatingDateRequest](DatingDateRequest.md) |  | |
+
+### Return type
+
+[**DatePlan**](DatePlan.md)
 
 ### Authorization
 

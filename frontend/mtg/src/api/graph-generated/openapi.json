@@ -187,6 +187,45 @@
                 }
             }
         },
+        "/dating/date": {
+            "post": {
+                "summary": "Post Dating Date",
+                "description": "What the commander brings to a date.",
+                "operationId": "post_dating_date",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DatingDateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DatePlan"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/diagnostics": {
             "post": {
                 "summary": "Post Diagnostics",
@@ -1191,6 +1230,65 @@
                 "title": "CutPhrase",
                 "description": "A cut reason: a Phrase whose code is drawn from the closed set.\n\nA separate subclass, not a narrowing of `Phrase.code` itself — `Phrase` is\nthe shared schema component `SuggestionReport.notes` also uses, and those\nnotes carry free-form codes."
             },
+            "DatePlan": {
+                "properties": {
+                    "proposals": {
+                        "items": {
+                            "$ref": "#/components/schemas/DateTheme"
+                        },
+                        "type": "array",
+                        "title": "Proposals"
+                    },
+                    "themes": {
+                        "items": {
+                            "$ref": "#/components/schemas/DateTheme"
+                        },
+                        "type": "array",
+                        "title": "Themes"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "proposals",
+                    "themes"
+                ],
+                "title": "DatePlan",
+                "description": "What a commander brings to a date: its proposals and its view of every theme."
+            },
+            "DateTheme": {
+                "properties": {
+                    "theme": {
+                        "type": "string",
+                        "title": "Theme"
+                    },
+                    "label": {
+                        "type": "string",
+                        "title": "Label"
+                    },
+                    "support": {
+                        "type": "number",
+                        "title": "Support"
+                    },
+                    "tier": {
+                        "type": "string",
+                        "enum": [
+                            "high",
+                            "mid",
+                            "low"
+                        ],
+                        "title": "Tier"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "theme",
+                    "label",
+                    "support",
+                    "tier"
+                ],
+                "title": "DateTheme",
+                "description": "A theme on a date, and how much the commander supports it."
+            },
             "DatingCommander": {
                 "properties": {
                     "oracle_id": {
@@ -1305,6 +1403,21 @@
                 ],
                 "title": "DatingCommander",
                 "description": "A commander as the swipe stack shows it."
+            },
+            "DatingDateRequest": {
+                "properties": {
+                    "commander": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "title": "Commander"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "commander"
+                ],
+                "title": "DatingDateRequest",
+                "description": "The commander a date is planned with."
             },
             "DatingDeck": {
                 "properties": {

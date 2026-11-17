@@ -8,6 +8,7 @@ use uuid::Uuid;
 use crate::models::dating::GraphProfile;
 use crate::models::dating::ProfileAnswers;
 use crate::models::dating::ProfileDeck;
+use crate::models::dating::date::Support;
 use crate::modules::graph::GraphClient;
 
 /// One EDHREC tag of a Commander
@@ -159,5 +160,39 @@ pub async fn stack(
 pub async fn verdict(profile: &GraphProfile, commander: Uuid) -> anyhow::Result<Option<Verdict>> {
     GraphClient::global()
         .post("/dating/verdict", &VerdictRequest { profile, commander })
+        .await
+}
+
+/// A theme as the advisor rates it for one Commander
+#[derive(Debug, Clone, Deserialize)]
+pub struct RatedTheme {
+    /// Advisor theme id
+    pub theme: String,
+    /// The theme's label
+    pub label: String,
+    /// Share of the Commander's usual cards that fit it
+    pub support: f64,
+    /// That share in three steps
+    pub tier: Support,
+}
+
+/// What a Commander brings to a date
+#[derive(Debug, Clone, Deserialize)]
+pub struct DatePlan {
+    /// One theme per Commander turn
+    pub proposals: Vec<RatedTheme>,
+    /// Every theme, best supported first
+    pub themes: Vec<RatedTheme>,
+}
+
+#[derive(Serialize)]
+struct DateRequest {
+    commander: Uuid,
+}
+
+/// The Commander's date plan, `None` when it is not in the pool
+pub async fn date_plan(commander: Uuid) -> anyhow::Result<Option<DatePlan>> {
+    GraphClient::global()
+        .post("/dating/date", &DateRequest { commander })
         .await
 }

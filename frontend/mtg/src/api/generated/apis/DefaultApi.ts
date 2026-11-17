@@ -39,10 +39,12 @@ import type {
     AdminSyncsResponse,
     AdminUnlockAccountRequest,
     AdvisorSettingsResponse,
+    AnswerDateRequest,
     ApiErrorResponse,
     ArrangeRoundRequest,
     BracketFlagsRequest,
     BracketFlagsResponse,
+    BringThemeRequest,
     CaptureMatchLifeConflict200Response,
     CaptureMatchLifeConflictRequest,
     CardCondition,
@@ -66,6 +68,7 @@ import type {
     CreateTournament200Response,
     CreateWatchListRequest,
     DateResponse,
+    DateSessionResponse,
     DatesResponse,
     DatingAnswers,
     DatingProfileResponse,
@@ -228,6 +231,7 @@ import type {
     StandingsResponse,
     StarMpcFillImageRequest,
     StartAddPasskeyResponse,
+    StartDateRequest,
     StartLogin200Response,
     StartLoginRequest,
     StartOidcLogin200Response,
@@ -523,6 +527,17 @@ export interface AdminUnlockAccountOperationRequest {
     AdminUnlockAccountRequest?: AdminUnlockAccountRequest;
 }
 
+export interface AnswerDateOperationRequest {
+    /**
+     * 
+     */
+    deck: string;
+    /**
+     * 
+     */
+    AnswerDateRequest?: AnswerDateRequest;
+}
+
 export interface ArrangeTournamentRoundRequest {
     /**
      * 
@@ -566,6 +581,17 @@ export interface AssignDeckCardTagRequest {
      * 
      */
     tag: string;
+}
+
+export interface BringThemeOperationRequest {
+    /**
+     * 
+     */
+    deck: string;
+    /**
+     * 
+     */
+    BringThemeRequest?: BringThemeRequest;
 }
 
 export interface CancelTournamentRequest {
@@ -633,6 +659,13 @@ export interface ComeBackDateRequest {
     commander: string;
 }
 
+export interface ComeBackToDateRequest {
+    /**
+     * 
+     */
+    deck: string;
+}
+
 export interface CreateCollectionOperationRequest {
     /**
      * 
@@ -691,6 +724,13 @@ export interface CreateWatchListOperationRequest {
      * 
      */
     CreateWatchListRequest?: CreateWatchListRequest;
+}
+
+export interface DateNightRequest {
+    /**
+     * 
+     */
+    deck: string;
 }
 
 export interface DeclineTournamentHandoverRequest {
@@ -971,6 +1011,13 @@ export interface GetCollectionStatisticsRequest {
      * 
      */
     collection: string;
+}
+
+export interface GetDateRequest {
+    /**
+     * 
+     */
+    deck: string;
 }
 
 export interface GetDatingStackRequest {
@@ -2109,6 +2156,17 @@ export interface StarMpcfillImageRequest {
      * 
      */
     StarMpcFillImageRequest?: StarMpcFillImageRequest;
+}
+
+export interface StartDateOperationRequest {
+    /**
+     * 
+     */
+    commander: string;
+    /**
+     * 
+     */
+    StartDateRequest?: StartDateRequest;
 }
 
 export interface StartLoginOperationRequest {
@@ -3764,6 +3822,56 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for answerDate without sending the request
+     */
+    async answerDateRequestOpts(requestParameters: AnswerDateOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling answerDate().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/dating/date/{deck}/answer`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['AnswerDateRequest'],
+        };
+    }
+
+    /**
+     * Answer the Commander\'s proposal with a level
+     * Answer the Commander\'s proposal with a level
+     */
+    async answerDateRaw(requestParameters: AnswerDateOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DateSessionResponse>> {
+        const requestOptions = await this.answerDateRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Answer the Commander\'s proposal with a level
+     * Answer the Commander\'s proposal with a level
+     */
+    async answerDate(requestParameters: AnswerDateOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DateSessionResponse> {
+        const response = await this.answerDateRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for arrangeTournamentRound without sending the request
      */
     async arrangeTournamentRoundRequestOpts(requestParameters: ArrangeTournamentRoundRequest): Promise<runtime.RequestOpts> {
@@ -3952,6 +4060,56 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async assignDeckCardTag(requestParameters: AssignDeckCardTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.assignDeckCardTagRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for bringTheme without sending the request
+     */
+    async bringThemeRequestOpts(requestParameters: BringThemeOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling bringTheme().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/dating/date/{deck}/bring`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['BringThemeRequest'],
+        };
+    }
+
+    /**
+     * Bring a theme from the palette
+     * Bring a theme from the palette
+     */
+    async bringThemeRaw(requestParameters: BringThemeOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DateSessionResponse>> {
+        const requestOptions = await this.bringThemeRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Bring a theme from the palette
+     * Bring a theme from the palette
+     */
+    async bringTheme(requestParameters: BringThemeOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DateSessionResponse> {
+        const response = await this.bringThemeRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -4301,6 +4459,53 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for comeBackToDate without sending the request
+     */
+    async comeBackToDateRequestOpts(requestParameters: ComeBackToDateRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling comeBackToDate().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/dating/date/{deck}/come-back`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * \"No, come back\": the Commander returns to a date it left
+     * \"No, come back\": the Commander returns to a date it left
+     */
+    async comeBackToDateRaw(requestParameters: ComeBackToDateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DateSessionResponse>> {
+        const requestOptions = await this.comeBackToDateRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * \"No, come back\": the Commander returns to a date it left
+     * \"No, come back\": the Commander returns to a date it left
+     */
+    async comeBackToDate(requestParameters: ComeBackToDateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DateSessionResponse> {
+        const response = await this.comeBackToDateRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for createCollection without sending the request
      */
     async createCollectionRequestOpts(requestParameters: CreateCollectionOperationRequest): Promise<runtime.RequestOpts> {
@@ -4637,6 +4842,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async createWatchList(requestParameters: CreateWatchListOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<WatchListResponse> {
         const response = await this.createWatchListRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for dateNight without sending the request
+     */
+    async dateNightRequestOpts(requestParameters: DateNightRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling dateNight().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/dating/date/{deck}/date-night`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * \"That\'s all, date night\": finish with the themes so far
+     * \"That\'s all, date night\": finish with the themes so far
+     */
+    async dateNightRaw(requestParameters: DateNightRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DateSessionResponse>> {
+        const requestOptions = await this.dateNightRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * \"That\'s all, date night\": finish with the themes so far
+     * \"That\'s all, date night\": finish with the themes so far
+     */
+    async dateNight(requestParameters: DateNightRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DateSessionResponse> {
+        const response = await this.dateNightRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -6556,6 +6808,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getCollectionTotals(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionTotalsResponse> {
         const response = await this.getCollectionTotalsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getDate without sending the request
+     */
+    async getDateRequestOpts(requestParameters: GetDateRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling getDate().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/dating/date/{deck}`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The date planning a deck
+     * The date planning a deck
+     */
+    async getDateRaw(requestParameters: GetDateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DateSessionResponse>> {
+        const requestOptions = await this.getDateRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The date planning a deck
+     * The date planning a deck
+     */
+    async getDate(requestParameters: GetDateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DateSessionResponse> {
+        const response = await this.getDateRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -12751,6 +13050,56 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async startAddPasskey(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<StartAddPasskeyResponse> {
         const response = await this.startAddPasskeyRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for startDate without sending the request
+     */
+    async startDateRequestOpts(requestParameters: StartDateOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['commander'] == null) {
+            throw new runtime.RequiredError(
+                'commander',
+                'Required parameter "commander" was null or undefined when calling startDate().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/dating/dates/{commander}/plan`;
+        urlPath = urlPath.replace('{commander}', encodeURIComponent(String(requestParameters['commander'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['StartDateRequest'],
+        };
+    }
+
+    /**
+     * Plan a deck\'s themes on a date with its Commander
+     * Plan a deck\'s themes on a date with its Commander
+     */
+    async startDateRaw(requestParameters: StartDateOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DateSessionResponse>> {
+        const requestOptions = await this.startDateRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Plan a deck\'s themes on a date with its Commander
+     * Plan a deck\'s themes on a date with its Commander
+     */
+    async startDate(requestParameters: StartDateOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DateSessionResponse> {
+        const response = await this.startDateRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

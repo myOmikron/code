@@ -16,6 +16,8 @@ import * as runtime from '../runtime';
 import type {
     CombosRequest,
     CombosResponse,
+    DatePlan,
+    DatingDateRequest,
     DatingProfile,
     DatingProfileRequest,
     DatingStackRequest,
@@ -47,6 +49,13 @@ export interface PostCombosRequest {
      * 
      */
     CombosRequest: CombosRequest;
+}
+
+export interface PostDatingDateRequest {
+    /**
+     * 
+     */
+    DatingDateRequest: DatingDateRequest;
 }
 
 export interface PostDatingProfileRequest {
@@ -260,6 +269,55 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async postCombos(requestParameters: PostCombosRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CombosResponse> {
         const response = await this.postCombosRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for postDatingDate without sending the request
+     */
+    async postDatingDateRequestOpts(requestParameters: PostDatingDateRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['DatingDateRequest'] == null) {
+            throw new runtime.RequiredError(
+                'DatingDateRequest',
+                'Required parameter "DatingDateRequest" was null or undefined when calling postDatingDate().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/dating/date`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['DatingDateRequest'],
+        };
+    }
+
+    /**
+     * What the commander brings to a date.
+     * Post Dating Date
+     */
+    async postDatingDateRaw(requestParameters: PostDatingDateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DatePlan>> {
+        const requestOptions = await this.postDatingDateRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * What the commander brings to a date.
+     * Post Dating Date
+     */
+    async postDatingDate(requestParameters: PostDatingDateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DatePlan> {
+        const response = await this.postDatingDateRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

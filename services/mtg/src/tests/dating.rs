@@ -139,3 +139,26 @@ fn dating_needs_a_login() {
         assert_eq!(response.status, StatusCode::UNAUTHORIZED);
     });
 }
+
+#[test]
+fn a_deck_without_a_date_has_none() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let mut session = TestClient::logged_in(&member).await;
+
+        let date = session
+            .get(&api(&format!("dating/date/{}", Uuid::new_v4())))
+            .await
+            .ok_json();
+        assert_eq!(date, json!(null));
+
+        let response = session
+            .json(
+                Method::POST,
+                &api(&format!("dating/date/{}/answer", Uuid::new_v4())),
+                &json!({ "level": "core" }),
+            )
+            .await;
+        assert_eq!(response.status, StatusCode::BAD_REQUEST);
+    });
+}

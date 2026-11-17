@@ -30,9 +30,11 @@ All URIs are relative to *http://localhost*
 | [**adminSetRole**](DefaultApi.md#adminsetroleoperation) | **PUT** /api/frontend/v1/admin/accounts/{uuid}/role | Change an Account\&#39;s Role |
 | [**adminStartImpersonation**](DefaultApi.md#adminstartimpersonationoperation) | **POST** /api/frontend/v1/admin/accounts/{uuid}/impersonation | Start an Impersonation of a Member Account |
 | [**adminUnlockAccount**](DefaultApi.md#adminunlockaccountoperation) | **POST** /api/frontend/v1/admin/accounts/{uuid}/unlock | Lift an Account\&#39;s Lock |
+| [**answerDate**](DefaultApi.md#answerdateoperation) | **POST** /api/frontend/v1/dating/date/{deck}/answer | Answer the Commander\&#39;s proposal with a level |
 | [**arrangeTournamentRound**](DefaultApi.md#arrangetournamentround) | **PUT** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/layout | Lay out a previewed Round by hand, as an Organizer |
 | [**assignCollectionEntryTag**](DefaultApi.md#assigncollectionentrytag) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Put a card-wide tag on a stack |
 | [**assignDeckCardTag**](DefaultApi.md#assigndeckcardtag) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Put a tag on a card |
+| [**bringTheme**](DefaultApi.md#bringthemeoperation) | **POST** /api/frontend/v1/dating/date/{deck}/bring | Bring a theme from the palette |
 | [**cancelTournament**](DefaultApi.md#canceltournament) | **POST** /api/frontend/v1/tournaments/{tournament}/cancel | Cancel a Tournament, as an Organizer |
 | [**captureMatchLifeConflict**](DefaultApi.md#capturematchlifeconflictoperation) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/conflicts | Preserves all recovered old-device changes as an independent authorized artifact. |
 | [**checkInTournamentParticipants**](DefaultApi.md#checkintournamentparticipants) | **POST** /api/frontend/v1/tournaments/{tournament}/participants/check-in | Check in every Participant that plays on, as an Organizer |
@@ -40,6 +42,7 @@ All URIs are relative to *http://localhost*
 | [**chooseUsername**](DefaultApi.md#chooseusernameoperation) | **POST** /api/frontend/v1/auth/oidc/username | Finish the username step: create the External Account and log it in |
 | [**claimMatchLifeHistory**](DefaultApi.md#claimmatchlifehistory) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/claim | Deliberately claim a recording slot with a private, device-local capability. |
 | [**comeBackDate**](DefaultApi.md#comebackdate) | **POST** /api/frontend/v1/dating/dates/{commander}/come-back | \&quot;No, come back\&quot;: a rejection or unmatch becomes a match |
+| [**comeBackToDate**](DefaultApi.md#comebacktodate) | **POST** /api/frontend/v1/dating/date/{deck}/come-back | \&quot;No, come back\&quot;: the Commander returns to a date it left |
 | [**createCollection**](DefaultApi.md#createcollectionoperation) | **POST** /api/frontend/v1/collections |  |
 | [**createDeck**](DefaultApi.md#createdeckoperation) | **POST** /api/frontend/v1/decks | Create a deck |
 | [**createDeckFolder**](DefaultApi.md#createdeckfolderoperation) | **POST** /api/frontend/v1/folders | Make a folder |
@@ -48,6 +51,7 @@ All URIs are relative to *http://localhost*
 | [**createScannerSession**](DefaultApi.md#createscannersessionoperation) | **POST** /api/frontend/v1/scanner-sessions | Start a new persisted scanner session |
 | [**createTournament**](DefaultApi.md#createtournament) | **POST** /api/frontend/v1/tournaments | Create a Tournament, owned by the logged-in Account |
 | [**createWatchList**](DefaultApi.md#createwatchlistoperation) | **POST** /api/frontend/v1/watch-lists | Start a new watch list |
+| [**dateNight**](DefaultApi.md#datenight) | **POST** /api/frontend/v1/dating/date/{deck}/date-night | \&quot;That\&#39;s all, date night\&quot;: finish with the themes so far |
 | [**declineTournamentHandover**](DefaultApi.md#declinetournamenthandover) | **POST** /api/frontend/v1/tournaments/{tournament}/handover/decline | Turn down a Tournament offered to the logged-in Account |
 | [**deleteAccount**](DefaultApi.md#deleteaccountoperation) | **DELETE** /api/frontend/v1/accounts/me | Delete the logged-in account |
 | [**deleteCollection**](DefaultApi.md#deletecollection) | **DELETE** /api/frontend/v1/collections/{collection} |  |
@@ -88,6 +92,7 @@ All URIs are relative to *http://localhost*
 | [**getCollection**](DefaultApi.md#getcollection) | **GET** /api/frontend/v1/collections/{collection} | Fetch a single collection |
 | [**getCollectionStatistics**](DefaultApi.md#getcollectionstatistics) | **GET** /api/frontend/v1/collections/{collection}/statistics |  |
 | [**getCollectionTotals**](DefaultApi.md#getcollectiontotals) | **GET** /api/frontend/v1/collections/totals | How many cards the account owns and what they are worth |
+| [**getDate**](DefaultApi.md#getdate) | **GET** /api/frontend/v1/dating/date/{deck} | The date planning a deck |
 | [**getDates**](DefaultApi.md#getdates) | **GET** /api/frontend/v1/dating/dates | Matches and the Commanders that said no |
 | [**getDatingProfile**](DefaultApi.md#getdatingprofile) | **GET** /api/frontend/v1/dating/profile | What Commanders see of the account |
 | [**getDatingStack**](DefaultApi.md#getdatingstack) | **POST** /api/frontend/v1/dating/stack | The next Commanders to swipe |
@@ -212,6 +217,7 @@ All URIs are relative to *http://localhost*
 | [**splitCollectionEntry**](DefaultApi.md#splitcollectionentryoperation) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/split | Move copies out of a stack into a new one |
 | [**starMpcfillImage**](DefaultApi.md#starmpcfillimage) | **PUT** /api/frontend/v1/mpcfill/favorites/images | Star an image for a face, or star it again as the newest |
 | [**startAddPasskey**](DefaultApi.md#startaddpasskey) | **POST** /api/frontend/v1/accounts/passkeys/start | Start registering another passkey for the logged-in account |
+| [**startDate**](DefaultApi.md#startdateoperation) | **POST** /api/frontend/v1/dating/dates/{commander}/plan | Plan a deck\&#39;s themes on a date with its Commander |
 | [**startLogin**](DefaultApi.md#startloginoperation) | **POST** /api/frontend/v1/auth/login/start | Start a passkey login for a given username |
 | [**startOidcLogin**](DefaultApi.md#startoidcloginoperation) | **POST** /api/frontend/v1/auth/oidc/start | Start an OIDC login, for signing up and logging in alike |
 | [**startRegistration**](DefaultApi.md#startregistrationoperation) | **POST** /api/frontend/v1/auth/register/start | Start a passkey registration |
@@ -2123,6 +2129,79 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## answerDate
+
+> DateSessionResponse answerDate(deck, AnswerDateRequest)
+
+Answer the Commander\&#39;s proposal with a level
+
+Answer the Commander\&#39;s proposal with a level
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AnswerDateOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // AnswerDateRequest (optional)
+    AnswerDateRequest: ...,
+  } satisfies AnswerDateOperationRequest;
+
+  try {
+    const data = await api.answerDate(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+| **AnswerDateRequest** | [AnswerDateRequest](AnswerDateRequest.md) |  | [Optional] |
+
+### Return type
+
+[**DateSessionResponse**](DateSessionResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## arrangeTournamentRound
 
 > FormErrorResponseForArrangeRoundErrors arrangeTournamentRound(tournament, number, ArrangeRoundRequest)
@@ -2337,6 +2416,79 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## bringTheme
+
+> DateSessionResponse bringTheme(deck, BringThemeRequest)
+
+Bring a theme from the palette
+
+Bring a theme from the palette
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { BringThemeOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // BringThemeRequest (optional)
+    BringThemeRequest: ...,
+  } satisfies BringThemeOperationRequest;
+
+  try {
+    const data = await api.bringTheme(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+| **BringThemeRequest** | [BringThemeRequest](BringThemeRequest.md) |  | [Optional] |
+
+### Return type
+
+[**DateSessionResponse**](DateSessionResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
 - **Accept**: `application/json`
 
 
@@ -2831,6 +2983,76 @@ example().catch(console.error);
 ### Return type
 
 [**DateResponse**](DateResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## comeBackToDate
+
+> DateSessionResponse comeBackToDate(deck)
+
+\&quot;No, come back\&quot;: the Commander returns to a date it left
+
+\&quot;No, come back\&quot;: the Commander returns to a date it left
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ComeBackToDateRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies ComeBackToDateRequest;
+
+  try {
+    const data = await api.comeBackToDate(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**DateSessionResponse**](DateSessionResponse.md)
 
 ### Authorization
 
@@ -3400,6 +3622,76 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## dateNight
+
+> DateSessionResponse dateNight(deck)
+
+\&quot;That\&#39;s all, date night\&quot;: finish with the themes so far
+
+\&quot;That\&#39;s all, date night\&quot;: finish with the themes so far
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { DateNightRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies DateNightRequest;
+
+  try {
+    const data = await api.dateNight(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**DateSessionResponse**](DateSessionResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 
@@ -6166,6 +6458,76 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**CollectionTotalsResponse**](CollectionTotalsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getDate
+
+> DateSessionResponse getDate(deck)
+
+The date planning a deck
+
+The date planning a deck
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetDateRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetDateRequest;
+
+  try {
+    const data = await api.getDate(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**DateSessionResponse**](DateSessionResponse.md)
 
 ### Authorization
 
@@ -15004,6 +15366,79 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## startDate
+
+> DateSessionResponse startDate(commander, StartDateRequest)
+
+Plan a deck\&#39;s themes on a date with its Commander
+
+Plan a deck\&#39;s themes on a date with its Commander
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { StartDateOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    commander: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // StartDateRequest (optional)
+    StartDateRequest: ...,
+  } satisfies StartDateOperationRequest;
+
+  try {
+    const data = await api.startDate(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **commander** | `string` |  | [Defaults to `undefined`] |
+| **StartDateRequest** | [StartDateRequest](StartDateRequest.md) |  | [Optional] |
+
+### Return type
+
+[**DateSessionResponse**](DateSessionResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
 - **Accept**: `application/json`
 
 

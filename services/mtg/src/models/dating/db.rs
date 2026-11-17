@@ -11,6 +11,9 @@ use uuid::Uuid;
 use crate::models::account::db::AccountModel;
 use crate::models::dating::DateStatus;
 use crate::models::dating::GraphProfile;
+use crate::models::dating::date::DateProgress;
+use crate::models::dating::date::DateState;
+use crate::models::deck::db::DeckModel;
 
 /// One swipe of an account on a Commander
 #[derive(Model, Debug)]
@@ -136,4 +139,52 @@ pub struct DatingProfileInsertPatch {
     pub snapshot: Option<Json<GraphProfile>>,
     /// Fingerprint of the snapshot's inputs
     pub snapshot_key: Option<MaxStr<32>>,
+}
+
+/// A date between an account and a Commander, planning one deck's themes
+#[derive(Model, Debug)]
+#[rorm(rename = "dating_date")]
+pub struct DatingDateModel {
+    /// Primary key
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// Who is on the date
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub owner: ForeignModel<AccountModel>,
+
+    /// The deck being planned; one date per deck
+    #[rorm(unique, on_update = "Cascade", on_delete = "Cascade")]
+    pub deck: ForeignModel<DeckModel>,
+
+    /// The Commander's oracle id
+    pub commander: Uuid,
+
+    /// Where the date stands
+    pub status: DateProgress,
+
+    /// Turns, chemistry and what each side brings
+    pub state: Json<DateState>,
+
+    /// When the date began
+    #[rorm(auto_create_time)]
+    pub created_at: OffsetDateTime,
+}
+
+/// Insert patch for [`DatingDateModel`]
+#[derive(Patch)]
+#[rorm(model = "DatingDateModel")]
+pub struct DatingDateInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// Who is on the date
+    pub owner: ForeignModel<AccountModel>,
+    /// The deck being planned
+    pub deck: ForeignModel<DeckModel>,
+    /// The Commander's oracle id
+    pub commander: Uuid,
+    /// Where the date stands
+    pub status: DateProgress,
+    /// Turns, chemistry and what each side brings
+    pub state: Json<DateState>,
 }

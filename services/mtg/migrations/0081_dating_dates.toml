@@ -1,0 +1,136 @@
+[Migration]
+Hash = "13531142236723506434"
+Initial = false
+Dependency = 80
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "dating_date"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 150
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "commander"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 161
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "status"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 164
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "state"
+Type = "binary"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 167
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 171
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "dating_date"
+
+[Migration.Operations.Field]
+Name = "owner"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 154
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "dating_date"
+
+[Migration.Operations.Field]
+Name = "deck"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "deck"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 158
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "dating_date"
+
+[Migration.Operations.Index]
+Columns = ["owner"]

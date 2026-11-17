@@ -470,6 +470,56 @@ export interface CutPhrase {
 
 
 /**
+ * What a commander brings to a date: its proposals and its view of every theme.
+ * @export
+ * @interface DatePlan
+ */
+export interface DatePlan {
+    /**
+     * 
+     */
+    proposals: Array<DateTheme>;
+    /**
+     * 
+     */
+    themes: Array<DateTheme>;
+}
+/**
+ * A theme on a date, and how much the commander supports it.
+ * @export
+ * @interface DateTheme
+ */
+export interface DateTheme {
+    /**
+     * 
+     */
+    theme: string;
+    /**
+     * 
+     */
+    label: string;
+    /**
+     * 
+     */
+    support: number;
+    /**
+     * 
+     */
+    tier: DateThemeTierEnum;
+}
+
+
+/**
+ * @export
+ */
+export const DateThemeTierEnum = {
+    high: 'high',
+    mid: 'mid',
+    low: 'low',
+} as const;
+export type DateThemeTierEnum = typeof DateThemeTierEnum[keyof typeof DateThemeTierEnum];
+
+/**
  * A commander as the swipe stack shows it.
  * @export
  * @interface DatingCommander
@@ -527,6 +577,17 @@ export interface DatingCommander {
      * 
      */
     your_type: boolean;
+}
+/**
+ * The commander a date is planned with.
+ * @export
+ * @interface DatingDateRequest
+ */
+export interface DatingDateRequest {
+    /**
+     * 
+     */
+    commander: string;
 }
 /**
  * One of the player's decks, as the profile reads it.
