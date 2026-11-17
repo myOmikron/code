@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import random
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -290,3 +292,63 @@ def test_date_endpoint_answers_for_a_pool_commander(pool, monkeypatch):
     assert response.status_code == 200
     assert response.json()["proposals"][0]["theme"] == "aristocrats"
     assert client.post("/dating/date", json={"commander": "nobody"}).status_code == 404
+
+
+def test_a_blind_date_rolls_two_or_three_supported_themes():
+    plan = plan_for({}, {"tokens": 30, "aristocrats": 20, "treasure": 8, "mill": 1})
+    for seed in range(20):
+        rolled = dating.roll_themes(plan, row("krenko"), random.Random(seed))
+
+        assert 2 <= len(rolled) <= 3
+        assert {theme.theme for theme in rolled} <= {"tokens", "aristocrats", "treasure"}
+        assert rolled[0].level in {"allin", "core"}
+        assert all(theme.level in {"light", "core"} for theme in rolled[1:])
+
+
+def test_lands_and_the_surest_picks_go_in_first():
+    chosen = [("land", "Mountain"), ("a", "A"), ("b", "B"), ("c", "C"), ("d", "D")]
+
+    now, open_slots = dating.split_fill(
+        chosen,
+        lands={"land"},
+        fitting={"c"},
+        inclusion={"a": 0.9, "b": 0.2, "c": 0.1, "d": 0.5},
+        slots=6,
+        open_slots=3,
+    )
+
+    assert [card.oracle_id for card in now] == ["land", "c", "a"]
+    assert open_slots == 3
+
+
+def test_blind_endpoint_fills_and_splits(pool, monkeypatch):
+    from deck_lab import graph
+    from deck_lab.cache import dating_date_cache
+    from deck_lab.solver import FilledCard, FillResult
+
+    dating_date_cache.clear()
+    monkeypatch.setattr(graph, "recommended_ids", lambda oid, limit: ["a", "b"])
+    fits = {"aristocrats": 1, "tokens": 1}
+    monkeypatch.setattr(graph, "theme_fit_counts", lambda ids, threshold: fits)
+    monkeypatch.setattr(
+        api_module,
+        "run_fill",
+        lambda *args, **kwargs: FillResult(
+            status="optimal",
+            solved=True,
+            slots=99,
+            chosen=[FilledCard(oracle_id=f"c{i}", name=f"C{i}", cmc=2, score=1) for i in range(70)],
+        ),
+    )
+    land = [{"oracle_id": "c0", "type_line": "Basic Land"}]
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: land)
+    monkeypatch.setattr(graph, "fits_theme_among", lambda ids, themes: [])
+    monkeypatch.setattr(graph, "inclusion_among", lambda commander, ids: {})
+
+    response = client.post("/dating/blind", json={"commander": "teysa", "bracket": 3, "seed": 1})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["add_now"]) == 64
+    assert data["add_now"][0]["oracle_id"] == "c0"
+    assert data["open_slots"] == 35

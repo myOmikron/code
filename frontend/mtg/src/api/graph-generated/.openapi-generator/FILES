@@ -2,6 +2,8 @@ apis/DefaultApi.ts
 apis/index.ts
 docs/AnswerGrade.md
 docs/AxesPosition.md
+docs/BlindCard.md
+docs/BlindDate.md
 docs/Bucket.md
 docs/BucketDelta.md
 docs/BucketRange.md
@@ -19,6 +21,7 @@ docs/CutCode.md
 docs/CutPhrase.md
 docs/DatePlan.md
 docs/DateTheme.md
+docs/DatingBlindRequest.md
 docs/DatingCommander.md
 docs/DatingDateRequest.md
 docs/DatingDeck.md
@@ -64,6 +67,7 @@ docs/ReplaceRequest.md
 docs/ReplaceResponse.md
 docs/Replacement.md
 docs/ResourceBalance.md
+docs/RolledTheme.md
 docs/SceneInteractionProfile.md
 docs/SearchRequest.md
 docs/SearchResponse.md

@@ -226,6 +226,45 @@
                 }
             }
         },
+        "/dating/blind": {
+            "post": {
+                "summary": "Post Dating Blind",
+                "description": "Roll the themes, fill the deck, and say which cards go in right away.",
+                "operationId": "post_dating_blind",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DatingBlindRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BlindDate"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/diagnostics": {
             "post": {
                 "summary": "Post Diagnostics",
@@ -682,6 +721,60 @@
                 ],
                 "title": "AxesPosition",
                 "description": "`Diagnostics.cedh_position` (diagnostics.py names the field; this is\nits value type). `archetype_class` rather than the task shorthand\n`class` — a reserved word. `speed`/`interaction` are `None` only when\nthe corresponding axis has no defined value for this deck (a deck with\nno complete candidate line has `speed=None`); `below_floor` depends\nonly on `interaction` against the class's own floor, never on speed."
+            },
+            "BlindCard": {
+                "properties": {
+                    "oracle_id": {
+                        "type": "string",
+                        "title": "Oracle Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "oracle_id",
+                    "name"
+                ],
+                "title": "BlindCard",
+                "description": "A card a Blind Date puts in the deck right away."
+            },
+            "BlindDate": {
+                "properties": {
+                    "themes": {
+                        "items": {
+                            "$ref": "#/components/schemas/RolledTheme"
+                        },
+                        "type": "array",
+                        "title": "Themes"
+                    },
+                    "add_now": {
+                        "items": {
+                            "$ref": "#/components/schemas/BlindCard"
+                        },
+                        "type": "array",
+                        "title": "Add Now"
+                    },
+                    "open_slots": {
+                        "type": "integer",
+                        "title": "Open Slots"
+                    },
+                    "solved": {
+                        "type": "boolean",
+                        "title": "Solved"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "themes",
+                    "add_now",
+                    "open_slots",
+                    "solved"
+                ],
+                "title": "BlindDate",
+                "description": "A rolled, filled deck: what goes in now and how much is left to swipe."
             },
             "Bucket": {
                 "type": "string",
@@ -1288,6 +1381,45 @@
                 ],
                 "title": "DateTheme",
                 "description": "A theme on a date, and how much the commander supports it."
+            },
+            "DatingBlindRequest": {
+                "properties": {
+                    "commander": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "title": "Commander"
+                    },
+                    "bracket": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 5.0,
+                                "minimum": 1.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Bracket"
+                    },
+                    "seed": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Seed"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "commander"
+                ],
+                "title": "DatingBlindRequest",
+                "description": "A Blind Date: roll themes for the commander and fill a deck to them."
             },
             "DatingCommander": {
                 "properties": {
@@ -3509,6 +3641,35 @@
                     "gap"
                 ],
                 "title": "ResourceBalance"
+            },
+            "RolledTheme": {
+                "properties": {
+                    "theme": {
+                        "type": "string",
+                        "title": "Theme"
+                    },
+                    "label": {
+                        "type": "string",
+                        "title": "Label"
+                    },
+                    "level": {
+                        "type": "string",
+                        "enum": [
+                            "light",
+                            "core",
+                            "allin"
+                        ],
+                        "title": "Level"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "theme",
+                    "label",
+                    "level"
+                ],
+                "title": "RolledTheme",
+                "description": "A theme a Blind Date rolled, and its level."
             },
             "SceneInteractionProfile": {
                 "properties": {

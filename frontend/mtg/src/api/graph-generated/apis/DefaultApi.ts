@@ -14,9 +14,11 @@
 
 import * as runtime from '../runtime';
 import type {
+    BlindDate,
     CombosRequest,
     CombosResponse,
     DatePlan,
+    DatingBlindRequest,
     DatingDateRequest,
     DatingProfile,
     DatingProfileRequest,
@@ -49,6 +51,13 @@ export interface PostCombosRequest {
      * 
      */
     CombosRequest: CombosRequest;
+}
+
+export interface PostDatingBlindRequest {
+    /**
+     * 
+     */
+    DatingBlindRequest: DatingBlindRequest;
 }
 
 export interface PostDatingDateRequest {
@@ -269,6 +278,55 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async postCombos(requestParameters: PostCombosRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CombosResponse> {
         const response = await this.postCombosRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for postDatingBlind without sending the request
+     */
+    async postDatingBlindRequestOpts(requestParameters: PostDatingBlindRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['DatingBlindRequest'] == null) {
+            throw new runtime.RequiredError(
+                'DatingBlindRequest',
+                'Required parameter "DatingBlindRequest" was null or undefined when calling postDatingBlind().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/dating/blind`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['DatingBlindRequest'],
+        };
+    }
+
+    /**
+     * Roll the themes, fill the deck, and say which cards go in right away.
+     * Post Dating Blind
+     */
+    async postDatingBlindRaw(requestParameters: PostDatingBlindRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BlindDate>> {
+        const requestOptions = await this.postDatingBlindRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Roll the themes, fill the deck, and say which cards go in right away.
+     * Post Dating Blind
+     */
+    async postDatingBlind(requestParameters: PostDatingBlindRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BlindDate> {
+        const response = await this.postDatingBlindRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

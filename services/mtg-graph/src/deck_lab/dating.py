@@ -50,6 +50,10 @@ SUPPORT_HIGH = 0.12
 SUPPORT_MID = 0.06
 SUPPORT_SAMPLE = 200
 PROPOSALS = 3
+# A Blind Date leaves this many slots open for card swiping.
+BLIND_OPEN_SLOTS = 35
+# The frontend's `THEME_LEVEL_SHARE`, for the rolled levels.
+LEVEL_SHARE = {"light": 0.1, "core": 0.25, "allin": 0.4}
 # One card in this many is picked for compatibility instead of popularity.
 YOUR_TYPE_EVERY = 5
 YOUR_TYPE_SAMPLE = 40
@@ -79,6 +83,30 @@ class DatePlan(BaseModel):
 
     proposals: list[DateTheme]
     themes: list[DateTheme]
+
+
+class RolledTheme(BaseModel):
+    """A theme a Blind Date rolled, and its level."""
+
+    theme: str
+    label: str
+    level: Literal["light", "core", "allin"]
+
+
+class BlindCard(BaseModel):
+    """A card a Blind Date puts in the deck right away."""
+
+    oracle_id: str
+    name: str
+
+
+class BlindDate(BaseModel):
+    """A rolled, filled deck: what goes in now and how much is left to swipe."""
+
+    themes: list[RolledTheme]
+    add_now: list[BlindCard]
+    open_slots: int
+    solved: bool
 
 
 class DatingCommander(BaseModel):
@@ -490,3 +518,44 @@ def date_plan(
         if all(p.theme != theme.theme for p in proposals):
             proposals.append(theme)
     return DatePlan(proposals=proposals[:PROPOSALS], themes=themes)
+
+
+def roll_themes(plan: DatePlan, row: dict, rng: random.Random) -> list[RolledTheme]:
+    """Two or three of the commander's supported themes, weighted by its decks and support."""
+    shares = {interest.theme: interest.share for interest in interests(row) if interest.theme}
+    pool = [theme for theme in plan.themes if theme.tier != "low"] or plan.themes[:3]
+    labels = {proposal.theme: proposal.label for proposal in plan.proposals}
+    count = min(len(pool), rng.choice((2, 3)))
+    picked: list[DateTheme] = []
+    while len(picked) < count:
+        left = [theme for theme in pool if theme not in picked]
+        weights = [theme.support + shares.get(theme.theme, 0.0) + 0.01 for theme in left]
+        picked.append(rng.choices(left, weights=weights)[0])
+    return [
+        RolledTheme(
+            theme=theme.theme,
+            label=labels.get(theme.theme, theme.label),
+            level=rng.choice(("allin", "core")) if index == 0 else rng.choice(("light", "core")),
+        )
+        for index, theme in enumerate(picked)
+    ]
+
+
+def split_fill(
+    chosen: list[tuple[str, str]],
+    lands: set[str],
+    fitting: set[str],
+    inclusion: dict[str, float],
+    *,
+    slots: int = 99,
+    open_slots: int = BLIND_OPEN_SLOTS,
+) -> tuple[list[BlindCard], int]:
+    """Lands and the surest picks go in now, until `open_slots` are left for swiping."""
+    keep = max(0, slots - open_slots)
+    land_cards = [(oid, name) for oid, name in chosen if oid in lands]
+    others = sorted(
+        ((oid, name) for oid, name in chosen if oid not in lands),
+        key=lambda card: (card[0] not in fitting, -inclusion.get(card[0], 0.0)),
+    )
+    now = (land_cards + others)[:keep]
+    return [BlindCard(oracle_id=oid, name=name) for oid, name in now], slots - len(now)
