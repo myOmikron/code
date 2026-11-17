@@ -1912,7 +1912,7 @@ def test_a_colourless_override_suggests_wastes(monkeypatch):
         asked.append(names)
         return {name: f"oid-{name}" for name in names}
 
-    monkeypatch.setattr(graph, "resolve_names", _resolve_names)
+    monkeypatch.setattr(graph, "oracle_ids_for_names", _resolve_names)
 
     class _LandShort(_EmptyDiagnostics):
         types = [_type_row("Land", 9, 32, 39)]

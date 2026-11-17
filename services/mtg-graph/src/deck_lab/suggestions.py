@@ -3432,6 +3432,53 @@ def suggest(
         from .graph import deck_tutor_count
 
         ahead.start(deck_tutor_count, held)
+    if "fixing_lands" in enabled and len(identity) >= 2:
+        from .graph import deck_fixing_count
+
+        ahead.start(deck_fixing_count, held, _basic_names(identity))
+
+    # The focus and the standing theme preferences, resolved here so their
+    # reads can start too. What they have to say is said further down, where
+    # their channels run.
+    from .themes import THEMES
+
+    theme_notes: list[Phrase] = []
+    parsed_focus = _parse_focus(focus)
+    if parsed_focus and parsed_focus.kind == "theme":
+        theme = THEMES.get(parsed_focus.value)
+        if theme is None:
+            theme_notes.append(
+                phrase(
+                    "focus-unknown-theme",
+                    f"No theme called {parsed_focus.value!r}.",
+                    value=parsed_focus.value,
+                )
+            )
+            parsed_focus = None
+        else:
+            parsed_focus = Focus(kind="theme", value=theme.id, label=theme.label)
+    focus_theme = parsed_focus.value if parsed_focus and parsed_focus.kind == "theme" else None
+    pins, outs = _resolve_theme_prefs(pinned_themes, excluded_themes, focus_theme, theme_notes)
+    if focus_theme:
+        ahead.start(channel_theme, focus_theme, retrieval_deck, identity, pool_filter=pool_filter)
+    if pins:
+        ahead.start(
+            channel_themes, [t.id for t in pins], retrieval_deck, identity, pool_filter=pool_filter
+        )
+    if "theme_fit" in enabled:
+        declared = {t.id for t in pins} | {t.id for t in outs}
+        if focus_theme:
+            declared.add(focus_theme)
+        targets = _detected_theme_targets(report.themes, declared)
+        share_by_theme = {t.theme: t.share for t in targets}
+        if share_by_theme:
+            ahead.start(
+                channel_themes,
+                list(share_by_theme),
+                retrieval_deck,
+                identity,
+                pool_filter=pool_filter,
+            )
 
     if "resource_bridge" in enabled:
         # `wanted` stays a fact — the "no gaps" note below still reads the
@@ -3441,8 +3488,6 @@ def suggest(
         # whose resource belongs to an excluded theme's own vocabulary never
         # reaches `channel_bridge`. The deck may genuinely want artifact
         # supply; with artifacts excluded the advisor stops feeding it.
-        from .themes import THEMES
-
         excluded_vocabulary: set[str] = set()
         for theme_id in excluded_themes or []:
             theme = THEMES.get(theme_id)
@@ -3592,10 +3637,11 @@ def suggest(
     if "basic_lands" in enabled:
         land_row = next((r for r in report.types if r.type == "Land"), None)
         if land_row is not None and land_row.status == "low":
-            from .graph import land_name_payoffs, resolve_names
+            from .graph import land_name_payoffs, oracle_ids_for_names
 
             payoffs = land_name_payoffs(list({*effective, *deck_oracle_ids}))
-            basic_ids = resolve_names(_suggested_land_names(identity, bool(payoffs)))
+            # Exact names: the case-blind lookup scans every card per name.
+            basic_ids = oracle_ids_for_names(_suggested_land_names(identity, bool(payoffs)))
             # Lands-as-payoff evidence, either kind: a name-counting payoff
             # in the deck, or a landfall share in the theme profile.
             lands_theme = bool(payoffs) or any(
@@ -3633,12 +3679,10 @@ def suggest(
     # fixing count, never on the Land row, and the two argue independently.
     # "Fixing" is structural, not a tag; see `_FIXING_LAND` in graph.py.
     if "fixing_lands" in enabled and len(identity) >= 2:
-        from .graph import channel_fixing, deck_fixing_count
+        from .graph import channel_fixing
 
         fetch_types = _basic_names(identity)
-        fixing_count = deck_fixing_count(
-            {oid: counts.get(oid, 1) for oid in deck_oracle_ids}, fetch_types
-        )
+        fixing_count = ahead.take(deck_fixing_count, held, fetch_types)
         # Per-99 tuning like every quota, resized to the deck's target size.
         fixing_target = round(FIXING_LANDS_PER_COLOR * len(identity) * deck_size / 99)
         if fixing_count < fixing_target:
@@ -3870,29 +3914,15 @@ def suggest(
                 )
 
     # --- Focus: what the user asked for more of ---------------------------
-    parsed_focus = _parse_focus(focus)
-
-    if parsed_focus and parsed_focus.kind == "theme":
-        from .themes import THEMES
-
-        theme = THEMES.get(parsed_focus.value)
-        if theme is None:
-            notes.append(
-                phrase(
-                    "focus-unknown-theme",
-                    f"No theme called {parsed_focus.value!r}.",
-                    value=parsed_focus.value,
-                )
-            )
-            parsed_focus = None
-        else:
-            parsed_focus = Focus(kind="theme", value=theme.id, label=theme.label)
-            for row in channel_theme(theme.id, retrieval_deck, identity, pool_filter=pool_filter):
-                _merge(pool, row, _theme_provenance(row))
+    # Resolved above, with the theme preferences; their notes belong here.
+    if focus_theme:
+        for row in ahead.take(
+            channel_theme, focus_theme, retrieval_deck, identity, pool_filter=pool_filter
+        ):
+            _merge(pool, row, _theme_provenance(row))
 
     # --- Theme preferences: standing per-deck state, not a per-request ask --
-    focus_theme = parsed_focus.value if parsed_focus and parsed_focus.kind == "theme" else None
-    pins, outs = _resolve_theme_prefs(pinned_themes, excluded_themes, focus_theme, notes)
+    notes.extend(theme_notes)
 
     # A pin runs the focus's channel without the focus's pool narrowing:
     # pinning landfall means "argue for landfall cards", not "show me nothing
@@ -3903,7 +3933,9 @@ def suggest(
     # in a Dragons deck means more typal cards, not other tribes' lords.
 
     for row in _drop_off_tribe_rows(
-        channel_themes([t.id for t in pins], retrieval_deck, identity, pool_filter=pool_filter),
+        ahead.take(
+            channel_themes, [t.id for t in pins], retrieval_deck, identity, pool_filter=pool_filter
+        ),
         deck_tribes,
     ):
         _merge(pool, row, _theme_provenance(row))
@@ -3918,13 +3950,14 @@ def suggest(
     # nothing when the channel never ran.
     voiced: dict[str, tuple[str, float]] = {}
     if "theme_fit" in enabled:
-        declared = {t.id for t in pins} | {t.id for t in outs}
-        if focus_theme:
-            declared.add(focus_theme)
-        targets = _detected_theme_targets(report.themes, declared)
-        share_by_theme = {t.theme: t.share for t in targets}
         rows = _drop_off_tribe_rows(
-            channel_themes(list(share_by_theme), retrieval_deck, identity, pool_filter=pool_filter),
+            ahead.take(
+                channel_themes,
+                list(share_by_theme),
+                retrieval_deck,
+                identity,
+                pool_filter=pool_filter,
+            ),
             deck_tribes,
         )
         for row in rows:
