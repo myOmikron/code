@@ -32,6 +32,12 @@ function RouteComponent() {
     const startDeck = useStartDeck();
     const [busy, setBusy] = useState<string | null>(null);
 
+    const commanderOf = (date: DateResponse) => ({
+        commander: date.commander,
+        name: date.name,
+        printing: date.printing,
+    });
+
     const act = async (date: DateResponse, action: () => Promise<unknown>) => {
         setBusy(date.commander);
         try {
@@ -94,13 +100,28 @@ function RouteComponent() {
                             {t("button.come-back")}
                         </Button>
                     )}
-                    <Button
-                        color={"lime"}
-                        disabled={busy !== null}
-                        onClick={() => act(date, () => startDeck({ name: date.name, printing: date.printing }))}
-                    >
-                        {t("button.start-deck")}
-                    </Button>
+                    {date.open_date ? (
+                        <Button color={"lime"} href={`/dating/date/${date.open_date}`}>
+                            {t("button.continue-date")}
+                        </Button>
+                    ) : (
+                        <>
+                            <Button
+                                color={"lime"}
+                                disabled={busy !== null}
+                                onClick={() => act(date, () => startDeck(commanderOf(date), "date"))}
+                            >
+                                {t("button.plan-date")}
+                            </Button>
+                            <Button
+                                plain={true}
+                                disabled={busy !== null}
+                                onClick={() => act(date, () => startDeck(commanderOf(date), "build"))}
+                            >
+                                {t("button.just-build")}
+                            </Button>
+                        </>
+                    )}
                 </div>
             </li>
         );

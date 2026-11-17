@@ -263,6 +263,7 @@ def test_a_date_proposes_the_mapped_interests_first():
     )
 
     assert [theme.theme for theme in plan.proposals] == ["tribal", "tokens", "aggro"]
+    assert plan.proposals[0].label == "Goblins"
 
 
 def test_support_is_the_share_of_recommended_cards_that_fit():

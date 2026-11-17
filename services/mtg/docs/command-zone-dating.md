@@ -86,6 +86,12 @@ The mockup's markup is reference only; the build uses the shared components.
 
 ## Phase 2: Plan a date, then card swiping
 
+Built on `feat/command-zone-dating`. A date is stored per deck (`dating_date`) so it can be
+resumed; "That's all, date night" ends it early on the player's turn. Support tiers come from
+the share of the Commander's 200 most-included recommended cards that fit a theme
+(`SUPPORT_HIGH` 0.12, `SUPPORT_MID` 0.06 in `dating.py`). Card swiping is an overlay on the
+advisor route (`?swipe=true`), opened from its header or after a date.
+
 **Plan a date.**
 - The Commander brings its interests, the player brings the profile's themes.
 - They alternate picks, three each. Each pick sets one theme's `ThemeLevel` (avoid, light, core, all-in).

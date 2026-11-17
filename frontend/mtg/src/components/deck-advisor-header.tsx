@@ -1,4 +1,4 @@
-import { FlagIcon, RectangleStackIcon } from "@heroicons/react/20/solid";
+import { FlagIcon, HandRaisedIcon, RectangleStackIcon } from "@heroicons/react/20/solid";
 import { Badge, Button } from "components";
 import { useTranslation } from "react-i18next";
 import { QuietButton } from "src/components/quiet-button";
@@ -15,6 +15,8 @@ export type DeckAdvisorHeaderProps = {
     goals: string;
     onOpenGoals: () => void;
     onFill: () => void;
+    /** Open card swiping */
+    onSwipe: () => void;
 };
 
 /**
@@ -23,7 +25,7 @@ export type DeckAdvisorHeaderProps = {
  *
  * @returns the header row
  */
-export function DeckAdvisorHeader({ count, target, goals, onOpenGoals, onFill }: DeckAdvisorHeaderProps) {
+export function DeckAdvisorHeader({ count, target, goals, onOpenGoals, onFill, onSwipe }: DeckAdvisorHeaderProps) {
     const [t] = useTranslation("advisor");
     const diff = target === null ? 0 : count - target;
     const share = target === null || target === 0 ? 1 : Math.min(1, count / target);
@@ -73,6 +75,12 @@ export function DeckAdvisorHeader({ count, target, goals, onOpenGoals, onFill }:
                     <FlagIcon className={"size-3.5 shrink-0"} />
                     <span className={"truncate"}>{goals}</span>
                 </QuietButton>
+                {diff < 0 && (
+                    <Button outline onClick={onSwipe}>
+                        <HandRaisedIcon />
+                        {t("button.swipe")}
+                    </Button>
+                )}
                 {diff < 0 && (
                     <Button outline onClick={onFill}>
                         <RectangleStackIcon />
