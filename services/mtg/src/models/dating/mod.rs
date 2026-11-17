@@ -63,6 +63,9 @@ pub struct GraphProfile {
     pub decks: i64,
     /// Theme id to how strongly the account plays it, 0..1
     pub themes: BTreeMap<String, f64>,
+    /// Theme id to its label
+    #[serde(default)]
+    pub labels: BTreeMap<String, String>,
     /// Color letter to the share of decks playing it
     pub colors: BTreeMap<String, f64>,
     /// Average bracket

@@ -9345,6 +9345,10 @@ export interface ThemePrefs {
  */
 export interface ThemeStrength {
     /**
+     * The theme's label
+     */
+    label: string;
+    /**
      * 0..1
      */
     strength: number;

@@ -199,6 +199,8 @@ pub struct DatingAnswers {
 pub struct ThemeStrength {
     /// Advisor theme id
     pub theme: String,
+    /// The theme's label
+    pub label: String,
     /// 0..1
     pub strength: f64,
 }

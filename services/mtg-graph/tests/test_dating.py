@@ -103,6 +103,7 @@ def test_profile_takes_the_strongest_deck_per_theme_and_shares_colors():
     )
 
     assert result.themes == {"tokens": 1.0, "aristocrats": 0.2}
+    assert result.labels["tokens"]
     assert result.colors == {"B": 1.0, "G": 0.5}
     assert result.bracket == 3.0
     assert result.budget_eur == 300.0

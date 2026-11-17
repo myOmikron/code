@@ -16,6 +16,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field
 
 from .edhrec import THEME_TAG_SLUGS
+from .themes import THEMES
 
 OracleId = Annotated[str, Field(max_length=64)]
 Color = Literal["W", "U", "B", "R", "G"]
@@ -99,6 +100,7 @@ class DatingProfile(BaseModel):
 
     decks: int
     themes: dict[str, float]
+    labels: dict[str, str] = Field(default_factory=dict)
     colors: dict[str, float]
     bracket: float | None
     budget_eur: float | None
@@ -282,6 +284,7 @@ def build_profile(
     return DatingProfile(
         decks=len(decks),
         themes=themes,
+        labels={theme: THEMES[theme].label for theme in themes if theme in THEMES},
         colors=colors,
         bracket=round(fmean(brackets), 2) if brackets else answers.bracket,
         budget_eur=round(median(prices), 2) if prices else answers.budget_eur,
