@@ -19,12 +19,26 @@ from fastapi.responses import JSONResponse
 from opentelemetry import trace
 from pydantic import AfterValidator, BaseModel, Field
 
-from .cache import LruTtlCache, diagnostics_cache, facets_cache, suggestions_cache
+from . import dating
+from .cache import (
+    LruTtlCache,
+    dating_pool_cache,
+    diagnostics_cache,
+    facets_cache,
+    suggestions_cache,
+)
 from .composition import TargetOverride
 from .config import settings
 from .cuts import CutCandidate, Replacement, Swap
 from .cuts import find_replacements as run_replacements
 from .cuts import suggest_swaps as run_swaps
+from .dating import (
+    DatingCommander,
+    DatingDeck,
+    DatingProfile,
+    DatingVerdict,
+    ProfileAnswers,
+)
 from .diagnostics import DeckEntry, Diagnostics, diagnose
 from .interaction import build_interaction_grid
 from .lines import LINE_NEAR_MISS_LIMIT, Line
@@ -540,6 +554,7 @@ def _schedule_warm(oracle_id: str) -> str:
                     # compute and `put()` a pre-ingest answer *after* the flush.
                     diagnostics_cache.clear()
                     suggestions_cache.clear()
+                    dating_pool_cache.clear()
             except Exception as exc:  # noqa: BLE001 — unofficial API, a warm-up must not raise
                 log.warning("warm.edhrec_failed", commander=name, error=str(exc))
             finally:
@@ -559,6 +574,84 @@ def post_warm(request: WarmRequest) -> dict[str, str]:
     instead of inside the first /suggestions request.
     """
     return {"status": _schedule_warm(request.commander_oracle_id)}
+
+
+class DatingProfileRequest(BaseModel):
+    """The player's decks, plus the dating-profile answers."""
+
+    decks: list[DatingDeck] = Field(default_factory=list, max_length=dating.MAX_DECKS)
+    answers: ProfileAnswers | None = None
+
+
+class DatingStackRequest(BaseModel):
+    """The next commanders to swipe, minus everything already swiped."""
+
+    profile: DatingProfile
+    exclude: list[OracleId] = Field(default_factory=list, max_length=dating.MAX_EXCLUDED)
+    colors: list[dating.Color] | None = Field(None, max_length=5)
+    count: int = Field(10, ge=1, le=dating.MAX_STACK)
+    seed: int = 0
+
+
+class DatingStackResponse(BaseModel):
+    """A slice of the swipe stack."""
+
+    commanders: list[DatingCommander]
+    remaining: int
+
+
+class DatingVerdictRequest(BaseModel):
+    """A like, to be answered by the commander."""
+
+    profile: DatingProfile
+    commander: OracleId
+
+
+def _dating_pool() -> dict[str, dict]:
+    def compute() -> dict[str, dict]:
+        from .graph import dating_pool
+
+        return {row["oracle_id"]: row for row in dating_pool()}
+
+    return dating_pool_cache.get_or_compute("pool", compute)
+
+
+@app.post("/dating/profile", response_model=DatingProfile)
+def post_dating_profile(request: DatingProfileRequest) -> DatingProfile:
+    """Aggregate a player's decks into what commanders see."""
+    return dating.build_profile(request.decks, request.answers)
+
+
+@app.post("/dating/stack", response_model=DatingStackResponse)
+def post_dating_stack(request: DatingStackRequest) -> DatingStackResponse:
+    """The next commanders of the swipe stack."""
+    pool = _dating_pool()
+    exclude = set(request.exclude)
+    colors = set(request.colors) if request.colors is not None else None
+    commanders = dating.stack(
+        pool.values(),
+        request.profile,
+        exclude=exclude,
+        colors=colors,
+        count=request.count,
+        seed=request.seed,
+    )
+    remaining = sum(
+        1
+        for row in pool.values()
+        if row["oracle_id"] not in exclude
+        and (colors is None or set(row.get("color_identity") or []) <= colors)
+    )
+    return DatingStackResponse(commanders=commanders, remaining=remaining)
+
+
+@app.post("/dating/verdict", response_model=DatingVerdict)
+def post_dating_verdict(request: DatingVerdictRequest) -> DatingVerdict:
+    """The commander's answer to a like."""
+    row = _dating_pool().get(request.commander)
+    if row is None:
+        raise HTTPException(status_code=404, detail="commander is not in the dating pool")
+    return dating.verdict(request.profile, dating.commander_card(row))
 
 
 def _apply_expected_meta(diag: Diagnostics, expected_meta: list[str]) -> Diagnostics:
