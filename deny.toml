@@ -14,7 +14,12 @@ ignore = [
     # the VAPID key signs ES256 and every push draws a fresh ECDH key. A timing attack would have
     # to measure the push requests mtg sends, which leave the service asynchronously.
     "RUSTSEC-2026-0387",
+    # Chrono is unmaintained
+    "RUSTSEC-2026-0543",
 ]
+
+[bans]
+multiple-versions = "allow"
 
 [licenses]
 version = 2
