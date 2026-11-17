@@ -7,6 +7,7 @@ How strongly the account plays a theme
 
 Name | Type
 ------------ | -------------
+`label` | string
 `strength` | number
 `theme` | string
 

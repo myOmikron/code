@@ -586,6 +586,10 @@ export interface DatingProfile {
     /**
      * 
      */
+    labels?: { [key: string]: string | undefined; };
+    /**
+     * 
+     */
     colors: { [key: string]: number | undefined; };
     /**
      * 

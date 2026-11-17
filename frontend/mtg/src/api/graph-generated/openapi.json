@@ -1391,6 +1391,13 @@
                         "type": "object",
                         "title": "Themes"
                     },
+                    "labels": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object",
+                        "title": "Labels"
+                    },
                     "colors": {
                         "additionalProperties": {
                             "type": "number"

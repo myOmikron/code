@@ -18,7 +18,11 @@ fn an_account_without_decks_or_answers_is_asked_first() {
         let mut session = TestClient::logged_in(&member).await;
 
         let stack = session
-            .json(Method::POST, &api("dating/stack"), &json!({ "pending": [] }))
+            .json(
+                Method::POST,
+                &api("dating/stack"),
+                &json!({ "pending": [] }),
+            )
             .await
             .ok_json();
 

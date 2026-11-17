@@ -9,6 +9,7 @@ Name | Type
 ------------ | -------------
 `decks` | number
 `themes` | { [key: string]: number | undefined; }
+`labels` | { [key: string]: string | undefined; }
 `colors` | { [key: string]: number | undefined; }
 `bracket` | number
 `budget_eur` | number

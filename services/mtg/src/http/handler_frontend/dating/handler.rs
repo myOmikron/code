@@ -413,10 +413,15 @@ async fn profile_response(owner: AccountUuid) -> ApiResult<DatingProfileResponse
         .and_then(|row| row.answers);
     tx.commit().await?;
 
+    let labels = profile.labels;
     let mut themes: Vec<ThemeStrength> = profile
         .themes
         .into_iter()
-        .map(|(theme, strength)| ThemeStrength { theme, strength })
+        .map(|(theme, strength)| ThemeStrength {
+            label: labels.get(&theme).cloned().unwrap_or_else(|| theme.clone()),
+            theme,
+            strength,
+        })
         .collect();
     themes.sort_by(|a, b| b.strength.total_cmp(&a.strength));
     let mut colors: Vec<(String, f64)> = profile.colors.into_iter().collect();

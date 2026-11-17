@@ -29517,6 +29517,10 @@
                 "description": "How strongly the account plays a theme",
                 "type": "object",
                 "properties": {
+                    "label": {
+                        "description": "The theme's label",
+                        "type": "string"
+                    },
                     "strength": {
                         "description": "0..1",
                         "type": "number",
@@ -29528,6 +29532,7 @@
                     }
                 },
                 "required": [
+                    "label",
                     "strength",
                     "theme"
                 ]
