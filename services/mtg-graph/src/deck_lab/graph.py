@@ -1328,6 +1328,82 @@ def upsert_recommendations(
         ).single()["n"]
 
 
+UPSERT_COMMANDER_FACTS = """
+MATCH (c:Card {oracle_id: $oracle_id})
+SET c.edhrec_salt = $salt,
+    c.edhrec_decks = $decks,
+    c.edhrec_budget = $budget,
+    c.edhrec_brackets = $brackets,
+    c.edhrec_tags = $tags,
+    c.edhrec_tag_labels = $tag_labels,
+    c.edhrec_tag_counts = $tag_counts
+"""
+
+
+def upsert_commander_facts(
+    commander_name: str, facts: Any, taglinks: Iterable[Any], brackets: dict[int, int]
+) -> bool:
+    """Store a commander page's own facts on its card. False when the card is unknown."""
+    tags = list(taglinks)
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        commander = session.run(
+            "MATCH (c:Card) WHERE c.name = $name OR c.name STARTS WITH $prefix "
+            "RETURN c.oracle_id AS oracle_id LIMIT 1",
+            name=commander_name,
+            prefix=commander_name + " //",
+        ).single()
+        if commander is None:
+            return False
+        session.run(
+            UPSERT_COMMANDER_FACTS,
+            oracle_id=commander["oracle_id"],
+            salt=facts.salt,
+            decks=facts.decks,
+            budget=list(facts.budget),
+            brackets=[brackets.get(bracket, 0) for bracket in range(1, 6)],
+            tags=[tag.slug for tag in tags],
+            tag_labels=[tag.label for tag in tags],
+            tag_counts=[tag.count for tag in tags],
+        ).consume()
+        return True
+
+
+def has_commander_facts(oracle_id: str) -> bool:
+    """Whether the commander's page facts are stored (see `upsert_commander_facts`)."""
+    query = "MATCH (c:Card {oracle_id: $oid}) RETURN c.edhrec_tags IS NOT NULL AS present"
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        record = session.run(query, oid=oracle_id).single()
+        return bool(record and record["present"])
+
+
+DATING_POOL = """
+MATCH (c:Card)
+WHERE c.can_be_commander AND c.edhrec_tags IS NOT NULL AND c.edhrec_decks > 0
+RETURN c.oracle_id AS oracle_id, c.name AS name, c.color_identity AS color_identity,
+       c.edhrec_rank AS edhrec_rank, c.price_eur AS price_eur, c.oracle_text AS oracle_text,
+       c.type_line AS type_line, c.edhrec_salt AS salt, c.edhrec_decks AS decks,
+       c.edhrec_budget AS budget, c.edhrec_brackets AS brackets, c.edhrec_tags AS tags,
+       c.edhrec_tag_labels AS tag_labels, c.edhrec_tag_counts AS tag_counts
+"""
+
+
+def dating_pool() -> list[dict[str, Any]]:
+    """Every commander with stored page facts."""
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [dict(r) for r in session.run(DATING_POOL)]
+
+
+def commander_salts(oracle_ids: list[str]) -> dict[str, float]:
+    """Stored EDHREC salt per commander, for those that have one."""
+    query = """
+    UNWIND $ids AS oid
+    MATCH (c:Card {oracle_id: oid}) WHERE c.edhrec_salt IS NOT NULL
+    RETURN c.oracle_id AS oracle_id, c.edhrec_salt AS salt
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return {r["oracle_id"]: float(r["salt"]) for r in session.run(query, ids=oracle_ids)}
+
+
 def recommendations_for(commander_name: str, *, limit: int = 15, min_synergy: float = 0.0):
     """Top recommendations already persisted for a commander."""
     query = """

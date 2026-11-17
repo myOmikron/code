@@ -385,6 +385,29 @@ def parse_taglinks(payload: dict) -> list[TagLink]:
     return out
 
 
+@dataclass(frozen=True, slots=True)
+class CommanderFacts:
+    """Page-level facts about the commander itself, for Command Zone Dating."""
+
+    salt: float | None
+    decks: int
+    budget: tuple[int, int, int]  # deck counts: budget, middle, expensive
+
+
+def parse_commander_facts(payload: dict) -> CommanderFacts:
+    """Salt, deck count and budget split. Missing fields read as unknown."""
+    card = ((payload.get("container") or {}).get("json_dict") or {}).get("card") or {}
+    salt = card.get("salt")
+    budget = payload.get("budget_counts")
+    if not isinstance(budget, dict):
+        budget = {}
+    return CommanderFacts(
+        salt=float(salt) if isinstance(salt, (int, float)) else None,
+        decks=int(card.get("num_decks") or 0),
+        budget=tuple(int(budget.get(key) or 0) for key in ("budget", "middle", "expensive")),
+    )
+
+
 def parse_bracket_counts(payload: dict) -> dict[int, int]:
     """Deck counts per power bracket (1-5), from the page's top-level
     `bracket_counts` field.
@@ -594,13 +617,21 @@ def load_commander(name: str, *, force: bool = False) -> list[Recommendation]:
 
 def ingest_commander(name: str, *, force: bool = False) -> dict[str, int]:
     """Fetch a commander and persist RECOMMENDS edges into the graph."""
-    from .graph import upsert_recommendations
+    from .graph import upsert_commander_facts, upsert_recommendations
 
     recommendations = load_commander(name, force=force)
     if not recommendations:
         return {"fetched": 0, "linked": 0}
 
     linked = upsert_recommendations(name, recommendations)
+    payload = fetch_commander(slugify(name))
+    if payload is not None:
+        upsert_commander_facts(
+            name,
+            parse_commander_facts(payload),
+            parse_taglinks(payload),
+            parse_bracket_counts(payload),
+        )
     log.info("edhrec.ingested", commander=name, fetched=len(recommendations), linked=linked)
     return {"fetched": len(recommendations), "linked": linked}
 
@@ -716,7 +747,7 @@ def warm_top_commanders(
     `cedh=True` — so a caller not asking for the cedh pass still sees
     exactly today's six keys.
     """
-    from .graph import has_recommendations, top_commanders
+    from .graph import has_commander_facts, has_recommendations, top_commanders
     from .type_targets import CEDH_MIN_DECKS
 
     counts = {
@@ -744,7 +775,7 @@ def warm_top_commanders(
 
         # Disk alone is not enough: a warm cache over a re-ingested graph still
         # needs its edges rewritten, and re-parsing from disk costs no requests.
-        if is_cached(name) and has_recommendations(oracle_id):
+        if is_cached(name) and has_recommendations(oracle_id) and has_commander_facts(oracle_id):
             counts["skipped"] += 1
         else:
             network = not is_cached(name)

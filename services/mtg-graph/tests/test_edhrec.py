@@ -12,12 +12,14 @@ import pytest
 from deck_lab.edhrec import (
     NEGATIVE_TTL_SECONDS,
     THEME_TAG_SLUGS,
+    CommanderFacts,
     Recommendation,
     _cache_path,
     _theme_cache_path,
     is_tombstoned,
     load_bracket_counts,
     parse_bracket_counts,
+    parse_commander_facts,
     parse_curve,
     parse_recommendations,
     parse_taglinks,
@@ -394,6 +396,23 @@ def test_is_tombstoned_is_false_once_the_tombstone_goes_stale(tmp_path, monkeypa
 # and its refusal to die on one bad commander are both tested behaviour.
 
 
+def test_parse_commander_facts_reads_salt_decks_and_budget():
+    payload = {
+        "budget_counts": {"budget": 341, "middle": 2737, "expensive": 341},
+        "container": {"json_dict": {"card": {"salt": 0.75, "num_decks": 3419}}},
+    }
+
+    facts = parse_commander_facts(payload)
+
+    assert facts == CommanderFacts(salt=0.75, decks=3419, budget=(341, 2737, 341))
+
+
+def test_parse_commander_facts_tolerates_a_moved_schema():
+    facts = parse_commander_facts({})
+
+    assert facts == CommanderFacts(salt=None, decks=0, budget=(0, 0, 0))
+
+
 @pytest.fixture
 def warm(monkeypatch):
     """Drive `warm_top_commanders` against fakes, recording sleeps and fetches.
@@ -413,6 +432,7 @@ def warm(monkeypatch):
         "cached": set(),
         "in_graph": set(),
         "raises": set(),
+        "no_facts": set(),
         "bracket5": {},
         "cedh_ingested": [],
         "cedh_cached": set(),
@@ -442,6 +462,11 @@ def warm(monkeypatch):
     )
     monkeypatch.setattr(edhrec.time, "sleep", lambda s: state["sleeps"].append(s))
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: oid in state["in_graph"])
+    monkeypatch.setattr(
+        graph,
+        "has_commander_facts",
+        lambda oid: oid in state["in_graph"] and oid not in state["no_facts"],
+    )
     monkeypatch.setattr(
         graph, "has_recommendations_cedh", lambda oid: oid in state["cedh_in_graph"]
     )
@@ -477,6 +502,18 @@ def test_warm_skips_commanders_already_cached_and_linked(warm):
         "failed": 0,
     }
     assert warm["ingested"] == []
+    assert warm["sleeps"] == []
+
+
+def test_warm_reingests_a_commander_missing_its_dating_facts(warm):
+    warm["cached"].add("Atraxa")
+    warm["in_graph"].add("oid-Atraxa")
+    warm["no_facts"].add("oid-Atraxa")
+
+    counts = warm["run"](["Atraxa"])
+
+    assert warm["ingested"] == ["Atraxa"]
+    assert counts["from_disk"] == 1
     assert warm["sleeps"] == []
 
 
