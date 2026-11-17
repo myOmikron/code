@@ -25,7 +25,8 @@ just dev mtg logs -f graph    # first start loads the corpus — watch it land
 **The graph starts empty and the container fills it.** Its entrypoint runs
 `deck-lab bootstrap`, which counts what is already there and runs only the
 missing steps, so the first start pays for the whole corpus (a few minutes,
-mostly downloads) and every start after it costs four counting queries:
+mostly downloads) and every start after it costs four counting queries and
+the schema statements, so an index a release adds arrives with it:
 
 | step | what it writes | skipped when |
 |------|----------------|--------------|
