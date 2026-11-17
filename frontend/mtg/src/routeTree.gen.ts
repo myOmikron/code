@@ -29,6 +29,9 @@ import { Route as MenuAuthRegisterRouteImport } from './routes/_menu/auth/regist
 import { Route as MenuAuthSignupRouteImport } from './routes/_menu/auth/signup'
 import { Route as MenuAuthUsernameRouteImport } from './routes/_menu/auth/username'
 import { Route as MenuCollectionsIndexRouteImport } from './routes/_menu/collections/index'
+import { Route as MenuDatingIndexRouteImport } from './routes/_menu/dating/index'
+import { Route as MenuDatingMatchesRouteImport } from './routes/_menu/dating/matches'
+import { Route as MenuDatingProfileRouteImport } from './routes/_menu/dating/profile'
 import { Route as MenuDecksIndexRouteImport } from './routes/_menu/decks/index'
 import { Route as MenuGameUtilsIndexRouteImport } from './routes/_menu/game-utils/index'
 import { Route as MenuGameUtilsLifeTrackerRouteImport } from './routes/_menu/game-utils/life-tracker'
@@ -201,6 +204,21 @@ const MenuAuthUsernameRoute = MenuAuthUsernameRouteImport.update({
 const MenuCollectionsIndexRoute = MenuCollectionsIndexRouteImport.update({
   id: '/collections/',
   path: '/collections/',
+  getParentRoute: () => MenuRoute,
+} as any)
+const MenuDatingIndexRoute = MenuDatingIndexRouteImport.update({
+  id: '/dating/',
+  path: '/dating/',
+  getParentRoute: () => MenuRoute,
+} as any)
+const MenuDatingMatchesRoute = MenuDatingMatchesRouteImport.update({
+  id: '/dating/matches',
+  path: '/dating/matches',
+  getParentRoute: () => MenuRoute,
+} as any)
+const MenuDatingProfileRoute = MenuDatingProfileRouteImport.update({
+  id: '/dating/profile',
+  path: '/dating/profile',
   getParentRoute: () => MenuRoute,
 } as any)
 const MenuDecksIndexRoute = MenuDecksIndexRouteImport.update({
@@ -663,6 +681,8 @@ export interface FileRoutesByFullPath {
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
   '/auth/username': typeof MenuAuthUsernameRoute
+  '/dating/matches': typeof MenuDatingMatchesRoute
+  '/dating/profile': typeof MenuDatingProfileRoute
   '/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
   '/game-utils/mpc-fill': typeof MenuGameUtilsMpcFillRoute
   '/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
@@ -673,6 +693,7 @@ export interface FileRoutesByFullPath {
   '/watch-lists/$watchListUuid': typeof MenuWatchListsWatchListUuidRoute
   '/admin/': typeof MenuAdminIndexRoute
   '/collections/': typeof MenuCollectionsIndexRoute
+  '/dating/': typeof MenuDatingIndexRoute
   '/decks/': typeof MenuDecksIndexRoute
   '/game-utils/': typeof MenuGameUtilsIndexRoute
   '/scan/': typeof MenuScanIndexRoute
@@ -756,6 +777,8 @@ export interface FileRoutesByTo {
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
   '/auth/username': typeof MenuAuthUsernameRoute
+  '/dating/matches': typeof MenuDatingMatchesRoute
+  '/dating/profile': typeof MenuDatingProfileRoute
   '/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
   '/game-utils/mpc-fill': typeof MenuGameUtilsMpcFillRoute
   '/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
@@ -764,6 +787,7 @@ export interface FileRoutesByTo {
   '/watch-lists/$watchListUuid': typeof MenuWatchListsWatchListUuidRoute
   '/admin': typeof MenuAdminIndexRoute
   '/collections': typeof MenuCollectionsIndexRoute
+  '/dating': typeof MenuDatingIndexRoute
   '/decks': typeof MenuDecksIndexRoute
   '/game-utils': typeof MenuGameUtilsIndexRoute
   '/scan': typeof MenuScanIndexRoute
@@ -844,6 +868,8 @@ export interface FileRoutesById {
   '/_menu/auth/register': typeof MenuAuthRegisterRoute
   '/_menu/auth/signup': typeof MenuAuthSignupRoute
   '/_menu/auth/username': typeof MenuAuthUsernameRoute
+  '/_menu/dating/matches': typeof MenuDatingMatchesRoute
+  '/_menu/dating/profile': typeof MenuDatingProfileRoute
   '/_menu/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
   '/_menu/game-utils/mpc-fill': typeof MenuGameUtilsMpcFillRoute
   '/_menu/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
@@ -854,6 +880,7 @@ export interface FileRoutesById {
   '/_menu/watch-lists/$watchListUuid': typeof MenuWatchListsWatchListUuidRoute
   '/_menu/admin/': typeof MenuAdminIndexRoute
   '/_menu/collections/': typeof MenuCollectionsIndexRoute
+  '/_menu/dating/': typeof MenuDatingIndexRoute
   '/_menu/decks/': typeof MenuDecksIndexRoute
   '/_menu/game-utils/': typeof MenuGameUtilsIndexRoute
   '/_menu/scan/': typeof MenuScanIndexRoute
@@ -941,6 +968,8 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/signup'
     | '/auth/username'
+    | '/dating/matches'
+    | '/dating/profile'
     | '/game-utils/life-tracker'
     | '/game-utils/mpc-fill'
     | '/game-utils/proxy-printer'
@@ -951,6 +980,7 @@ export interface FileRouteTypes {
     | '/watch-lists/$watchListUuid'
     | '/admin/'
     | '/collections/'
+    | '/dating/'
     | '/decks/'
     | '/game-utils/'
     | '/scan/'
@@ -1034,6 +1064,8 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/signup'
     | '/auth/username'
+    | '/dating/matches'
+    | '/dating/profile'
     | '/game-utils/life-tracker'
     | '/game-utils/mpc-fill'
     | '/game-utils/proxy-printer'
@@ -1042,6 +1074,7 @@ export interface FileRouteTypes {
     | '/watch-lists/$watchListUuid'
     | '/admin'
     | '/collections'
+    | '/dating'
     | '/decks'
     | '/game-utils'
     | '/scan'
@@ -1121,6 +1154,8 @@ export interface FileRouteTypes {
     | '/_menu/auth/register'
     | '/_menu/auth/signup'
     | '/_menu/auth/username'
+    | '/_menu/dating/matches'
+    | '/_menu/dating/profile'
     | '/_menu/game-utils/life-tracker'
     | '/_menu/game-utils/mpc-fill'
     | '/_menu/game-utils/proxy-printer'
@@ -1131,6 +1166,7 @@ export interface FileRouteTypes {
     | '/_menu/watch-lists/$watchListUuid'
     | '/_menu/admin/'
     | '/_menu/collections/'
+    | '/_menu/dating/'
     | '/_menu/decks/'
     | '/_menu/game-utils/'
     | '/_menu/scan/'
@@ -1346,6 +1382,27 @@ declare module '@tanstack/react-router' {
       path: '/collections'
       fullPath: '/collections/'
       preLoaderRoute: typeof MenuCollectionsIndexRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/dating/': {
+      id: '/_menu/dating/'
+      path: '/dating'
+      fullPath: '/dating/'
+      preLoaderRoute: typeof MenuDatingIndexRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/dating/matches': {
+      id: '/_menu/dating/matches'
+      path: '/dating/matches'
+      fullPath: '/dating/matches'
+      preLoaderRoute: typeof MenuDatingMatchesRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/dating/profile': {
+      id: '/_menu/dating/profile'
+      path: '/dating/profile'
+      fullPath: '/dating/profile'
+      preLoaderRoute: typeof MenuDatingProfileRouteImport
       parentRoute: typeof MenuRoute
     }
     '/_menu/decks/': {
@@ -2226,12 +2283,15 @@ interface MenuRouteChildren {
   MenuPrivacyRoute: typeof MenuPrivacyRoute
   MenuWhatsNewRoute: typeof MenuWhatsNewRoute
   MenuIndexRoute: typeof MenuIndexRoute
+  MenuDatingMatchesRoute: typeof MenuDatingMatchesRoute
+  MenuDatingProfileRoute: typeof MenuDatingProfileRoute
   MenuProfileProfileRoute: typeof MenuProfileProfileRouteWithChildren
   MenuScanBenchRoute: typeof MenuScanBenchRoute
   MenuTournamentsOverviewRoute: typeof MenuTournamentsOverviewRouteWithChildren
   MenuTournamentsCreateRoute: typeof MenuTournamentsCreateRoute
   MenuWatchListsWatchListUuidRoute: typeof MenuWatchListsWatchListUuidRoute
   MenuCollectionsIndexRoute: typeof MenuCollectionsIndexRoute
+  MenuDatingIndexRoute: typeof MenuDatingIndexRoute
   MenuDecksIndexRoute: typeof MenuDecksIndexRoute
   MenuScanIndexRoute: typeof MenuScanIndexRoute
   MenuWatchListsIndexRoute: typeof MenuWatchListsIndexRoute
@@ -2260,12 +2320,15 @@ const MenuRouteChildren: MenuRouteChildren = {
   MenuPrivacyRoute: MenuPrivacyRoute,
   MenuWhatsNewRoute: MenuWhatsNewRoute,
   MenuIndexRoute: MenuIndexRoute,
+  MenuDatingMatchesRoute: MenuDatingMatchesRoute,
+  MenuDatingProfileRoute: MenuDatingProfileRoute,
   MenuProfileProfileRoute: MenuProfileProfileRouteWithChildren,
   MenuScanBenchRoute: MenuScanBenchRoute,
   MenuTournamentsOverviewRoute: MenuTournamentsOverviewRouteWithChildren,
   MenuTournamentsCreateRoute: MenuTournamentsCreateRoute,
   MenuWatchListsWatchListUuidRoute: MenuWatchListsWatchListUuidRoute,
   MenuCollectionsIndexRoute: MenuCollectionsIndexRoute,
+  MenuDatingIndexRoute: MenuDatingIndexRoute,
   MenuDecksIndexRoute: MenuDecksIndexRoute,
   MenuScanIndexRoute: MenuScanIndexRoute,
   MenuWatchListsIndexRoute: MenuWatchListsIndexRoute,

@@ -18,6 +18,9 @@ import {
     CreateDeckRequest,
     CreateScannerSessionRequest,
     CreateDeckTagRequest,
+    DatingAnswers,
+    DatingStackRequest,
+    SwipeRequest,
     CreateGlobalTagRequest,
     CreateWatchListRequest,
     UpdateGlobalTagRequest,
@@ -735,6 +738,17 @@ export const Api = {
     // The cards an account is still after. Each entry carries its own two
     // switches, so how strictly a copy or a price counts is answered
     // server-side and the client is handed numbers rather than the whole shelf.
+    dating: {
+        stack: async (req: DatingStackRequest) => handleError(defaultApi.getDatingStack({ DatingStackRequest: req })),
+        swipe: async (req: SwipeRequest) => handleError(defaultApi.swipeCommander({ SwipeRequest: req })),
+        rewind: async () => handleError(defaultApi.rewindSwipe()),
+        dates: async () => handleError(defaultApi.getDates()),
+        comeBack: async (commander: UUID) => handleError(defaultApi.comeBackDate({ commander })),
+        unmatch: async (commander: UUID) => handleError(defaultApi.unmatchDate({ commander })),
+        resetPasses: async () => handleError(defaultApi.resetDatingPasses()),
+        profile: async () => handleError(defaultApi.getDatingProfile()),
+        answer: async (req: DatingAnswers) => handleError(defaultApi.updateDatingProfile({ DatingAnswers: req })),
+    },
     watchLists: {
         list: async () => handleError(defaultApi.getAllWatchLists()),
         create: async (req: CreateWatchListRequest) =>

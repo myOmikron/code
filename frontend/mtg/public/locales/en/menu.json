@@ -35,6 +35,7 @@
     "label": {
         "admin": "Admin",
         "collection": "Collection",
+        "dating": "Command Zone Dating",
         "decks": "Decks",
         "filter-cards": "Filter cards",
         "game-utils": "Game utils",

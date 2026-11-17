@@ -33,6 +33,7 @@ import {
     ArrowLeftStartOnRectangleIcon,
     BugAntIcon,
     CameraIcon,
+    FireIcon,
     GlobeAltIcon,
     HeartIcon,
     HomeIcon,
@@ -174,6 +175,10 @@ function RouteComponent() {
                                         <ArchiveBoxIcon />
                                         <NavbarLabel className={"max-lg:sr-only"}>{t("label.collection")}</NavbarLabel>
                                     </NavbarItem>
+                                    <NavbarItem href={"/dating"} title={t("label.dating")}>
+                                        <FireIcon />
+                                        <NavbarLabel className={"sr-only"}>{t("label.dating")}</NavbarLabel>
+                                    </NavbarItem>
                                     <NavbarItem href={"/watch-lists"} title={t("label.watch-lists")}>
                                         <QueueListIcon />
                                         <NavbarLabel className={"max-lg:sr-only"}>{t("label.watch-lists")}</NavbarLabel>
@@ -307,6 +312,10 @@ function RouteComponent() {
                                         <SidebarItem href={"/collections"}>
                                             <ArchiveBoxIcon />
                                             <SidebarLabel>{t("label.collection")}</SidebarLabel>
+                                        </SidebarItem>
+                                        <SidebarItem href={"/dating"}>
+                                            <FireIcon />
+                                            <SidebarLabel>{t("label.dating")}</SidebarLabel>
                                         </SidebarItem>
                                         <SidebarItem href={"/watch-lists"}>
                                             <QueueListIcon />
