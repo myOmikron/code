@@ -6,6 +6,7 @@ import type { RejectReason } from "src/api/generated";
 import { ManaCost } from "src/components/mana-cost";
 import { PrimaryButton } from "src/components/primary-button";
 import { manaSymbols, matchKey, rejectionKey } from "src/utils/dating";
+import type { StartMode } from "src/utils/use-start-deck";
 
 /** How a match came about */
 export type MatchKind = "like" | "super" | "comeback";
@@ -30,8 +31,8 @@ export type DatingVerdictProps = {
     busy: boolean;
     /** Close and go on */
     onKeepSwiping: () => void;
-    /** Create a deck with the Commander */
-    onStartDeck: () => void;
+    /** Create a deck with the Commander, planned on a date or not */
+    onStartDeck: (mode: StartMode) => void;
     /** "No, come back" */
     onComeBack: () => void;
 };
@@ -130,9 +131,21 @@ export function DatingVerdict(props: DatingVerdictProps) {
 
             <div className={"flex w-full max-w-xs flex-col gap-3"}>
                 {match ? (
-                    <PrimaryButton onClick={onStartDeck} disabled={busy}>
-                        {t("button.start-deck")}
-                    </PrimaryButton>
+                    <>
+                        <PrimaryButton onClick={() => onStartDeck("date")} disabled={busy}>
+                            {t("button.plan-date")}
+                        </PrimaryButton>
+                        <button
+                            type={"button"}
+                            onClick={() => onStartDeck("build")}
+                            disabled={busy}
+                            className={
+                                "h-11 rounded-(--radius-control) border border-white/30 font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-400 disabled:opacity-50"
+                            }
+                        >
+                            {t("button.just-build")}
+                        </button>
+                    </>
                 ) : (
                     <button
                         type={"button"}

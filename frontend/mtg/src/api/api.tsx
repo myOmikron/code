@@ -18,9 +18,11 @@ import {
     CreateDeckRequest,
     CreateScannerSessionRequest,
     CreateDeckTagRequest,
+    DateSessionResponse,
     DatingAnswers,
     DatingStackRequest,
     SwipeRequest,
+    ThemeLevel,
     CreateGlobalTagRequest,
     CreateWatchListRequest,
     UpdateGlobalTagRequest,
@@ -748,6 +750,18 @@ export const Api = {
         resetPasses: async () => handleError(defaultApi.resetDatingPasses()),
         profile: async () => handleError(defaultApi.getDatingProfile()),
         answer: async (req: DatingAnswers) => handleError(defaultApi.updateDatingProfile({ DatingAnswers: req })),
+        date: {
+            start: async (commander: UUID, deck: UUID) =>
+                handleError(defaultApi.startDate({ commander, StartDateRequest: { deck } })),
+            // `null` while the deck has no date.
+            get: async (deck: UUID) => handleError(defaultApi.getDate({ deck })) as Promise<DateSessionResponse | null>,
+            answer: async (deck: UUID, level: ThemeLevel) =>
+                handleError(defaultApi.answerDate({ deck, AnswerDateRequest: { level } })),
+            bring: async (deck: UUID, theme: string, level: ThemeLevel) =>
+                handleError(defaultApi.bringTheme({ deck, BringThemeRequest: { theme, level } })),
+            dateNight: async (deck: UUID) => handleError(defaultApi.dateNight({ deck })),
+            comeBack: async (deck: UUID) => handleError(defaultApi.comeBackToDate({ deck })),
+        },
     },
     watchLists: {
         list: async () => handleError(defaultApi.getAllWatchLists()),

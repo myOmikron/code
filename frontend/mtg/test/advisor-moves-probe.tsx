@@ -277,6 +277,7 @@ function Probe() {
                 goals={"Goals · More removal · Bracket 3 · 2 hidden"}
                 onOpenGoals={() => setTab("goals")}
                 onFill={() => {}}
+                onSwipe={() => {}}
             />
             {params.get("themes") !== null && (
                 <DeckAdvisorThemes report={report} prefs={prefs} onSetLevel={() => {}} labels={themeLabels} />

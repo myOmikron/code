@@ -295,10 +295,17 @@ function RouteComponent() {
                         verdict={date.verdict}
                         busy={busy}
                         onKeepSwiping={() => setDate(null)}
-                        onStartDeck={async () => {
+                        onStartDeck={async (mode) => {
                             setBusy(true);
                             try {
-                                await startDeck({ name: date.card.name, printing: date.card.printing });
+                                await startDeck(
+                                    {
+                                        commander: date.card.commander,
+                                        name: date.card.name,
+                                        printing: date.card.printing,
+                                    },
+                                    mode,
+                                );
                             } finally {
                                 setBusy(false);
                             }

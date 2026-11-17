@@ -1,4 +1,4 @@
-import { createFileRoute, useLoaderData, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
 import { Button, EmptyState, notify } from "components";
 import { MotionConfig } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -24,6 +24,7 @@ import { DeckAdvisorSetupBanner } from "src/components/deck-advisor-setup-banner
 import { DeckAdvisorShapeSummary } from "src/components/deck-advisor-shape-summary";
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { DeckAdvisorUpdating } from "src/components/deck-advisor-updating";
+import { DeckAdvisorSwipe } from "src/components/deck-advisor-swipe";
 import { DeckFillDialog } from "src/components/deck-fill-dialog";
 import { dimLabel } from "src/components/deck-advisor-impact-badges";
 import { Direction, fixOf, shiftTargets } from "src/utils/advisor-directions";
@@ -80,7 +81,16 @@ const DEBRIEF_SNOOZE_DAYS = 1;
 /** The cut reasons that argue for letting a card go, worded as its one fact */
 const ARGUES_OUT = new Set(["bucket-crowded", "excluded-theme", "improves-shape", "rarely-played", "stranded"]);
 
+/** The advisor's search: `swipe` opens card swiping over it */
+type AdvisorSearch = {
+    /** Card swiping is open */
+    swipe?: boolean;
+};
+
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/advisor")({
+    validateSearch: (search: Record<string, unknown>): AdvisorSearch => ({
+        swipe: search.swipe === true || search.swipe === "true" ? true : undefined,
+    }),
     loader: ({ params }) => Api.decks.cards.list(params.deckUuid),
     component: RouteComponent,
 });
@@ -106,6 +116,11 @@ function daysFromNow(days: number): string {
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
     const { cards } = Route.useLoaderData();
+    const { swipe } = Route.useSearch();
+    const navigate = useNavigate({ from: Route.fullPath });
+    const [lastSwipe, setLastSwipe] = useState<
+        { kind: "add"; oracle_id: string; quantity: number } | { kind: "never"; card: IgnoredCard } | null
+    >(null);
     const { deck, formats, brackets } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
     const [t] = useTranslation("advisor");
     const [tg] = useTranslation();
@@ -147,7 +162,7 @@ function RouteComponent() {
     useEffect(() => {
         if (!ready || setupDecided.current === deckUuid) return;
         setupDecided.current = deckUuid;
-        if (!settings.setup_done && cardCount < FRESH_DECK_CARDS) setShowingSetup(true);
+        if (!settings.setup_done && cardCount < FRESH_DECK_CARDS && !swipe) setShowingSetup(true);
     }, [ready, deckUuid, settings.setup_done, cardCount]);
 
     useEffect(() => {
@@ -372,7 +387,7 @@ function RouteComponent() {
     }
 
     const add = useCallback(
-        async (suggestion: Suggestion) => {
+        async (suggestion: Suggestion, quiet = false) => {
             const printing = suggestionCards.get(suggestion.name);
             if (printing === undefined) return;
             setBusyOracle(suggestion.oracle_id);
@@ -391,7 +406,7 @@ function RouteComponent() {
                 } else {
                     await Api.decks.cards.update(deckUuid, held.uuid, { quantity: held.quantity + quantity });
                 }
-                notify.success(t("toast.card-added", { name: suggestion.name, count: quantity }));
+                if (!quiet) notify.success(t("toast.card-added", { name: suggestion.name, count: quantity }));
                 defend(suggestion.oracle_id);
                 setBusyOracle(null);
                 await router.invalidate();
@@ -451,9 +466,10 @@ function RouteComponent() {
     );
 
     const ignore = useCallback(
-        (card: IgnoredCard) => {
+        (card: IgnoredCard, quiet = false) => {
             if (settings.ignored.some((held) => held.oracle_id === card.oracle_id)) return;
             save({ ...settings, ignored: [...settings.ignored, { oracle_id: card.oracle_id, name: card.name }] });
+            if (quiet) return;
             notify.success(t("toast.card-ignored", { name: card.name }), {
                 onClick: () => unignore({ oracle_id: card.oracle_id, name: card.name }),
             });
@@ -565,6 +581,33 @@ function RouteComponent() {
         else void adding(move.suggestion);
     }, []);
     const onIgnore = useCallback((move: Move) => ignore({ oracle_id: move.oracle_id, name: move.name }), [ignore]);
+
+    const swipeMoves = useMemo(
+        () => (diff < 0 ? buildMoves({ diff, adds, cuts, dims, facts, filter: null }) : []),
+        [diff, adds, cuts, dims, facts],
+    );
+
+    /**
+     * Takes back the last swipe: removes the copies it added, or forgets the ignore
+     */
+    async function undoSwipe() {
+        if (lastSwipe === null) return;
+        setLastSwipe(null);
+        if (lastSwipe.kind === "never") {
+            unignore(lastSwipe.card);
+            return;
+        }
+        const held = cards.find((slot) => slot.zone === "Main" && slot.card?.oracle_id === lastSwipe.oracle_id);
+        if (held !== undefined) {
+            if (held.quantity > lastSwipe.quantity) {
+                await Api.decks.cards.update(deckUuid, held.uuid, { quantity: held.quantity - lastSwipe.quantity });
+            } else {
+                await Api.decks.cards.delete(deckUuid, held.uuid);
+            }
+        }
+        setAccepted((list) => list.filter((oracleId) => oracleId !== lastSwipe.oracle_id));
+        await router.invalidate();
+    }
     const onMaybe = useCallback(
         (move: Move) => {
             if (move.kind === "add") void addToMaybe(move.suggestion);
@@ -683,6 +726,7 @@ function RouteComponent() {
                     goals={goalsLine}
                     onOpenGoals={() => setGoalsTab("goals")}
                     onFill={() => setFilling(true)}
+                    onSwipe={() => navigate({ search: { swipe: true } })}
                 />
 
                 {needsSetup && cardCount >= FRESH_DECK_CARDS && (
@@ -868,6 +912,33 @@ function RouteComponent() {
                     detected={detectedThemes}
                 />
             </div>
+            {swipe && target !== null && (
+                <DeckAdvisorSwipe
+                    moves={swipeMoves}
+                    cards={suggestionCards}
+                    count={cardCount}
+                    target={target}
+                    colors={deckColors.length}
+                    themeLabels={themeLabels}
+                    loading={swaps.data === null || swaps.stale || suggestionCardsState !== "ready"}
+                    canUndo={lastSwipe !== null}
+                    onAdd={async (move) => {
+                        setLastSwipe({
+                            kind: "add",
+                            oracle_id: move.oracle_id,
+                            quantity: suggestionAddQuantity(move.suggestion.type_line, deckColors.length),
+                        });
+                        await add(move.suggestion, true);
+                    }}
+                    onNever={(move) => {
+                        const card = { oracle_id: move.oracle_id, name: move.name };
+                        setLastSwipe({ kind: "never", card });
+                        ignore(card, true);
+                    }}
+                    onUndo={undoSwipe}
+                    onClose={() => navigate({ search: {} })}
+                />
+            )}
         </MotionConfig>
     );
 }

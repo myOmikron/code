@@ -482,11 +482,11 @@ def date_plan(
 
     proposals: list[DateTheme] = []
     for interest in interests(row):
-        if interest.theme in by_id and by_id[interest.theme] not in proposals:
-            proposals.append(by_id[interest.theme])
+        if interest.theme in by_id and all(p.theme != interest.theme for p in proposals):
+            proposals.append(by_id[interest.theme].model_copy(update={"label": interest.label}))
     for theme in themes:
         if len(proposals) >= PROPOSALS:
             break
-        if theme not in proposals:
+        if all(p.theme != theme.theme for p in proposals):
             proposals.append(theme)
     return DatePlan(proposals=proposals[:PROPOSALS], themes=themes)
