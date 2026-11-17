@@ -32,10 +32,10 @@ from __future__ import annotations
 
 import contextvars
 import math
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from pydantic import BaseModel, Field
@@ -53,7 +53,7 @@ from .power import weight_within_group
 from .profiles import CardProfile
 from .tracing import deck_span
 from .type_targets import CEDH_MIN_DECKS
-from .vocabulary import Resource, Role
+from .vocabulary import Bucket, Resource, Role
 
 if TYPE_CHECKING:
     from .diagnostics import Diagnostics
@@ -2872,6 +2872,49 @@ def _build_groups(
     return sorted(groups, key=order)
 
 
+class _Ahead:
+    """Graph reads started before the code that uses them, so they overlap.
+
+    `take` repeats the call it wants. An early start with other arguments is
+    not used, so the answer is always that of the call as written at `take`.
+    """
+
+    def __init__(self) -> None:
+        self._started: list[tuple[Callable[..., Any], tuple, dict, Future]] = []
+
+    def start(self, read: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
+        from .graph import start_read
+
+        self._started.append((read, args, kwargs, start_read(read, *args, **kwargs)))
+
+    def take[T](self, read: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+        for index, (started, its_args, its_kwargs, future) in enumerate(self._started):
+            if started is read and its_args == args and its_kwargs == kwargs:
+                del self._started[index]
+                return future.result()
+        return read(*args, **kwargs)
+
+
+def _role_gap_asks(report: Diagnostics) -> list[tuple[Any, Bucket, list[dict]]]:
+    """Per bucket the deck is short on: its report row, and the roles to retrieve."""
+    from .vocabulary import BUCKET_ROLES
+
+    asks = []
+    for bucket_report in report.buckets:
+        if bucket_report.status != "low":
+            continue
+        try:
+            bucket = Bucket(bucket_report.bucket)
+        except ValueError:
+            continue
+        wanted = [
+            {"role": str(role), "bucket": str(bucket), "shortfall": bucket_report.deviation}
+            for role in BUCKET_ROLES[bucket]
+        ]
+        asks.append((bucket_report, bucket, wanted))
+    return asks
+
+
 def effective_commanders(primary: str | None, extras: list[str] | None) -> list[str]:
     """Ordered dedup, primary first — the anchor keeps its seat."""
     out: list[str] = []
@@ -2906,9 +2949,13 @@ def suggest(
     deck_size: int = 99,
     channels: set[str] | None = None,
     diagnostics: Diagnostics | None = None,
+    combos: dict | None = None,
     allow_network: bool = True,
 ) -> SuggestionReport:
     """Union the retrieval channels and rank the result.
+
+    `combos` is the caller's own `deck_combos` answer for this deck, used
+    instead of looking the combos up again.
 
     `identity` is the deck's claimed colours (Rule 0 house rules) — WUBRG
     letters. `None` derives from the commander; `[]` is a deliberate
@@ -3140,9 +3187,16 @@ def suggest(
     if include_combos and "combo_completion" in enabled and combo_scale > 0.0:
         from .spellbook import deck_combos
 
-        combo_future = _SPELLBOOK_POOL.submit(
-            contextvars.copy_context().run, deck_combos, deck_oracle_ids, deck_card_names or None
-        )
+        if combos is not None:
+            combo_future = Future()
+            combo_future.set_result(combos)
+        else:
+            combo_future = _SPELLBOOK_POOL.submit(
+                contextvars.copy_context().run,
+                deck_combos,
+                deck_oracle_ids,
+                deck_card_names or None,
+            )
 
     # --- Channel 1: EDHREC ------------------------------------------------
     # Fetched on demand. The plan always called for lazy per-commander loading;
@@ -3160,6 +3214,8 @@ def suggest(
     # for the corroboration boost below (and its self-gate: with the channel
     # disabled or the page cold this stays empty and nothing fires).
     page_inclusion: dict[str, float] = {}
+    # Seats seen with a page: asked once, a page does not go away mid-request.
+    with_page: set[str] = set()
     if "edhrec_synergy" in enabled:
         multi = len(effective) > 1
         for seat_id in effective:
@@ -3169,6 +3225,8 @@ def suggest(
                 # fetch above documents. It has no name to ingest or note.
                 continue
             cold = not has_recommendations(seat_id)
+            if not cold:
+                with_page.add(seat_id)
             ingest_failed = False
             if cold and allow_network:
                 try:
@@ -3341,6 +3399,36 @@ def suggest(
     # what gates every use of it below.
     deck_tribes = [] if tribes_silenced else [row.creature_type for row in report.typal[:3]]
 
+    # Everything below that needs only the report starts now and is collected
+    # where it is used, so these reads overlap the bridge and each other.
+    ahead = _Ahead()
+    role_asks = _role_gap_asks(report) if "role_gap" in enabled else []
+    for _, _, role_wanted in role_asks:
+        ahead.start(
+            channel_roles,
+            role_wanted,
+            retrieval_deck,
+            identity,
+            limit=PER_BUCKET_LIMIT,
+            pool_filter=pool_filter,
+            ceilings=role_weight_ceiling(),
+        )
+    wanted_types = [
+        {"creature_type": row.creature_type, "share": row.share} for row in report.typal[:3]
+    ]
+    typal_runs = "typal_bridge" in enabled and bool(report.typal) and not tribes_silenced
+    if typal_runs:
+        ahead.start(channel_typal, wanted_types, retrieval_deck, identity, pool_filter=pool_filter)
+    if page_inclusion:
+        from .graph import deck_page_overlap
+
+        ahead.start(deck_page_overlap, effective, retrieval_deck)
+    held = {oid: counts.get(oid, 1) for oid in deck_oracle_ids}
+    if "tutor_access" in enabled:
+        from .graph import deck_tutor_count
+
+        ahead.start(deck_tutor_count, held)
+
     if "resource_bridge" in enabled:
         # `wanted` stays a fact — the "no gaps" note below still reads the
         # deck's real deficits, excluded theme or not. What the channel is
@@ -3389,8 +3477,6 @@ def suggest(
     # Responds to the speed slider through the target template — the ratios
     # it fills against are the template's. (Combos and game changers respond
     # to speed too, through the power ramp rather than the template.)
-    from .vocabulary import BUCKET_ROLES, Bucket
-
     bucket_reasons: dict[str, str] = {}
     # The deck's theme identity, for the same boost one axis over: detected
     # themes above the share floor, plus anything the user pinned, minus
@@ -3430,39 +3516,23 @@ def suggest(
     # it.
     page_aligned = False
     if page_inclusion:
-        from .graph import deck_page_overlap
-
-        deck_n, hits = deck_page_overlap(effective, retrieval_deck)
+        deck_n, hits = ahead.take(deck_page_overlap, effective, retrieval_deck)
         page_aligned = _page_aligned(deck_n, hits)
 
     # Queried per bucket, not once across all of them. A half-built deck is
     # short on everything, and a single query ordered by shortfall gives every
     # slot to the largest gap — 120 mana sources and nothing else. Each short
     # bucket gets its own allowance so all of them are represented.
-    for bucket_report in report.buckets:
-        if "role_gap" not in enabled or bucket_report.status != "low":
-            continue
-        try:
-            bucket = Bucket(bucket_report.bucket)
-        except ValueError:
-            continue
-
-        wanted = [
-            {
-                "role": str(role),
-                "bucket": str(bucket),
-                "shortfall": bucket_report.deviation,
-            }
-            for role in BUCKET_ROLES[bucket]
-        ]
+    for bucket_report, bucket, role_wanted in role_asks:
         label = str(bucket).replace("_", " ")
         bucket_reasons[f"bucket:{label}"] = (
             f"{bucket_report.coverage} against {bucket_report.low}-{bucket_report.high}"
             f" — {bucket_report.deviation} short"
         )
 
-        rows = channel_roles(
-            wanted,
+        rows = ahead.take(
+            channel_roles,
+            role_wanted,
             retrieval_deck,
             identity,
             limit=PER_BUCKET_LIMIT,
@@ -3584,11 +3654,10 @@ def suggest(
     # this fires only for decks that actually have a tribe. `deck_typal_profile`
     # applies a share floor; anything reaching here is a real constraint rather
     # than the two Elves in a deck that is not an Elf deck.
-    if "typal_bridge" in enabled and report.typal and not tribes_silenced:
-        wanted_types = [
-            {"creature_type": row.creature_type, "share": row.share} for row in report.typal[:3]
-        ]
-        for row in channel_typal(wanted_types, retrieval_deck, identity, pool_filter=pool_filter):
+    if typal_runs:
+        for row in ahead.take(
+            channel_typal, wanted_types, retrieval_deck, identity, pool_filter=pool_filter
+        ):
             _merge(pool, row, _typal_provenance(row))
 
     # --- Channel 5: combo completion -------------------------------------
@@ -3677,10 +3746,10 @@ def suggest(
     # complete-combo count from the block above raises it (`_tutor_target`) —
     # lines have to be found before they are played.
     if "tutor_access" in enabled:
-        from .graph import channel_tutors, deck_tutor_count
+        from .graph import channel_tutors
 
         tutor_scale = _tutor_scale(speed)
-        tutor_count = deck_tutor_count({oid: counts.get(oid, 1) for oid in deck_oracle_ids})
+        tutor_count = ahead.take(deck_tutor_count, held)
         bracket_target = _tutor_target(speed, deck_size_scale=deck_size / 99)
         tutor_target = _tutor_target(
             speed, deck_size_scale=deck_size / 99, complete_combos=complete_combos
@@ -3740,8 +3809,6 @@ def suggest(
             resource_identity_supply,
             resource_scene_supply,
         )
-
-        held = {oid: counts.get(oid, 1) for oid in deck_oracle_ids}
 
         if "fast_mana" in enabled:
             fast_mana_count = deck_resource_count(Resource.FAST_MANA, held)
@@ -3895,7 +3962,7 @@ def suggest(
         voice_floor = 2 * FIT_THRESHOLD  # REPLACE_THEME_FLOOR's bar
         for seat_id in effective:
             seat = commander_by_id.get(seat_id)
-            if seat is None or has_recommendations(seat_id):
+            if seat is None or seat_id in with_page or has_recommendations(seat_id):
                 continue
             fits = cards_theme_fits([seat_id]).get(seat_id, {})
             strongest = sorted(
