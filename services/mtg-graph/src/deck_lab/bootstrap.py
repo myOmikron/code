@@ -134,6 +134,15 @@ def bootstrap(
             log.error("bootstrap.unreachable", error=str(exc))
             return [Outcome("graph", False, "unreachable", error=str(exc))]
 
+        # Every statement is `IF NOT EXISTS`: an index a release adds arrives
+        # with that release, not with the next ingest.
+        from .graph import apply_schema
+
+        try:
+            apply_schema()
+        except Exception as exc:  # noqa: BLE001 - the queries work without it, only slower
+            log.warning("bootstrap.schema_failed", error=str(exc))
+
     outcomes: list[Outcome] = []
     ran: set[str] = set()
 
