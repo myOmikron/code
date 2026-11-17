@@ -7,6 +7,9 @@ All URIs are relative to */api/graph*
 | [**getFacets**](DefaultApi.md#getfacets) | **GET** /facets | Get Facets |
 | [**health**](DefaultApi.md#health) | **GET** /health | Health |
 | [**postCombos**](DefaultApi.md#postcombos) | **POST** /combos | Post Combos |
+| [**postDatingProfile**](DefaultApi.md#postdatingprofile) | **POST** /dating/profile | Post Dating Profile |
+| [**postDatingStack**](DefaultApi.md#postdatingstack) | **POST** /dating/stack | Post Dating Stack |
+| [**postDatingVerdict**](DefaultApi.md#postdatingverdict) | **POST** /dating/verdict | Post Dating Verdict |
 | [**postDiagnostics**](DefaultApi.md#postdiagnostics) | **POST** /diagnostics | Post Diagnostics |
 | [**postFill**](DefaultApi.md#postfill) | **POST** /fill | Post Fill |
 | [**postLines**](DefaultApi.md#postlines) | **POST** /lines | Post Lines |
@@ -183,6 +186,210 @@ example().catch(console.error);
 ### Return type
 
 [**CombosResponse**](CombosResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## postDatingProfile
+
+> DatingProfile postDatingProfile(DatingProfileRequest)
+
+Post Dating Profile
+
+Aggregate a player\&#39;s decks into what commanders see.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { PostDatingProfileRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // DatingProfileRequest
+    DatingProfileRequest: ...,
+  } satisfies PostDatingProfileRequest;
+
+  try {
+    const data = await api.postDatingProfile(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **DatingProfileRequest** | [DatingProfileRequest](DatingProfileRequest.md) |  | |
+
+### Return type
+
+[**DatingProfile**](DatingProfile.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## postDatingStack
+
+> DatingStackResponse postDatingStack(DatingStackRequest)
+
+Post Dating Stack
+
+The next commanders of the swipe stack.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { PostDatingStackRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // DatingStackRequest
+    DatingStackRequest: ...,
+  } satisfies PostDatingStackRequest;
+
+  try {
+    const data = await api.postDatingStack(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **DatingStackRequest** | [DatingStackRequest](DatingStackRequest.md) |  | |
+
+### Return type
+
+[**DatingStackResponse**](DatingStackResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## postDatingVerdict
+
+> DatingVerdict postDatingVerdict(DatingVerdictRequest)
+
+Post Dating Verdict
+
+The commander\&#39;s answer to a like.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { PostDatingVerdictRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // DatingVerdictRequest
+    DatingVerdictRequest: ...,
+  } satisfies PostDatingVerdictRequest;
+
+  try {
+    const data = await api.postDatingVerdict(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **DatingVerdictRequest** | [DatingVerdictRequest](DatingVerdictRequest.md) |  | |
+
+### Return type
+
+[**DatingVerdict**](DatingVerdict.md)
 
 ### Authorization
 

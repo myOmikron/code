@@ -70,6 +70,123 @@
                 }
             }
         },
+        "/dating/profile": {
+            "post": {
+                "summary": "Post Dating Profile",
+                "description": "Aggregate a player's decks into what commanders see.",
+                "operationId": "post_dating_profile",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DatingProfileRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DatingProfile"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/dating/stack": {
+            "post": {
+                "summary": "Post Dating Stack",
+                "description": "The next commanders of the swipe stack.",
+                "operationId": "post_dating_stack",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DatingStackRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DatingStackResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/dating/verdict": {
+            "post": {
+                "summary": "Post Dating Verdict",
+                "description": "The commander's answer to a like.",
+                "operationId": "post_dating_verdict",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DatingVerdictRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DatingVerdict"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/diagnostics": {
             "post": {
                 "summary": "Post Diagnostics",
@@ -1074,6 +1191,459 @@
                 "title": "CutPhrase",
                 "description": "A cut reason: a Phrase whose code is drawn from the closed set.\n\nA separate subclass, not a narrowing of `Phrase.code` itself — `Phrase` is\nthe shared schema component `SuggestionReport.notes` also uses, and those\nnotes carry free-form codes."
             },
+            "DatingCommander": {
+                "properties": {
+                    "oracle_id": {
+                        "type": "string",
+                        "title": "Oracle Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "color_identity": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Color Identity"
+                    },
+                    "edhrec_rank": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Edhrec Rank"
+                    },
+                    "price_eur": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Price Eur"
+                    },
+                    "oracle_text": {
+                        "type": "string",
+                        "title": "Oracle Text"
+                    },
+                    "type_line": {
+                        "type": "string",
+                        "title": "Type Line"
+                    },
+                    "salt": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Salt"
+                    },
+                    "decks": {
+                        "type": "integer",
+                        "title": "Decks"
+                    },
+                    "bracket": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Bracket"
+                    },
+                    "budget_lean": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Budget Lean"
+                    },
+                    "interests": {
+                        "items": {
+                            "$ref": "#/components/schemas/Interest"
+                        },
+                        "type": "array",
+                        "title": "Interests"
+                    },
+                    "your_type": {
+                        "type": "boolean",
+                        "title": "Your Type"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "oracle_id",
+                    "name",
+                    "color_identity",
+                    "edhrec_rank",
+                    "price_eur",
+                    "oracle_text",
+                    "type_line",
+                    "salt",
+                    "decks",
+                    "bracket",
+                    "budget_lean",
+                    "interests",
+                    "your_type"
+                ],
+                "title": "DatingCommander",
+                "description": "A commander as the swipe stack shows it."
+            },
+            "DatingDeck": {
+                "properties": {
+                    "commanders": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 8,
+                        "title": "Commanders"
+                    },
+                    "cards": {
+                        "additionalProperties": {
+                            "type": "integer"
+                        },
+                        "propertyNames": {
+                            "maxLength": 64
+                        },
+                        "type": "object",
+                        "maxProperties": 2048,
+                        "title": "Cards"
+                    },
+                    "bracket": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "maximum": 5.0,
+                                "minimum": 1.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Bracket"
+                    },
+                    "price_eur": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "minimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Price Eur"
+                    },
+                    "colors": {
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "W",
+                                "U",
+                                "B",
+                                "R",
+                                "G"
+                            ]
+                        },
+                        "type": "array",
+                        "maxItems": 5,
+                        "title": "Colors"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "commanders",
+                    "cards",
+                    "colors"
+                ],
+                "title": "DatingDeck",
+                "description": "One of the player's decks, as the profile reads it."
+            },
+            "DatingProfile": {
+                "properties": {
+                    "decks": {
+                        "type": "integer",
+                        "title": "Decks"
+                    },
+                    "themes": {
+                        "additionalProperties": {
+                            "type": "number"
+                        },
+                        "type": "object",
+                        "title": "Themes"
+                    },
+                    "colors": {
+                        "additionalProperties": {
+                            "type": "number"
+                        },
+                        "type": "object",
+                        "title": "Colors"
+                    },
+                    "bracket": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Bracket"
+                    },
+                    "budget_eur": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Budget Eur"
+                    },
+                    "salt": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Salt"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "decks",
+                    "themes",
+                    "colors",
+                    "bracket",
+                    "budget_eur",
+                    "salt"
+                ],
+                "title": "DatingProfile",
+                "description": "What commanders see of a player. Deck signals win over answers."
+            },
+            "DatingProfileRequest": {
+                "properties": {
+                    "decks": {
+                        "items": {
+                            "$ref": "#/components/schemas/DatingDeck"
+                        },
+                        "type": "array",
+                        "maxItems": 40,
+                        "title": "Decks"
+                    },
+                    "answers": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ProfileAnswers"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "type": "object",
+                "title": "DatingProfileRequest",
+                "description": "The player's decks, plus the dating-profile answers."
+            },
+            "DatingStackRequest": {
+                "properties": {
+                    "profile": {
+                        "$ref": "#/components/schemas/DatingProfile"
+                    },
+                    "exclude": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 20000,
+                        "title": "Exclude"
+                    },
+                    "colors": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "enum": [
+                                        "W",
+                                        "U",
+                                        "B",
+                                        "R",
+                                        "G"
+                                    ]
+                                },
+                                "type": "array",
+                                "maxItems": 5
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Colors"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "maximum": 30.0,
+                        "minimum": 1.0,
+                        "title": "Count",
+                        "default": 10
+                    },
+                    "seed": {
+                        "type": "integer",
+                        "title": "Seed",
+                        "default": 0
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "profile"
+                ],
+                "title": "DatingStackRequest",
+                "description": "The next commanders to swipe, minus everything already swiped."
+            },
+            "DatingStackResponse": {
+                "properties": {
+                    "commanders": {
+                        "items": {
+                            "$ref": "#/components/schemas/DatingCommander"
+                        },
+                        "type": "array",
+                        "title": "Commanders"
+                    },
+                    "remaining": {
+                        "type": "integer",
+                        "title": "Remaining"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "commanders",
+                    "remaining"
+                ],
+                "title": "DatingStackResponse",
+                "description": "A slice of the swipe stack."
+            },
+            "DatingVerdict": {
+                "properties": {
+                    "match": {
+                        "type": "boolean",
+                        "title": "Match"
+                    },
+                    "score": {
+                        "type": "number",
+                        "title": "Score"
+                    },
+                    "dimension": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "themes",
+                                    "colors",
+                                    "bracket",
+                                    "budget",
+                                    "salt"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Dimension"
+                    },
+                    "direction": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "more",
+                                    "less"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Direction"
+                    },
+                    "detail": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Detail"
+                    },
+                    "shared": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Shared"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "match",
+                    "score",
+                    "dimension",
+                    "direction",
+                    "detail",
+                    "shared"
+                ],
+                "title": "DatingVerdict",
+                "description": "A commander's answer to a like."
+            },
+            "DatingVerdictRequest": {
+                "properties": {
+                    "profile": {
+                        "$ref": "#/components/schemas/DatingProfile"
+                    },
+                    "commander": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "title": "Commander"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "profile",
+                    "commander"
+                ],
+                "title": "DatingVerdictRequest",
+                "description": "A like, to be answered by the commander."
+            },
             "DeckEntry": {
                 "properties": {
                     "oracle_id": {
@@ -1817,6 +2387,37 @@
                 ],
                 "title": "InteractionRow"
             },
+            "Interest": {
+                "properties": {
+                    "label": {
+                        "type": "string",
+                        "title": "Label"
+                    },
+                    "theme": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Theme"
+                    },
+                    "share": {
+                        "type": "number",
+                        "title": "Share"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "label",
+                    "theme",
+                    "share"
+                ],
+                "title": "Interest",
+                "description": "One EDHREC tag of a commander, mapped onto our themes where possible."
+            },
             "LineEntry": {
                 "properties": {
                     "id": {
@@ -2318,6 +2919,53 @@
                 ],
                 "title": "PoolQueryResponse",
                 "description": "Whether a pool query compiles, and where it stops if it does not.\n\nRequired rather than defaulted: the handler always fills all three, and a\ndefault would publish them as optional to the generated client."
+            },
+            "ProfileAnswers": {
+                "properties": {
+                    "colors": {
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "W",
+                                "U",
+                                "B",
+                                "R",
+                                "G"
+                            ]
+                        },
+                        "type": "array",
+                        "maxItems": 5,
+                        "title": "Colors"
+                    },
+                    "bracket": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "maximum": 5.0,
+                                "minimum": 1.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Bracket"
+                    },
+                    "budget_eur": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "minimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Budget Eur"
+                    }
+                },
+                "type": "object",
+                "title": "ProfileAnswers",
+                "description": "The dating-profile questions, for players without decks."
             },
             "ProtectionWayEntry": {
                 "properties": {

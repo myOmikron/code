@@ -101,6 +101,14 @@ docs/CreateScannerSessionRequest.md
 docs/CreateTournament200Response.md
 docs/CreateWatchListRequest.md
 docs/CurrentRoundResponse.md
+docs/DateResponse.md
+docs/DateStatus.md
+docs/DatesResponse.md
+docs/DatingAnswers.md
+docs/DatingCardResponse.md
+docs/DatingProfileResponse.md
+docs/DatingStackRequest.md
+docs/DatingStackResponse.md
 docs/DeckCardCatalogResponse.md
 docs/DeckCardResponse.md
 docs/DeckChangeKind.md
@@ -210,6 +218,8 @@ docs/GroupTotalResponse.md
 docs/ImportDeckCardsRequest.md
 docs/ImportDeckCardsResponse.md
 docs/ImportMode.md
+docs/InterestResponse.md
+docs/LeanDirection.md
 docs/LineDeviationResponse.md
 docs/ListCardsResponse.md
 docs/ListCollectionEntriesResponse.md
@@ -318,6 +328,8 @@ docs/RegisteredDeckResponse.md
 docs/RegisteredListResponse.md
 docs/RegisteredListsResponse.md
 docs/RegistrationErrors.md
+docs/RejectDimension.md
+docs/RejectReason.md
 docs/RenameAccount200Response.md
 docs/RenameAccountErrors.md
 docs/RenameAccountRequest.md
@@ -334,6 +346,7 @@ docs/ResolvedPrintingResponse.md
 docs/ResultResponse.md
 docs/ResultState.md
 docs/ReturnDeckCardsRequest.md
+docs/RewindResponse.md
 docs/Role.md
 docs/RoleBansResponse.md
 docs/RotateDeckShareTokenResponse.md
@@ -420,12 +433,16 @@ docs/StatBucketResponse.md
 docs/SubscribePushDeviceErrors.md
 docs/SubscribePushDeviceRequest.md
 docs/SwapDeckCardRequest.md
+docs/SwipeKind.md
+docs/SwipeRequest.md
+docs/SwipeResponse.md
 docs/SyncRunOutcome.md
 docs/TakeApartPhysicalDeckRequest.md
 docs/TakeApartPhysicalDeckResponse.md
 docs/TakeDeckCardsRequest.md
 docs/ThemeLevel.md
 docs/ThemePrefs.md
+docs/ThemeStrength.md
 docs/Tiebreaker.md
 docs/Timeframe.md
 docs/TimelinePointResponse.md

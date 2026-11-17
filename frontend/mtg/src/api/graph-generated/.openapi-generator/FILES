@@ -17,6 +17,14 @@ docs/CurvePoint.md
 docs/CutCandidate.md
 docs/CutCode.md
 docs/CutPhrase.md
+docs/DatingCommander.md
+docs/DatingDeck.md
+docs/DatingProfile.md
+docs/DatingProfileRequest.md
+docs/DatingStackRequest.md
+docs/DatingStackResponse.md
+docs/DatingVerdict.md
+docs/DatingVerdictRequest.md
 docs/DeckEntry.md
 docs/DefaultApi.md
 docs/Diagnostics.md
@@ -32,6 +40,7 @@ docs/InteractionCell.md
 docs/InteractionGrid.md
 docs/InteractionProfileCell.md
 docs/InteractionRow.md
+docs/Interest.md
 docs/LineEntry.md
 docs/LinePieceEntry.md
 docs/LinePrerequisites.md
@@ -44,6 +53,7 @@ docs/MetaThreat.md
 docs/Phrase.md
 docs/PoolQueryRequest.md
 docs/PoolQueryResponse.md
+docs/ProfileAnswers.md
 docs/ProtectionWayEntry.md
 docs/Provenance.md
 docs/RedundancyBlock.md

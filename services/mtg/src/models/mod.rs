@@ -6,6 +6,7 @@ pub mod bug_report;
 pub mod card_attributes;
 pub mod catalog;
 pub mod collection;
+pub mod dating;
 pub mod deck;
 pub mod format;
 pub mod mpcfill;

@@ -4235,6 +4235,496 @@
                 }
             }
         },
+        "/api/frontend/v1/dating/stack": {
+            "post": {
+                "summary": "The next Commanders to swipe",
+                "description": "The next Commanders to swipe",
+                "operationId": "get_dating_stack",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DatingStackRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DatingStackResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/dating/swipes": {
+            "post": {
+                "summary": "Swipe on a Commander; a like is answered by the Commander",
+                "description": "Swipe on a Commander; a like is answered by the Commander",
+                "operationId": "swipe_commander",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SwipeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SwipeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/dating/swipes/last": {
+            "delete": {
+                "summary": "Undo the newest swipe",
+                "description": "Undo the newest swipe",
+                "operationId": "rewind_swipe",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RewindResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/dating/dates": {
+            "get": {
+                "summary": "Matches and the Commanders that said no",
+                "description": "Matches and the Commanders that said no",
+                "operationId": "get_dates",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DatesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/dating/dates/{commander}/come-back": {
+            "post": {
+                "summary": "\"No, come back\": a rejection or unmatch becomes a match",
+                "description": "\"No, come back\": a rejection or unmatch becomes a match",
+                "operationId": "come_back_date",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "commander",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DateResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/dating/dates/{commander}/unmatch": {
+            "post": {
+                "summary": "End a match",
+                "description": "End a match",
+                "operationId": "unmatch_date",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "commander",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DateResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/dating/passes": {
+            "delete": {
+                "summary": "Forget every pass",
+                "description": "Forget every pass",
+                "operationId": "reset_dating_passes",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/dating/profile": {
+            "get": {
+                "summary": "What Commanders see of the account",
+                "description": "What Commanders see of the account",
+                "operationId": "get_dating_profile",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DatingProfileResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Answer the dating-profile questions",
+                "description": "Answer the dating-profile questions",
+                "operationId": "update_dating_profile",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DatingAnswers"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DatingProfileResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/decks/formats": {
             "get": {
                 "summary": "What the offered formats ask of a deck",
@@ -18922,6 +19412,365 @@
                     "number"
                 ]
             },
+            "DateResponse": {
+                "description": "A date that got past a pass",
+                "type": "object",
+                "properties": {
+                    "came_back": {
+                        "description": "Restored with \"No, come back\"",
+                        "type": "boolean"
+                    },
+                    "color_identity": {
+                        "description": "Color identity letters",
+                        "type": "string"
+                    },
+                    "commander": {
+                        "description": "The Commander's oracle id",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "created_at": {
+                        "description": "When the swipe happened",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "image_art_crop": {
+                        "nullable": true,
+                        "description": "Art crop url",
+                        "type": "string"
+                    },
+                    "image_normal": {
+                        "nullable": true,
+                        "description": "Full card image url",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "Card name",
+                        "type": "string"
+                    },
+                    "printing": {
+                        "nullable": true,
+                        "description": "The Default printing, to add it to a deck",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "reason": {
+                        "nullable": true,
+                        "description": "Why a rejection happened",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RejectReason"
+                            }
+                        ]
+                    },
+                    "shared": {
+                        "nullable": true,
+                        "description": "The interest both sides share",
+                        "type": "string"
+                    },
+                    "status": {
+                        "description": "Where the date stands",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DateStatus"
+                            }
+                        ]
+                    },
+                    "super_like": {
+                        "description": "Swiped up",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "came_back",
+                    "color_identity",
+                    "commander",
+                    "created_at",
+                    "name",
+                    "status",
+                    "super_like"
+                ]
+            },
+            "DateStatus": {
+                "description": "Where a date with a Commander stands",
+                "oneOf": [
+                    {
+                        "description": "Swiped left",
+                        "type": "string",
+                        "enum": [
+                            "Passed"
+                        ]
+                    },
+                    {
+                        "description": "Both sides like each other",
+                        "type": "string",
+                        "enum": [
+                            "Matched"
+                        ]
+                    },
+                    {
+                        "description": "The Commander said no",
+                        "type": "string",
+                        "enum": [
+                            "Rejected"
+                        ]
+                    },
+                    {
+                        "description": "Unmatched after a match",
+                        "type": "string",
+                        "enum": [
+                            "Unmatched"
+                        ]
+                    }
+                ]
+            },
+            "DatesResponse": {
+                "description": "Every date, split by how it went",
+                "type": "object",
+                "properties": {
+                    "matches": {
+                        "description": "Matches, newest first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DateResponse"
+                        }
+                    },
+                    "shots": {
+                        "description": "Liked but rejected or unmatched, newest first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DateResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "matches",
+                    "shots"
+                ]
+            },
+            "DatingAnswers": {
+                "description": "The dating-profile questions",
+                "type": "object",
+                "properties": {
+                    "bracket": {
+                        "nullable": true,
+                        "description": "Preferred bracket, 1 to 5",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "budget_eur": {
+                        "nullable": true,
+                        "description": "Typical deck budget in euro",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "colors": {
+                        "description": "Colors as letters of WUBRG",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_8"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "colors"
+                ]
+            },
+            "DatingCardResponse": {
+                "description": "A Commander in the stack",
+                "type": "object",
+                "properties": {
+                    "color_identity": {
+                        "description": "Color identity letters",
+                        "type": "string"
+                    },
+                    "commander": {
+                        "description": "Oracle id",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "edhrec_rank": {
+                        "nullable": true,
+                        "description": "EDHREC popularity rank",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "image_art_crop": {
+                        "nullable": true,
+                        "description": "Art crop url",
+                        "type": "string"
+                    },
+                    "image_normal": {
+                        "nullable": true,
+                        "description": "Full card image url",
+                        "type": "string"
+                    },
+                    "interests": {
+                        "description": "Top tags",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/InterestResponse"
+                        }
+                    },
+                    "name": {
+                        "description": "Card name",
+                        "type": "string"
+                    },
+                    "oracle_text": {
+                        "description": "Oracle text",
+                        "type": "string"
+                    },
+                    "price_eur": {
+                        "nullable": true,
+                        "description": "Card price in euro",
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "printing": {
+                        "nullable": true,
+                        "description": "The Default printing, to add it to a deck",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "type_line": {
+                        "description": "Type line",
+                        "type": "string"
+                    },
+                    "your_type": {
+                        "description": "Picked for compatibility rather than popularity",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "color_identity",
+                    "commander",
+                    "interests",
+                    "name",
+                    "oracle_text",
+                    "type_line",
+                    "your_type"
+                ]
+            },
+            "DatingProfileResponse": {
+                "description": "What Commanders see of the account",
+                "type": "object",
+                "properties": {
+                    "answers": {
+                        "nullable": true,
+                        "description": "The answers, if given",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DatingAnswers"
+                            }
+                        ]
+                    },
+                    "bracket": {
+                        "nullable": true,
+                        "description": "Average bracket",
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "budget_eur": {
+                        "nullable": true,
+                        "description": "Typical deck price in euro",
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "colors": {
+                        "description": "Color letters played, most played first",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "decks": {
+                        "description": "How many decks went into the profile",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "salt": {
+                        "nullable": true,
+                        "description": "Average salt of the account's Commanders",
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "themes": {
+                        "description": "Themes, strongest first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ThemeStrength"
+                        }
+                    }
+                },
+                "required": [
+                    "colors",
+                    "decks",
+                    "themes"
+                ]
+            },
+            "DatingStackRequest": {
+                "description": "Asks for the next Commanders",
+                "type": "object",
+                "properties": {
+                    "colors": {
+                        "nullable": true,
+                        "description": "Only Commanders within these colors, as letters of WUBRG",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_8"
+                            }
+                        ]
+                    },
+                    "pending": {
+                        "description": "Commanders the client still holds, unswiped",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                },
+                "required": [
+                    "pending"
+                ]
+            },
+            "DatingStackResponse": {
+                "description": "The next Commanders to swipe",
+                "type": "object",
+                "properties": {
+                    "commanders": {
+                        "description": "The Commanders, in order",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DatingCardResponse"
+                        }
+                    },
+                    "profile_needed": {
+                        "description": "The account has neither decks nor answers: ask the questions first",
+                        "type": "boolean"
+                    },
+                    "remaining": {
+                        "description": "Unswiped Commanders left in the pool",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "super_likes_left": {
+                        "description": "Super likes left today",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "commanders",
+                    "profile_needed",
+                    "remaining",
+                    "super_likes_left"
+                ]
+            },
             "DeckCardCatalogResponse": {
                 "description": "What the catalog knows about a deck card's printing",
                 "type": "object",
@@ -22242,6 +23091,43 @@
                         "type": "string",
                         "enum": [
                             "Fill"
+                        ]
+                    }
+                ]
+            },
+            "InterestResponse": {
+                "description": "One EDHREC tag of a Commander",
+                "type": "object",
+                "properties": {
+                    "label": {
+                        "description": "EDHREC's label",
+                        "type": "string"
+                    },
+                    "theme": {
+                        "nullable": true,
+                        "description": "The advisor theme it maps onto",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "label"
+                ]
+            },
+            "LeanDirection": {
+                "description": "Whether the Commander wants more or less of a dimension than the account brings",
+                "oneOf": [
+                    {
+                        "description": "The Commander wants more",
+                        "type": "string",
+                        "enum": [
+                            "More"
+                        ]
+                    },
+                    {
+                        "description": "The Commander wants less",
+                        "type": "string",
+                        "enum": [
+                            "Less"
                         ]
                     }
                 ]
@@ -25582,6 +26468,77 @@
                     "token_used"
                 ]
             },
+            "RejectDimension": {
+                "description": "The dimension a rejection names",
+                "oneOf": [
+                    {
+                        "description": "The themes the account plays",
+                        "type": "string",
+                        "enum": [
+                            "Themes"
+                        ]
+                    },
+                    {
+                        "description": "The colors the account plays",
+                        "type": "string",
+                        "enum": [
+                            "Colors"
+                        ]
+                    },
+                    {
+                        "description": "The bracket the account plays at",
+                        "type": "string",
+                        "enum": [
+                            "Bracket"
+                        ]
+                    },
+                    {
+                        "description": "What the account's decks cost",
+                        "type": "string",
+                        "enum": [
+                            "Budget"
+                        ]
+                    },
+                    {
+                        "description": "How salty the account's Commanders are",
+                        "type": "string",
+                        "enum": [
+                            "Salt"
+                        ]
+                    }
+                ]
+            },
+            "RejectReason": {
+                "description": "Why a Commander said no",
+                "type": "object",
+                "properties": {
+                    "detail": {
+                        "nullable": true,
+                        "description": "The missing interest, or the missing color letters",
+                        "type": "string"
+                    },
+                    "dimension": {
+                        "description": "The worst dimension",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RejectDimension"
+                            }
+                        ]
+                    },
+                    "direction": {
+                        "nullable": true,
+                        "description": "More or less of it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/LeanDirection"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "dimension"
+                ]
+            },
             "RenameAccountErrors": {
                 "description": "Why an account could not be renamed",
                 "type": "object",
@@ -25978,6 +26935,18 @@
                     "entry",
                     "quantity"
                 ]
+            },
+            "RewindResponse": {
+                "description": "What a rewind undid",
+                "type": "object",
+                "properties": {
+                    "commander": {
+                        "nullable": true,
+                        "description": "The Commander whose swipe was undone, `None` without any swipe",
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                }
             },
             "Role": {
                 "description": "What an [`Account`] may do beyond managing its own things",
@@ -28332,6 +29301,92 @@
                     "quantity"
                 ]
             },
+            "SwipeKind": {
+                "description": "Which way a Commander was swiped",
+                "oneOf": [
+                    {
+                        "description": "Left",
+                        "type": "string",
+                        "enum": [
+                            "Pass"
+                        ]
+                    },
+                    {
+                        "description": "Right",
+                        "type": "string",
+                        "enum": [
+                            "Like"
+                        ]
+                    },
+                    {
+                        "description": "Up: a guaranteed match, once a day",
+                        "type": "string",
+                        "enum": [
+                            "SuperLike"
+                        ]
+                    }
+                ]
+            },
+            "SwipeRequest": {
+                "description": "A swipe",
+                "type": "object",
+                "properties": {
+                    "commander": {
+                        "description": "The Commander's oracle id",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "kind": {
+                        "description": "Which way",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SwipeKind"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "commander",
+                    "kind"
+                ]
+            },
+            "SwipeResponse": {
+                "description": "The Commander's answer",
+                "type": "object",
+                "properties": {
+                    "reason": {
+                        "nullable": true,
+                        "description": "Why a rejection happened",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RejectReason"
+                            }
+                        ]
+                    },
+                    "shared": {
+                        "nullable": true,
+                        "description": "The interest both sides share",
+                        "type": "string"
+                    },
+                    "status": {
+                        "description": "Where the date stands now",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DateStatus"
+                            }
+                        ]
+                    },
+                    "super_likes_left": {
+                        "description": "Super likes left today",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "status",
+                    "super_likes_left"
+                ]
+            },
             "SyncRunOutcome": {
                 "description": "What a Sync run came to",
                 "oneOf": [
@@ -28457,6 +29512,25 @@
                         }
                     }
                 }
+            },
+            "ThemeStrength": {
+                "description": "How strongly the account plays a theme",
+                "type": "object",
+                "properties": {
+                    "strength": {
+                        "description": "0..1",
+                        "type": "number",
+                        "format": "double"
+                    },
+                    "theme": {
+                        "description": "Advisor theme id",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "strength",
+                    "theme"
+                ]
             },
             "Tiebreaker": {
                 "description": "A Tiebreaker: a number a Ruleset orders Participants with equal Match points by",

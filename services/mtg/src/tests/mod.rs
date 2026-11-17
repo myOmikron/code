@@ -7,6 +7,7 @@ mod bracket_flags;
 mod bug_reports;
 mod collaborators;
 mod collection_grouping;
+mod dating;
 mod deck_history;
 mod deck_proxy_migration;
 mod deck_values;

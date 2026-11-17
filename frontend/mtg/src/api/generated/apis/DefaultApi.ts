@@ -65,6 +65,12 @@ import type {
     CreateScannerSessionRequest,
     CreateTournament200Response,
     CreateWatchListRequest,
+    DateResponse,
+    DatesResponse,
+    DatingAnswers,
+    DatingProfileResponse,
+    DatingStackRequest,
+    DatingStackResponse,
     DeckCardResponse,
     DeckDeviationResponse,
     DeckFolderResponse,
@@ -181,6 +187,7 @@ import type {
     ResolvePrintingsRequest,
     ResolvePrintingsResponse,
     ReturnDeckCardsRequest,
+    RewindResponse,
     Role,
     RotateDeckShareTokenResponse,
     RotateShareTokenResponse,
@@ -229,6 +236,8 @@ import type {
     StartRegistrationRequest,
     SubscribePushDeviceRequest,
     SwapDeckCardRequest,
+    SwipeRequest,
+    SwipeResponse,
     TakeApartPhysicalDeckRequest,
     TakeApartPhysicalDeckResponse,
     TakeDeckCardsRequest,
@@ -617,6 +626,13 @@ export interface ClaimMatchLifeHistoryRequest {
     ClaimMatchLifeRequest?: ClaimMatchLifeRequest;
 }
 
+export interface ComeBackDateRequest {
+    /**
+     * 
+     */
+    commander: string;
+}
+
 export interface CreateCollectionOperationRequest {
     /**
      * 
@@ -955,6 +971,13 @@ export interface GetCollectionStatisticsRequest {
      * 
      */
     collection: string;
+}
+
+export interface GetDatingStackRequest {
+    /**
+     * 
+     */
+    DatingStackRequest?: DatingStackRequest;
 }
 
 export interface GetDeckRequest {
@@ -2142,6 +2165,13 @@ export interface SwapDeckCardOperationRequest {
     SwapDeckCardRequest?: SwapDeckCardRequest;
 }
 
+export interface SwipeCommanderRequest {
+    /**
+     * 
+     */
+    SwipeRequest?: SwipeRequest;
+}
+
 export interface TakeApartPhysicalDeckOperationRequest {
     /**
      * 
@@ -2227,6 +2257,13 @@ export interface UndoDeckChangeRequest {
     deck: string;
 }
 
+export interface UnmatchDateRequest {
+    /**
+     * 
+     */
+    commander: string;
+}
+
 export interface UnstarMpcfillImageRequest {
     /**
      * 
@@ -2265,6 +2302,13 @@ export interface UpdateCollectionEntryOperationRequest {
      * 
      */
     UpdateCollectionEntryRequest?: UpdateCollectionEntryRequest;
+}
+
+export interface UpdateDatingProfileRequest {
+    /**
+     * 
+     */
+    DatingAnswers?: DatingAnswers;
 }
 
 export interface UpdateDeckOperationRequest {
@@ -4206,6 +4250,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async claimMatchLifeHistory(requestParameters: ClaimMatchLifeHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SaveMatchLifeHistory200Response> {
         const response = await this.claimMatchLifeHistoryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for comeBackDate without sending the request
+     */
+    async comeBackDateRequestOpts(requestParameters: ComeBackDateRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['commander'] == null) {
+            throw new runtime.RequiredError(
+                'commander',
+                'Required parameter "commander" was null or undefined when calling comeBackDate().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/dating/dates/{commander}/come-back`;
+        urlPath = urlPath.replace('{commander}', encodeURIComponent(String(requestParameters['commander'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * \"No, come back\": a rejection or unmatch becomes a match
+     * \"No, come back\": a rejection or unmatch becomes a match
+     */
+    async comeBackDateRaw(requestParameters: ComeBackDateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DateResponse>> {
+        const requestOptions = await this.comeBackDateRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * \"No, come back\": a rejection or unmatch becomes a match
+     * \"No, come back\": a rejection or unmatch becomes a match
+     */
+    async comeBackDate(requestParameters: ComeBackDateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DateResponse> {
+        const response = await this.comeBackDateRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -6465,6 +6556,126 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getCollectionTotals(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionTotalsResponse> {
         const response = await this.getCollectionTotalsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getDates without sending the request
+     */
+    async getDatesRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/dating/dates`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Matches and the Commanders that said no
+     * Matches and the Commanders that said no
+     */
+    async getDatesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DatesResponse>> {
+        const requestOptions = await this.getDatesRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Matches and the Commanders that said no
+     * Matches and the Commanders that said no
+     */
+    async getDates(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DatesResponse> {
+        const response = await this.getDatesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getDatingProfile without sending the request
+     */
+    async getDatingProfileRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/dating/profile`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * What Commanders see of the account
+     * What Commanders see of the account
+     */
+    async getDatingProfileRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DatingProfileResponse>> {
+        const requestOptions = await this.getDatingProfileRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * What Commanders see of the account
+     * What Commanders see of the account
+     */
+    async getDatingProfile(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DatingProfileResponse> {
+        const response = await this.getDatingProfileRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getDatingStack without sending the request
+     */
+    async getDatingStackRequestOpts(requestParameters: GetDatingStackRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/dating/stack`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['DatingStackRequest'],
+        };
+    }
+
+    /**
+     * The next Commanders to swipe
+     * The next Commanders to swipe
+     */
+    async getDatingStackRaw(requestParameters: GetDatingStackRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DatingStackResponse>> {
+        const requestOptions = await this.getDatingStackRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The next Commanders to swipe
+     * The next Commanders to swipe
+     */
+    async getDatingStack(requestParameters: GetDatingStackRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DatingStackResponse> {
+        const response = await this.getDatingStackRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -10782,6 +10993,49 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for resetDatingPasses without sending the request
+     */
+    async resetDatingPassesRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/dating/passes`;
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Forget every pass
+     * Forget every pass
+     */
+    async resetDatingPassesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.resetDatingPassesRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Forget every pass
+     * Forget every pass
+     */
+    async resetDatingPasses(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.resetDatingPassesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for resetDeck without sending the request
      */
     async resetDeckRequestOpts(requestParameters: ResetDeckRequest): Promise<runtime.RequestOpts> {
@@ -10929,6 +11183,45 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async returnDeckCards(requestParameters: ReturnDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.returnDeckCardsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for rewindSwipe without sending the request
+     */
+    async rewindSwipeRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/dating/swipes/last`;
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Undo the newest swipe
+     * Undo the newest swipe
+     */
+    async rewindSwipeRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RewindResponse>> {
+        const requestOptions = await this.rewindSwipeRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Undo the newest swipe
+     * Undo the newest swipe
+     */
+    async rewindSwipe(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RewindResponse> {
+        const response = await this.rewindSwipeRaw(initOverrides);
         return await response.value();
     }
 
@@ -12743,6 +13036,48 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for swipeCommander without sending the request
+     */
+    async swipeCommanderRequestOpts(requestParameters: SwipeCommanderRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/dating/swipes`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SwipeRequest'],
+        };
+    }
+
+    /**
+     * Swipe on a Commander; a like is answered by the Commander
+     * Swipe on a Commander; a like is answered by the Commander
+     */
+    async swipeCommanderRaw(requestParameters: SwipeCommanderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SwipeResponse>> {
+        const requestOptions = await this.swipeCommanderRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Swipe on a Commander; a like is answered by the Commander
+     * Swipe on a Commander; a like is answered by the Commander
+     */
+    async swipeCommander(requestParameters: SwipeCommanderRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SwipeResponse> {
+        const response = await this.swipeCommanderRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for takeApartPhysicalDeck without sending the request
      */
     async takeApartPhysicalDeckRequestOpts(requestParameters: TakeApartPhysicalDeckOperationRequest): Promise<runtime.RequestOpts> {
@@ -13141,6 +13476,53 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for unmatchDate without sending the request
+     */
+    async unmatchDateRequestOpts(requestParameters: UnmatchDateRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['commander'] == null) {
+            throw new runtime.RequiredError(
+                'commander',
+                'Required parameter "commander" was null or undefined when calling unmatchDate().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/dating/dates/{commander}/unmatch`;
+        urlPath = urlPath.replace('{commander}', encodeURIComponent(String(requestParameters['commander'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * End a match
+     * End a match
+     */
+    async unmatchDateRaw(requestParameters: UnmatchDateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DateResponse>> {
+        const requestOptions = await this.unmatchDateRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * End a match
+     * End a match
+     */
+    async unmatchDate(requestParameters: UnmatchDateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DateResponse> {
+        const response = await this.unmatchDateRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for unstarMpcfillImage without sending the request
      */
     async unstarMpcfillImageRequestOpts(requestParameters: UnstarMpcfillImageRequest): Promise<runtime.RequestOpts> {
@@ -13342,6 +13724,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async updateCollectionEntry(requestParameters: UpdateCollectionEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionEntryResponse> {
         const response = await this.updateCollectionEntryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateDatingProfile without sending the request
+     */
+    async updateDatingProfileRequestOpts(requestParameters: UpdateDatingProfileRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/dating/profile`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['DatingAnswers'],
+        };
+    }
+
+    /**
+     * Answer the dating-profile questions
+     * Answer the dating-profile questions
+     */
+    async updateDatingProfileRaw(requestParameters: UpdateDatingProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DatingProfileResponse>> {
+        const requestOptions = await this.updateDatingProfileRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Answer the dating-profile questions
+     * Answer the dating-profile questions
+     */
+    async updateDatingProfile(requestParameters: UpdateDatingProfileRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DatingProfileResponse> {
+        const response = await this.updateDatingProfileRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
