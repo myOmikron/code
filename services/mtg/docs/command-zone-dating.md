@@ -4,7 +4,14 @@
 Commander swipes back. A joke on top, real Commander discovery underneath.
 Builds on `feat/advisor-unified` (move gallery, card profiles).
 
-Design settled in a grilling session on 2026-11-17. Nothing is built yet.
+Design settled in a grilling session on 2026-11-17. Phase 1 is built on
+`feat/command-zone-dating`. Still open in phase 1:
+
+- the pre-written lines for the top ~100 Commanders (generic lines ship, three per situation)
+- tuning `MATCH_THRESHOLD` (`services/mtg-graph/src/deck_lab/dating.py`) to about 30% rejections
+  from stored scores:
+  `SELECT avg((status = 'Rejected')::int) FROM dating_swipe WHERE status IN ('Matched', 'Rejected') AND NOT super_like`
+- the bio has no typical deck price: no source has one
 
 ## Rules that hold everywhere
 
@@ -42,7 +49,7 @@ Commander price, typical deck price.
 
 - themes the player's decks play (`/diagnostics` per deck)
 - colors, bracket, budget (`DeckSummary.price_eur`)
-- salt: import EDHREC salt per card if cheap; else drop this dimension
+- salt: the average EDHREC salt of the player's Commanders (EDHREC pages carry no per-card salt)
 - collection overlap with the Commander's `RECOMMENDS` cards: a bonus, never required
 
 Target rejection rate among likes is about 30%, with the threshold measured against
