@@ -7,8 +7,8 @@ import threading
 
 import pytest
 
-from deck_lab.graph import read_together, start_read
-from deck_lab.suggestions import _Ahead
+from deck_lab.reads import read_together, start_read
+from deck_lab.suggestions import _count_then_rows
 
 
 def test_results_come_back_in_argument_order():
@@ -51,42 +51,13 @@ def test_a_pooled_read_runs_its_own_reads_inline():
     assert outer_thread != threading.get_ident()
 
 
-def test_take_collects_the_read_started_with_the_same_arguments():
-    calls = []
+def test_the_rows_are_only_read_when_the_count_is_short():
+    asked: list[str] = []
 
-    def read(key, *, limit):
-        calls.append((key, limit))
-        return f"{key}:{limit}"
+    def rows():
+        asked.append("rows")
+        return [{"name": "Demonic Tutor"}]
 
-    ahead = _Ahead()
-    ahead.start(read, "a", limit=1)
-
-    assert ahead.take(read, "a", limit=1) == "a:1"
-    assert calls == [("a", 1)]
-
-
-def test_take_reads_again_when_the_arguments_differ():
-    calls = []
-
-    def read(key):
-        calls.append(key)
-        return key
-
-    ahead = _Ahead()
-    ahead.start(read, "started")
-
-    assert ahead.take(read, "wanted") == "wanted"
-    assert calls.count("wanted") == 1
-
-
-def test_a_started_read_is_collected_once():
-    calls = []
-
-    def read():
-        calls.append(1)
-        return len(calls)
-
-    ahead = _Ahead()
-    ahead.start(read)
-
-    assert [ahead.take(read), ahead.take(read)] == [1, 2]
+    assert _count_then_rows(lambda: 5.0, lambda: 3, rows) == (5.0, 3, [{"name": "Demonic Tutor"}])
+    assert _count_then_rows(lambda: 5.0, lambda: 5, rows) == (5.0, 5, None)
+    assert asked == ["rows"]

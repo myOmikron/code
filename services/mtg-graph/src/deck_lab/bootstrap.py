@@ -134,8 +134,7 @@ def bootstrap(
             log.error("bootstrap.unreachable", error=str(exc))
             return [Outcome("graph", False, "unreachable", error=str(exc))]
 
-        # Every statement is `IF NOT EXISTS`: an index a release adds arrives
-        # with that release, not with the next ingest.
+        # Every statement is `IF NOT EXISTS`.
         from .graph import apply_schema
 
         try:
