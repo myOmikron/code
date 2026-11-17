@@ -5,6 +5,9 @@ use std::time::Duration;
 use galvyn::core::InitError;
 use galvyn::core::Module;
 use galvyn::core::PreInitError;
+use serde::Serialize;
+use serde::de::DeserializeOwned;
+use service_bootstrap::http::client::PropagateTrace;
 use url::Url;
 
 /// How long a connection attempt to the advisor may take
@@ -63,5 +66,27 @@ impl Module for GraphClient {
     ) -> Result<Self, InitError> {
         let (client, base_url) = pre_init;
         Ok(Self { base_url, client })
+    }
+}
+
+impl GraphClient {
+    /// Posts json to one of the advisor's endpoints, `None` on a 404
+    pub async fn post<B: Serialize, T: DeserializeOwned>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> anyhow::Result<Option<T>> {
+        let url = self.base_url.join(path)?;
+        let response = self
+            .client
+            .post(url)
+            .json(body)
+            .propagate_trace()
+            .send()
+            .await?;
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
+        Ok(Some(response.error_for_status()?.json().await?))
     }
 }

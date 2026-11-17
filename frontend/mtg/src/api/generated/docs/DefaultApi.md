@@ -39,6 +39,7 @@ All URIs are relative to *http://localhost*
 | [**checkPushDevice**](DefaultApi.md#checkpushdevice) | **POST** /api/frontend/v1/accounts/me/push/devices/check | Whether a device gets the logged-in account\&#39;s pushes |
 | [**chooseUsername**](DefaultApi.md#chooseusernameoperation) | **POST** /api/frontend/v1/auth/oidc/username | Finish the username step: create the External Account and log it in |
 | [**claimMatchLifeHistory**](DefaultApi.md#claimmatchlifehistory) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/claim | Deliberately claim a recording slot with a private, device-local capability. |
+| [**comeBackDate**](DefaultApi.md#comebackdate) | **POST** /api/frontend/v1/dating/dates/{commander}/come-back | \&quot;No, come back\&quot;: a rejection or unmatch becomes a match |
 | [**createCollection**](DefaultApi.md#createcollectionoperation) | **POST** /api/frontend/v1/collections |  |
 | [**createDeck**](DefaultApi.md#createdeckoperation) | **POST** /api/frontend/v1/decks | Create a deck |
 | [**createDeckFolder**](DefaultApi.md#createdeckfolderoperation) | **POST** /api/frontend/v1/folders | Make a folder |
@@ -87,6 +88,9 @@ All URIs are relative to *http://localhost*
 | [**getCollection**](DefaultApi.md#getcollection) | **GET** /api/frontend/v1/collections/{collection} | Fetch a single collection |
 | [**getCollectionStatistics**](DefaultApi.md#getcollectionstatistics) | **GET** /api/frontend/v1/collections/{collection}/statistics |  |
 | [**getCollectionTotals**](DefaultApi.md#getcollectiontotals) | **GET** /api/frontend/v1/collections/totals | How many cards the account owns and what they are worth |
+| [**getDates**](DefaultApi.md#getdates) | **GET** /api/frontend/v1/dating/dates | Matches and the Commanders that said no |
+| [**getDatingProfile**](DefaultApi.md#getdatingprofile) | **GET** /api/frontend/v1/dating/profile | What Commanders see of the account |
+| [**getDatingStack**](DefaultApi.md#getdatingstack) | **POST** /api/frontend/v1/dating/stack | The next Commanders to swipe |
 | [**getDeck**](DefaultApi.md#getdeck) | **GET** /api/frontend/v1/decks/{deck} | Fetch a single deck, with the caller\&#39;s role on it |
 | [**getDeckAdvisorSettings**](DefaultApi.md#getdeckadvisorsettings) | **GET** /api/frontend/v1/decks/{deck}/advisor-settings | Read this deck\&#39;s advisor settings |
 | [**getDeckDeviation**](DefaultApi.md#getdeckdeviation) | **GET** /api/frontend/v1/decks/{deck}/deviation | The Deviation between the deck list and the Physical deck |
@@ -174,9 +178,11 @@ All URIs are relative to *http://localhost*
 | [**replaceDeckProxy**](DefaultApi.md#replacedeckproxyoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/replace-proxy | Replace Proxies with real copies out of a collection |
 | [**replaceMpcfillFavorite**](DefaultApi.md#replacempcfillfavorite) | **PUT** /api/frontend/v1/mpcfill/favorites/images/{favorite}/replacement | Move a star to the file that replaced its image |
 | [**reportTournamentMatchResult**](DefaultApi.md#reporttournamentmatchresult) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/report | Report the Result of one\&#39;s own Match, as its Participant |
+| [**resetDatingPasses**](DefaultApi.md#resetdatingpasses) | **DELETE** /api/frontend/v1/dating/passes | Forget every pass |
 | [**resetDeck**](DefaultApi.md#resetdeck) | **POST** /api/frontend/v1/decks/{deck}/history/{change}/reset | Bring the deck back to how it was right after one of its Deck changes |
 | [**resolvePrintings**](DefaultApi.md#resolveprintingsoperation) | **POST** /api/frontend/v1/printings/resolve | Place cards in the catalog |
 | [**returnDeckCards**](DefaultApi.md#returndeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/return | Sort copies out of the Physical deck back into a collection |
+| [**rewindSwipe**](DefaultApi.md#rewindswipe) | **DELETE** /api/frontend/v1/dating/swipes/last | Undo the newest swipe |
 | [**rotateDeckShareToken**](DefaultApi.md#rotatedecksharetoken) | **POST** /api/frontend/v1/decks/{deck}/share-token | Mint a fresh secret for a deck\&#39;s share link |
 | [**rotateShareToken**](DefaultApi.md#rotatesharetoken) | **POST** /api/frontend/v1/collections/{collection}/share-token | Mint a fresh secret for a collection\&#39;s share link |
 | [**saveMatchLifeHistory**](DefaultApi.md#savematchlifehistory) | **PUT** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history | Upload history using only the active recording Account, device and private capability. |
@@ -212,6 +218,7 @@ All URIs are relative to *http://localhost*
 | [**startTournamentRound**](DefaultApi.md#starttournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/start | Start a previewed Round, as an Organizer: from now on everybody sees it |
 | [**subscribePushDevice**](DefaultApi.md#subscribepushdeviceoperation) | **POST** /api/frontend/v1/accounts/me/push/devices | Subscribe this device to the logged-in account\&#39;s pushes |
 | [**swapDeckCard**](DefaultApi.md#swapdeckcardoperation) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/swap | Give up copies of a Deck entry for another card in the same zone |
+| [**swipeCommander**](DefaultApi.md#swipecommander) | **POST** /api/frontend/v1/dating/swipes | Swipe on a Commander; a like is answered by the Commander |
 | [**takeApartPhysicalDeck**](DefaultApi.md#takeapartphysicaldeckoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/take-apart | Take the Physical deck apart |
 | [**takeBackTournamentRound**](DefaultApi.md#takebacktournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/take-back | Take back the latest ended Round, as an Organizer: it runs again |
 | [**takeDeckCards**](DefaultApi.md#takedeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/take | Move copies out of a collection and into the Physical deck |
@@ -219,10 +226,12 @@ All URIs are relative to *http://localhost*
 | [**unassignCollectionEntryTag**](DefaultApi.md#unassigncollectionentrytag) | **DELETE** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Take a card-wide tag off a stack, see [&#x60;assign_collection_entry_tag&#x60;] |
 | [**unassignDeckCardTag**](DefaultApi.md#unassigndeckcardtag) | **DELETE** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Take a tag off a card |
 | [**undoDeckChange**](DefaultApi.md#undodeckchange) | **POST** /api/frontend/v1/decks/{deck}/history/undo | Take back the latest Deck change that is not undone yet |
+| [**unmatchDate**](DefaultApi.md#unmatchdate) | **POST** /api/frontend/v1/dating/dates/{commander}/unmatch | End a match |
 | [**unstarMpcfillImage**](DefaultApi.md#unstarmpcfillimage) | **DELETE** /api/frontend/v1/mpcfill/favorites/images/{favorite} | Take the star off an image |
 | [**unsubscribePushDevice**](DefaultApi.md#unsubscribepushdevice) | **POST** /api/frontend/v1/accounts/me/push/devices/unsubscribe | Unsubscribe one of the logged-in account\&#39;s devices; a device that is none of its is left alone |
 | [**updateCollection**](DefaultApi.md#updatecollectionoperation) | **PUT** /api/frontend/v1/collections/{collection} |  |
 | [**updateCollectionEntry**](DefaultApi.md#updatecollectionentryoperation) | **PATCH** /api/frontend/v1/collections/{collection}/entries/{entry} | Change a stack: its count, condition, finish, signature, price, date or printing |
+| [**updateDatingProfile**](DefaultApi.md#updatedatingprofile) | **PUT** /api/frontend/v1/dating/profile | Answer the dating-profile questions |
 | [**updateDeck**](DefaultApi.md#updatedeckoperation) | **PUT** /api/frontend/v1/decks/{deck} | Rename a deck, change its description or the format it is built for |
 | [**updateDeckCard**](DefaultApi.md#updatedeckcardoperation) | **PATCH** /api/frontend/v1/decks/{deck}/cards/{card} | Change a Deck entry: its count, its zone or the print it sleeves |
 | [**updateDeckFolder**](DefaultApi.md#updatedeckfolderoperation) | **PUT** /api/frontend/v1/folders/{folder} | Rename a folder |
@@ -2760,6 +2769,76 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## comeBackDate
+
+> DateResponse comeBackDate(commander)
+
+\&quot;No, come back\&quot;: a rejection or unmatch becomes a match
+
+\&quot;No, come back\&quot;: a rejection or unmatch becomes a match
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ComeBackDateRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    commander: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies ComeBackDateRequest;
+
+  try {
+    const data = await api.comeBackDate(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **commander** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**DateResponse**](DateResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 
@@ -6095,6 +6174,200 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getDates
+
+> DatesResponse getDates()
+
+Matches and the Commanders that said no
+
+Matches and the Commanders that said no
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetDatesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getDates();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**DatesResponse**](DatesResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getDatingProfile
+
+> DatingProfileResponse getDatingProfile()
+
+What Commanders see of the account
+
+What Commanders see of the account
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetDatingProfileRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getDatingProfile();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**DatingProfileResponse**](DatingProfileResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getDatingStack
+
+> DatingStackResponse getDatingStack(DatingStackRequest)
+
+The next Commanders to swipe
+
+The next Commanders to swipe
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetDatingStackRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // DatingStackRequest (optional)
+    DatingStackRequest: ...,
+  } satisfies GetDatingStackRequest;
+
+  try {
+    const data = await api.getDatingStack(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **DatingStackRequest** | [DatingStackRequest](DatingStackRequest.md) |  | [Optional] |
+
+### Return type
+
+[**DatingStackResponse**](DatingStackResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
 - **Accept**: `application/json`
 
 
@@ -12287,6 +12560,68 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## resetDatingPasses
+
+> any resetDatingPasses()
+
+Forget every pass
+
+Forget every pass
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ResetDatingPassesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.resetDatingPasses();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## resetDeck
 
 > DeckUndoResponse resetDeck(deck, change)
@@ -12489,6 +12824,68 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## rewindSwipe
+
+> RewindResponse rewindSwipe()
+
+Undo the newest swipe
+
+Undo the newest swipe
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { RewindSwipeRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.rewindSwipe();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**RewindResponse**](RewindResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 
@@ -15050,6 +15447,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## swipeCommander
+
+> SwipeResponse swipeCommander(SwipeRequest)
+
+Swipe on a Commander; a like is answered by the Commander
+
+Swipe on a Commander; a like is answered by the Commander
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SwipeCommanderRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // SwipeRequest (optional)
+    SwipeRequest: ...,
+  } satisfies SwipeCommanderRequest;
+
+  try {
+    const data = await api.swipeCommander(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **SwipeRequest** | [SwipeRequest](SwipeRequest.md) |  | [Optional] |
+
+### Return type
+
+[**SwipeResponse**](SwipeResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## takeApartPhysicalDeck
 
 > TakeApartPhysicalDeckResponse takeApartPhysicalDeck(deck, TakeApartPhysicalDeckRequest)
@@ -15567,6 +16034,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## unmatchDate
+
+> DateResponse unmatchDate(commander)
+
+End a match
+
+End a match
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UnmatchDateRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    commander: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies UnmatchDateRequest;
+
+  try {
+    const data = await api.unmatchDate(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **commander** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**DateResponse**](DateResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## unstarMpcfillImage
 
 > any unstarMpcfillImage(favorite)
@@ -15832,6 +16369,76 @@ example().catch(console.error);
 ### Return type
 
 [**CollectionEntryResponse**](CollectionEntryResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## updateDatingProfile
+
+> DatingProfileResponse updateDatingProfile(DatingAnswers)
+
+Answer the dating-profile questions
+
+Answer the dating-profile questions
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UpdateDatingProfileRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // DatingAnswers (optional)
+    DatingAnswers: ...,
+  } satisfies UpdateDatingProfileRequest;
+
+  try {
+    const data = await api.updateDatingProfile(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **DatingAnswers** | [DatingAnswers](DatingAnswers.md) |  | [Optional] |
+
+### Return type
+
+[**DatingProfileResponse**](DatingProfileResponse.md)
 
 ### Authorization
 

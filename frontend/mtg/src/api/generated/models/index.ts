@@ -2176,6 +2176,250 @@ export interface CurrentRoundResponse {
     timer?: RoundTimerResponse | null;
 }
 /**
+ * A date that got past a pass
+ * @export
+ * @interface DateResponse
+ */
+export interface DateResponse {
+    /**
+     * Restored with "No, come back"
+     */
+    came_back: boolean;
+    /**
+     * Color identity letters
+     */
+    color_identity: string;
+    /**
+     * The Commander's oracle id
+     */
+    commander: string;
+    /**
+     * When the swipe happened
+     */
+    created_at: string;
+    /**
+     * Art crop url
+     */
+    image_art_crop?: string | null;
+    /**
+     * Full card image url
+     */
+    image_normal?: string | null;
+    /**
+     * Card name
+     */
+    name: string;
+    /**
+     * The Default printing, to add it to a deck
+     */
+    printing?: string | null;
+    /**
+     * Why a rejection happened
+     */
+    reason?: RejectReason | null;
+    /**
+     * The interest both sides share
+     */
+    shared?: string | null;
+    /**
+     * Where the date stands
+     */
+    status: DateStatus;
+    /**
+     * Swiped up
+     */
+    super_like: boolean;
+}
+
+
+
+/**
+ * Where a date with a Commander stands
+ * @export
+ */
+export const DateStatus = {
+    /**
+    * Swiped left
+    */
+    Passed: 'Passed',
+    /**
+    * Both sides like each other
+    */
+    Matched: 'Matched',
+    /**
+    * The Commander said no
+    */
+    Rejected: 'Rejected',
+    /**
+    * Unmatched after a match
+    */
+    Unmatched: 'Unmatched',
+} as const;
+export type DateStatus = typeof DateStatus[keyof typeof DateStatus];
+
+/**
+ * Every date, split by how it went
+ * @export
+ * @interface DatesResponse
+ */
+export interface DatesResponse {
+    /**
+     * Matches, newest first
+     */
+    matches: Array<DateResponse>;
+    /**
+     * Liked but rejected or unmatched, newest first
+     */
+    shots: Array<DateResponse>;
+}
+/**
+ * The dating-profile questions
+ * @export
+ * @interface DatingAnswers
+ */
+export interface DatingAnswers {
+    /**
+     * Preferred bracket, 1 to 5
+     */
+    bracket?: number | null;
+    /**
+     * Typical deck budget in euro
+     */
+    budget_eur?: number | null;
+    /**
+     * Colors as letters of WUBRG
+     */
+    colors: string;
+}
+/**
+ * A Commander in the stack
+ * @export
+ * @interface DatingCardResponse
+ */
+export interface DatingCardResponse {
+    /**
+     * Color identity letters
+     */
+    color_identity: string;
+    /**
+     * Oracle id
+     */
+    commander: string;
+    /**
+     * EDHREC popularity rank
+     */
+    edhrec_rank?: number | null;
+    /**
+     * Art crop url
+     */
+    image_art_crop?: string | null;
+    /**
+     * Full card image url
+     */
+    image_normal?: string | null;
+    /**
+     * Top tags
+     */
+    interests: Array<InterestResponse>;
+    /**
+     * Card name
+     */
+    name: string;
+    /**
+     * Oracle text
+     */
+    oracle_text: string;
+    /**
+     * Card price in euro
+     */
+    price_eur?: number | null;
+    /**
+     * The Default printing, to add it to a deck
+     */
+    printing?: string | null;
+    /**
+     * Type line
+     */
+    type_line: string;
+    /**
+     * Picked for compatibility rather than popularity
+     */
+    your_type: boolean;
+}
+/**
+ * What Commanders see of the account
+ * @export
+ * @interface DatingProfileResponse
+ */
+export interface DatingProfileResponse {
+    /**
+     * The answers, if given
+     */
+    answers?: DatingAnswers | null;
+    /**
+     * Average bracket
+     */
+    bracket?: number | null;
+    /**
+     * Typical deck price in euro
+     */
+    budget_eur?: number | null;
+    /**
+     * Color letters played, most played first
+     */
+    colors: Array<string>;
+    /**
+     * How many decks went into the profile
+     */
+    decks: number;
+    /**
+     * Average salt of the account's Commanders
+     */
+    salt?: number | null;
+    /**
+     * Themes, strongest first
+     */
+    themes: Array<ThemeStrength>;
+}
+/**
+ * Asks for the next Commanders
+ * @export
+ * @interface DatingStackRequest
+ */
+export interface DatingStackRequest {
+    /**
+     * Only Commanders within these colors, as letters of WUBRG
+     */
+    colors?: string | null;
+    /**
+     * Commanders the client still holds, unswiped
+     */
+    pending: Array<string>;
+}
+/**
+ * The next Commanders to swipe
+ * @export
+ * @interface DatingStackResponse
+ */
+export interface DatingStackResponse {
+    /**
+     * The Commanders, in order
+     */
+    commanders: Array<DatingCardResponse>;
+    /**
+     * The account has neither decks nor answers: ask the questions first
+     */
+    profile_needed: boolean;
+    /**
+     * Unswiped Commanders left in the pool
+     */
+    remaining: number;
+    /**
+     * Super likes left today
+     */
+    super_likes_left: number;
+}
+/**
  * What the catalog knows about a deck card's printing
  * @export
  * @interface DeckCardCatalogResponse
@@ -3131,8 +3375,6 @@ export interface Direction {
      */
     problem: string;
 }
-
-
 /**
  * Request to throw a stack out of the Physical deck
  * @export
@@ -4544,6 +4786,38 @@ Gives every slot a new id, so anything hanging off those ids is lost. That is ri
     Fill: 'Fill',
 } as const;
 export type ImportMode = typeof ImportMode[keyof typeof ImportMode];
+
+/**
+ * One EDHREC tag of a Commander
+ * @export
+ * @interface InterestResponse
+ */
+export interface InterestResponse {
+    /**
+     * EDHREC's label
+     */
+    label: string;
+    /**
+     * The advisor theme it maps onto
+     */
+    theme?: string | null;
+}
+
+/**
+ * Whether the Commander wants more or less of a dimension than the account brings
+ * @export
+ */
+export const LeanDirection = {
+    /**
+    * The Commander wants more
+    */
+    More: 'More',
+    /**
+    * The Commander wants less
+    */
+    Less: 'Less',
+} as const;
+export type LeanDirection = typeof LeanDirection[keyof typeof LeanDirection];
 
 /**
  * What the Physical deck holds for one Deck entry
@@ -6865,6 +7139,56 @@ export interface RegistrationErrors {
      */
     token_used: boolean;
 }
+
+/**
+ * The dimension a rejection names
+ * @export
+ */
+export const RejectDimension = {
+    /**
+    * The themes the account plays
+    */
+    Themes: 'Themes',
+    /**
+    * The colors the account plays
+    */
+    Colors: 'Colors',
+    /**
+    * The bracket the account plays at
+    */
+    Bracket: 'Bracket',
+    /**
+    * What the account&#39;s decks cost
+    */
+    Budget: 'Budget',
+    /**
+    * How salty the account&#39;s Commanders are
+    */
+    Salt: 'Salt',
+} as const;
+export type RejectDimension = typeof RejectDimension[keyof typeof RejectDimension];
+
+/**
+ * Why a Commander said no
+ * @export
+ * @interface RejectReason
+ */
+export interface RejectReason {
+    /**
+     * The missing interest, or the missing color letters
+     */
+    detail?: string | null;
+    /**
+     * The worst dimension
+     */
+    dimension: RejectDimension;
+    /**
+     * More or less of it
+     */
+    direction?: LeanDirection | null;
+}
+
+
 /**
  * @type RenameAccount200Response
  * 
@@ -7151,6 +7475,17 @@ export interface ReturnDeckCardsRequest {
      * Where to put them, `None` to use where they came from
      */
     target?: string | null;
+}
+/**
+ * What a rewind undid
+ * @export
+ * @interface RewindResponse
+ */
+export interface RewindResponse {
+    /**
+     * The Commander whose swipe was undone, `None` without any swipe
+     */
+    commander?: string | null;
 }
 
 /**
@@ -8844,6 +9179,69 @@ export interface SwapDeckCardRequest {
 }
 
 /**
+ * Which way a Commander was swiped
+ * @export
+ */
+export const SwipeKind = {
+    /**
+    * Left
+    */
+    Pass: 'Pass',
+    /**
+    * Right
+    */
+    Like: 'Like',
+    /**
+    * Up: a guaranteed match, once a day
+    */
+    SuperLike: 'SuperLike',
+} as const;
+export type SwipeKind = typeof SwipeKind[keyof typeof SwipeKind];
+
+/**
+ * A swipe
+ * @export
+ * @interface SwipeRequest
+ */
+export interface SwipeRequest {
+    /**
+     * The Commander's oracle id
+     */
+    commander: string;
+    /**
+     * Which way
+     */
+    kind: SwipeKind;
+}
+
+
+/**
+ * The Commander's answer
+ * @export
+ * @interface SwipeResponse
+ */
+export interface SwipeResponse {
+    /**
+     * Why a rejection happened
+     */
+    reason?: RejectReason | null;
+    /**
+     * The interest both sides share
+     */
+    shared?: string | null;
+    /**
+     * Where the date stands now
+     */
+    status: DateStatus;
+    /**
+     * Super likes left today
+     */
+    super_likes_left: number;
+}
+
+
+
+/**
  * What a Sync run came to
  * @export
  */
@@ -8939,6 +9337,21 @@ export interface ThemePrefs {
      * How much of each theme the reader wants, by theme id
      */
     levels?: { [key: string]: ThemeLevel | undefined; };
+}
+/**
+ * How strongly the account plays a theme
+ * @export
+ * @interface ThemeStrength
+ */
+export interface ThemeStrength {
+    /**
+     * 0..1
+     */
+    strength: number;
+    /**
+     * Advisor theme id
+     */
+    theme: string;
 }
 
 /**

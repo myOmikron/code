@@ -16,6 +16,12 @@ import * as runtime from '../runtime';
 import type {
     CombosRequest,
     CombosResponse,
+    DatingProfile,
+    DatingProfileRequest,
+    DatingStackRequest,
+    DatingStackResponse,
+    DatingVerdict,
+    DatingVerdictRequest,
     Diagnostics,
     DiagnosticsRequest,
     FillRequest,
@@ -41,6 +47,27 @@ export interface PostCombosRequest {
      * 
      */
     CombosRequest: CombosRequest;
+}
+
+export interface PostDatingProfileRequest {
+    /**
+     * 
+     */
+    DatingProfileRequest: DatingProfileRequest;
+}
+
+export interface PostDatingStackRequest {
+    /**
+     * 
+     */
+    DatingStackRequest: DatingStackRequest;
+}
+
+export interface PostDatingVerdictRequest {
+    /**
+     * 
+     */
+    DatingVerdictRequest: DatingVerdictRequest;
 }
 
 export interface PostDiagnosticsRequest {
@@ -233,6 +260,153 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async postCombos(requestParameters: PostCombosRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CombosResponse> {
         const response = await this.postCombosRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for postDatingProfile without sending the request
+     */
+    async postDatingProfileRequestOpts(requestParameters: PostDatingProfileRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['DatingProfileRequest'] == null) {
+            throw new runtime.RequiredError(
+                'DatingProfileRequest',
+                'Required parameter "DatingProfileRequest" was null or undefined when calling postDatingProfile().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/dating/profile`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['DatingProfileRequest'],
+        };
+    }
+
+    /**
+     * Aggregate a player\'s decks into what commanders see.
+     * Post Dating Profile
+     */
+    async postDatingProfileRaw(requestParameters: PostDatingProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DatingProfile>> {
+        const requestOptions = await this.postDatingProfileRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Aggregate a player\'s decks into what commanders see.
+     * Post Dating Profile
+     */
+    async postDatingProfile(requestParameters: PostDatingProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DatingProfile> {
+        const response = await this.postDatingProfileRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for postDatingStack without sending the request
+     */
+    async postDatingStackRequestOpts(requestParameters: PostDatingStackRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['DatingStackRequest'] == null) {
+            throw new runtime.RequiredError(
+                'DatingStackRequest',
+                'Required parameter "DatingStackRequest" was null or undefined when calling postDatingStack().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/dating/stack`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['DatingStackRequest'],
+        };
+    }
+
+    /**
+     * The next commanders of the swipe stack.
+     * Post Dating Stack
+     */
+    async postDatingStackRaw(requestParameters: PostDatingStackRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DatingStackResponse>> {
+        const requestOptions = await this.postDatingStackRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The next commanders of the swipe stack.
+     * Post Dating Stack
+     */
+    async postDatingStack(requestParameters: PostDatingStackRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DatingStackResponse> {
+        const response = await this.postDatingStackRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for postDatingVerdict without sending the request
+     */
+    async postDatingVerdictRequestOpts(requestParameters: PostDatingVerdictRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['DatingVerdictRequest'] == null) {
+            throw new runtime.RequiredError(
+                'DatingVerdictRequest',
+                'Required parameter "DatingVerdictRequest" was null or undefined when calling postDatingVerdict().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/dating/verdict`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['DatingVerdictRequest'],
+        };
+    }
+
+    /**
+     * The commander\'s answer to a like.
+     * Post Dating Verdict
+     */
+    async postDatingVerdictRaw(requestParameters: PostDatingVerdictRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DatingVerdict>> {
+        const requestOptions = await this.postDatingVerdictRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The commander\'s answer to a like.
+     * Post Dating Verdict
+     */
+    async postDatingVerdict(requestParameters: PostDatingVerdictRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DatingVerdict> {
+        const response = await this.postDatingVerdictRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

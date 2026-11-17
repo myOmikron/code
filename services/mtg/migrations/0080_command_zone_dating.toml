@@ -1,0 +1,311 @@
+[Migration]
+Hash = "13589968264750960996"
+Initial = false
+Dependency = 79
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "dating_swipe"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 21
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "commander"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 28
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "status"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 31
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "super_like"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 35
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "came_back"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 39
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "score"
+Type = "double_number"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 42
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "dimension"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 16
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 45
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "direction"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 8
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 48
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "detail"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 64
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 51
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "shared"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 64
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 54
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 58
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "dating_profile"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 93
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "colors"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 8
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 100
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "bracket"
+Type = "int16"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 103
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "budget_eur"
+Type = "int32"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 106
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "answered"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 110
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "snapshot"
+Type = "binary"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 113
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "snapshot_key"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 32
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 116
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "dating_profile"
+
+[Migration.Operations.Field]
+Name = "owner"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 97
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "dating_swipe"
+
+[Migration.Operations.Field]
+Name = "owner"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 25
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "dating_swipe"
+
+[Migration.Operations.Index]
+Columns = ["owner"]

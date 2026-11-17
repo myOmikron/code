@@ -470,6 +470,277 @@ export interface CutPhrase {
 
 
 /**
+ * A commander as the swipe stack shows it.
+ * @export
+ * @interface DatingCommander
+ */
+export interface DatingCommander {
+    /**
+     * 
+     */
+    oracle_id: string;
+    /**
+     * 
+     */
+    name: string;
+    /**
+     * 
+     */
+    color_identity: Array<string>;
+    /**
+     * 
+     */
+    edhrec_rank: number | null;
+    /**
+     * 
+     */
+    price_eur: number | null;
+    /**
+     * 
+     */
+    oracle_text: string;
+    /**
+     * 
+     */
+    type_line: string;
+    /**
+     * 
+     */
+    salt: number | null;
+    /**
+     * 
+     */
+    decks: number;
+    /**
+     * 
+     */
+    bracket: number | null;
+    /**
+     * 
+     */
+    budget_lean: number | null;
+    /**
+     * 
+     */
+    interests: Array<Interest>;
+    /**
+     * 
+     */
+    your_type: boolean;
+}
+/**
+ * One of the player's decks, as the profile reads it.
+ * @export
+ * @interface DatingDeck
+ */
+export interface DatingDeck {
+    /**
+     * 
+     */
+    commanders: Array<string>;
+    /**
+     * 
+     */
+    cards: { [key: string]: number | undefined; };
+    /**
+     * 
+     */
+    bracket?: number | null;
+    /**
+     * 
+     */
+    price_eur?: number | null;
+    /**
+     * 
+     */
+    colors: Array<DatingDeckColorsEnum>;
+}
+
+
+/**
+ * @export
+ */
+export const DatingDeckColorsEnum = {
+    W: 'W',
+    U: 'U',
+    B: 'B',
+    R: 'R',
+    G: 'G',
+} as const;
+export type DatingDeckColorsEnum = typeof DatingDeckColorsEnum[keyof typeof DatingDeckColorsEnum];
+
+/**
+ * What commanders see of a player. Deck signals win over answers.
+ * @export
+ * @interface DatingProfile
+ */
+export interface DatingProfile {
+    /**
+     * 
+     */
+    decks: number;
+    /**
+     * 
+     */
+    themes: { [key: string]: number | undefined; };
+    /**
+     * 
+     */
+    colors: { [key: string]: number | undefined; };
+    /**
+     * 
+     */
+    bracket: number | null;
+    /**
+     * 
+     */
+    budget_eur: number | null;
+    /**
+     * 
+     */
+    salt: number | null;
+}
+/**
+ * The player's decks, plus the dating-profile answers.
+ * @export
+ * @interface DatingProfileRequest
+ */
+export interface DatingProfileRequest {
+    /**
+     * 
+     */
+    decks?: Array<DatingDeck>;
+    /**
+     * 
+     */
+    answers?: ProfileAnswers | null;
+}
+/**
+ * The next commanders to swipe, minus everything already swiped.
+ * @export
+ * @interface DatingStackRequest
+ */
+export interface DatingStackRequest {
+    /**
+     * 
+     */
+    profile: DatingProfile;
+    /**
+     * 
+     */
+    exclude?: Array<string>;
+    /**
+     * 
+     */
+    colors?: Array<DatingStackRequestColorsEnum> | null;
+    /**
+     * 
+     */
+    count?: number;
+    /**
+     * 
+     */
+    seed?: number;
+}
+
+
+/**
+ * @export
+ */
+export const DatingStackRequestColorsEnum = {
+    W: 'W',
+    U: 'U',
+    B: 'B',
+    R: 'R',
+    G: 'G',
+} as const;
+export type DatingStackRequestColorsEnum = typeof DatingStackRequestColorsEnum[keyof typeof DatingStackRequestColorsEnum];
+
+/**
+ * A slice of the swipe stack.
+ * @export
+ * @interface DatingStackResponse
+ */
+export interface DatingStackResponse {
+    /**
+     * 
+     */
+    commanders: Array<DatingCommander>;
+    /**
+     * 
+     */
+    remaining: number;
+}
+/**
+ * A commander's answer to a like.
+ * @export
+ * @interface DatingVerdict
+ */
+export interface DatingVerdict {
+    /**
+     * 
+     */
+    match: boolean;
+    /**
+     * 
+     */
+    score: number;
+    /**
+     * 
+     */
+    dimension: DatingVerdictDimensionEnum | null;
+    /**
+     * 
+     */
+    direction: DatingVerdictDirectionEnum | null;
+    /**
+     * 
+     */
+    detail: string | null;
+    /**
+     * 
+     */
+    shared: string | null;
+}
+
+
+/**
+ * @export
+ */
+export const DatingVerdictDimensionEnum = {
+    themes: 'themes',
+    colors: 'colors',
+    bracket: 'bracket',
+    budget: 'budget',
+    salt: 'salt',
+} as const;
+export type DatingVerdictDimensionEnum = typeof DatingVerdictDimensionEnum[keyof typeof DatingVerdictDimensionEnum];
+
+/**
+ * @export
+ */
+export const DatingVerdictDirectionEnum = {
+    more: 'more',
+    less: 'less',
+} as const;
+export type DatingVerdictDirectionEnum = typeof DatingVerdictDirectionEnum[keyof typeof DatingVerdictDirectionEnum];
+
+/**
+ * A like, to be answered by the commander.
+ * @export
+ * @interface DatingVerdictRequest
+ */
+export interface DatingVerdictRequest {
+    /**
+     * 
+     */
+    profile: DatingProfile;
+    /**
+     * 
+     */
+    commander: string;
+}
+/**
  * 
  * @export
  * @interface DeckEntry
@@ -910,6 +1181,25 @@ export interface InteractionRow {
     classes?: { [key: string]: Array<string> | undefined; } | null;
 }
 /**
+ * One EDHREC tag of a commander, mapped onto our themes where possible.
+ * @export
+ * @interface Interest
+ */
+export interface Interest {
+    /**
+     * 
+     */
+    label: string;
+    /**
+     * 
+     */
+    theme: string | null;
+    /**
+     * 
+     */
+    share: number;
+}
+/**
  * 
  * @export
  * @interface LineEntry
@@ -1261,6 +1551,39 @@ export interface PoolQueryResponse {
      */
     position: number | null;
 }
+/**
+ * The dating-profile questions, for players without decks.
+ * @export
+ * @interface ProfileAnswers
+ */
+export interface ProfileAnswers {
+    /**
+     * 
+     */
+    colors?: Array<ProfileAnswersColorsEnum>;
+    /**
+     * 
+     */
+    bracket?: number | null;
+    /**
+     * 
+     */
+    budget_eur?: number | null;
+}
+
+
+/**
+ * @export
+ */
+export const ProfileAnswersColorsEnum = {
+    W: 'W',
+    U: 'U',
+    B: 'B',
+    R: 'R',
+    G: 'G',
+} as const;
+export type ProfileAnswersColorsEnum = typeof ProfileAnswersColorsEnum[keyof typeof ProfileAnswersColorsEnum];
+
 /**
  * 
  * @export

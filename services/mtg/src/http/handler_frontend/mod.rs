@@ -10,6 +10,7 @@ pub mod admin;
 pub mod auth;
 pub mod bug_reports;
 pub mod collections;
+pub mod dating;
 pub mod decks;
 pub mod explore;
 pub mod folders;
@@ -34,6 +35,7 @@ pub fn initialize_routes() -> GalvynRouter {
         .nest("/auth/oidc", oidc::initialize_routes())
         .nest("/bug-reports", bug_reports::initialize_routes())
         .nest("/collections", collections::initialize_routes())
+        .nest("/dating", dating::initialize_routes())
         .nest("/decks", decks::initialize_routes())
         .nest("/explore", explore::initialize_routes())
         .nest("/folders", folders::initialize_routes())
