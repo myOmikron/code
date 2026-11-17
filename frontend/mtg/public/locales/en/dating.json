@@ -8,6 +8,7 @@
     },
     "button": {
         "answer-questions": "Set up profile",
+        "blind-date": "Blind Date",
         "build-anyway": "Build without a date",
         "come-back": "No, come back",
         "continue-date": "Continue the date",
@@ -28,9 +29,13 @@
         "start-deck": "Start a deck",
         "super-like": "Super like",
         "swipe": "Back to swiping",
+        "swipe-rest": "Swipe the rest",
         "unmatch": "Unmatch"
     },
     "description": {
+        "blind-added_one": "{{count}} card is already in.",
+        "blind-added_other": "{{count}} cards are already in.",
+        "blind-failed": "Your date stood you up. The deck is still yours.",
         "bring-bad": "Hm. Not my scene.",
         "bring-fine": "Could work.",
         "bring-good": "Yes! Exactly my type.",
@@ -87,6 +92,8 @@
         "your-turn": "Your turn: what do you bring?"
     },
     "heading": {
+        "blind-reveal": "Your date: {{name}}",
+        "blind-waiting": "Your date is getting ready …",
         "date-done": "That went well.",
         "date-left": "{{name}} left the date.",
         "interests": "Interests",

@@ -50,6 +50,7 @@ import { Route as MenuAdminBugReportsIndexRouteImport } from './routes/_menu/adm
 import { Route as MenuAdminBugReportsNumberRouteImport } from './routes/_menu/admin/bug-reports/$number'
 import { Route as MenuCollaboratingDeckUuidDeckRouteImport } from './routes/_menu/collaborating/$deckUuid/_deck'
 import { Route as MenuCollectionsCollectionUuidCollectionRouteImport } from './routes/_menu/collections/$collectionUuid/_collection'
+import { Route as MenuDatingBlindDeckUuidRouteImport } from './routes/_menu/dating/blind.$deckUuid'
 import { Route as MenuDatingDateDeckUuidRouteImport } from './routes/_menu/dating/date.$deckUuid'
 import { Route as MenuDecksDeckUuidDeckRouteImport } from './routes/_menu/decks/$deckUuid/_deck'
 import { Route as MenuGlobalDecksIndexRouteImport } from './routes/_menu/global/decks/index'
@@ -320,6 +321,11 @@ const MenuCollectionsCollectionUuidCollectionRoute =
     path: '/collections/$collectionUuid',
     getParentRoute: () => MenuRoute,
   } as any)
+const MenuDatingBlindDeckUuidRoute = MenuDatingBlindDeckUuidRouteImport.update({
+  id: '/dating/blind/$deckUuid',
+  path: '/dating/blind/$deckUuid',
+  getParentRoute: () => MenuRoute,
+} as any)
 const MenuDatingDateDeckUuidRoute = MenuDatingDateDeckUuidRouteImport.update({
   id: '/dating/date/$deckUuid',
   path: '/dating/date/$deckUuid',
@@ -708,6 +714,7 @@ export interface FileRoutesByFullPath {
   '/admin/bug-reports/$number': typeof MenuAdminBugReportsNumberRoute
   '/collaborating/$deckUuid': typeof MenuCollaboratingDeckUuidDeckRouteWithChildren
   '/collections/$collectionUuid': typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
+  '/dating/blind/$deckUuid': typeof MenuDatingBlindDeckUuidRoute
   '/dating/date/$deckUuid': typeof MenuDatingDateDeckUuidRoute
   '/decks/$deckUuid': typeof MenuDecksDeckUuidDeckRouteWithChildren
   '/global/profiles/$username': typeof MenuGlobalProfilesUsernameRoute
@@ -801,6 +808,7 @@ export interface FileRoutesByTo {
   '/watch-lists': typeof MenuWatchListsIndexRoute
   '/admin/accounts/$accountUuid': typeof MenuAdminAccountsAccountUuidRoute
   '/admin/bug-reports/$number': typeof MenuAdminBugReportsNumberRoute
+  '/dating/blind/$deckUuid': typeof MenuDatingBlindDeckUuidRoute
   '/dating/date/$deckUuid': typeof MenuDatingDateDeckUuidRoute
   '/global/profiles/$username': typeof MenuGlobalProfilesUsernameRoute
   '/profile/security': typeof MenuProfileProfileSecurityRoute
@@ -897,6 +905,7 @@ export interface FileRoutesById {
   '/_menu/admin/bug-reports/$number': typeof MenuAdminBugReportsNumberRoute
   '/_menu/collaborating/$deckUuid/_deck': typeof MenuCollaboratingDeckUuidDeckRouteWithChildren
   '/_menu/collections/$collectionUuid/_collection': typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
+  '/_menu/dating/blind/$deckUuid': typeof MenuDatingBlindDeckUuidRoute
   '/_menu/dating/date/$deckUuid': typeof MenuDatingDateDeckUuidRoute
   '/_menu/decks/$deckUuid/_deck': typeof MenuDecksDeckUuidDeckRouteWithChildren
   '/_menu/global/profiles/$username': typeof MenuGlobalProfilesUsernameRoute
@@ -998,6 +1007,7 @@ export interface FileRouteTypes {
     | '/admin/bug-reports/$number'
     | '/collaborating/$deckUuid'
     | '/collections/$collectionUuid'
+    | '/dating/blind/$deckUuid'
     | '/dating/date/$deckUuid'
     | '/decks/$deckUuid'
     | '/global/profiles/$username'
@@ -1091,6 +1101,7 @@ export interface FileRouteTypes {
     | '/watch-lists'
     | '/admin/accounts/$accountUuid'
     | '/admin/bug-reports/$number'
+    | '/dating/blind/$deckUuid'
     | '/dating/date/$deckUuid'
     | '/global/profiles/$username'
     | '/profile/security'
@@ -1186,6 +1197,7 @@ export interface FileRouteTypes {
     | '/_menu/admin/bug-reports/$number'
     | '/_menu/collaborating/$deckUuid/_deck'
     | '/_menu/collections/$collectionUuid/_collection'
+    | '/_menu/dating/blind/$deckUuid'
     | '/_menu/dating/date/$deckUuid'
     | '/_menu/decks/$deckUuid/_deck'
     | '/_menu/global/profiles/$username'
@@ -1541,6 +1553,13 @@ declare module '@tanstack/react-router' {
       path: '/collections/$collectionUuid'
       fullPath: '/collections/$collectionUuid'
       preLoaderRoute: typeof MenuCollectionsCollectionUuidCollectionRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/dating/blind/$deckUuid': {
+      id: '/_menu/dating/blind/$deckUuid'
+      path: '/dating/blind/$deckUuid'
+      fullPath: '/dating/blind/$deckUuid'
+      preLoaderRoute: typeof MenuDatingBlindDeckUuidRouteImport
       parentRoute: typeof MenuRoute
     }
     '/_menu/dating/date/$deckUuid': {
@@ -2316,6 +2335,7 @@ interface MenuRouteChildren {
   MenuWatchListsIndexRoute: typeof MenuWatchListsIndexRoute
   MenuCollaboratingDeckUuidDeckRoute: typeof MenuCollaboratingDeckUuidDeckRouteWithChildren
   MenuCollectionsCollectionUuidCollectionRoute: typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
+  MenuDatingBlindDeckUuidRoute: typeof MenuDatingBlindDeckUuidRoute
   MenuDatingDateDeckUuidRoute: typeof MenuDatingDateDeckUuidRoute
   MenuDecksDeckUuidDeckRoute: typeof MenuDecksDeckUuidDeckRouteWithChildren
   MenuGlobalProfilesUsernameRoute: typeof MenuGlobalProfilesUsernameRoute
@@ -2356,6 +2376,7 @@ const MenuRouteChildren: MenuRouteChildren = {
     MenuCollaboratingDeckUuidDeckRouteWithChildren,
   MenuCollectionsCollectionUuidCollectionRoute:
     MenuCollectionsCollectionUuidCollectionRouteWithChildren,
+  MenuDatingBlindDeckUuidRoute: MenuDatingBlindDeckUuidRoute,
   MenuDatingDateDeckUuidRoute: MenuDatingDateDeckUuidRoute,
   MenuDecksDeckUuidDeckRoute: MenuDecksDeckUuidDeckRouteWithChildren,
   MenuGlobalProfilesUsernameRoute: MenuGlobalProfilesUsernameRoute,

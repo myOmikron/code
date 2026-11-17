@@ -106,6 +106,11 @@ advisor route (`?swipe=true`), opened from its header or after a date.
 
 ## Phase 3: Blind Date
 
+Built on `feat/command-zone-dating`: graph `/dating/blind` (proxied, rate limited like `/fill`)
+rolls the themes, fills at the profile's bracket and returns lands plus the highest-inclusion
+picks (theme fits first) until 35 slots are open; the frontend files them, writes the theme
+levels and bracket, and reveals. A busy solver is retried quietly, up to eight times.
+
 - It rolls theme levels within the Commander's own EDHREC themes, weighted by deck counts, at the profile's bracket. The themes stay hidden until the reveal.
 - One `/fill` per date: up to 10 s, 3 concurrent fills service-wide, 429 when busy. The player sees "your date is getting ready…" while it retries quietly.
 - **Certain** cards are added automatically: lands, plus cards that fit the rolled themes *and* appear in a high share of the Commander's EDHREC decks. The cut-off is measured so about 30–40 cards are left to swipe.

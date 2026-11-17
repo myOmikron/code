@@ -3,6 +3,7 @@ import {
     Configuration,
     DefaultApi,
     DiagnosticsRequest,
+    DatingBlindRequest,
     FillRequest,
     LinesRequest,
     PoolQueryRequest,
@@ -50,6 +51,9 @@ export const GraphApi = {
     // aborting like the rest: a solve the caller walked away from still holds
     // one of the service's few solver slots until it finishes.
     fill: (req: FillRequest, init?: RequestInit) => graphApi.postFill({ FillRequest: req }, init),
+    // A Blind Date: rolled themes, a fill, and which cards go in right away. Takes a solver slot too.
+    blindDate: (req: DatingBlindRequest, init?: RequestInit) =>
+        graphApi.postDatingBlind({ DatingBlindRequest: req }, init),
     // Graph-backed card search — the filters Scryfall syntax cannot express.
     search: (req: SearchRequest, init?: RequestInit) => graphApi.postSearch({ SearchRequest: req }, init),
     // Combos the deck completes, and combos it is one card short of.

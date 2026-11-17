@@ -10,6 +10,7 @@ import { createRoot } from "react-dom/client";
 import "../src/index.css";
 import i18n from "../src/i18n";
 import type { DateSessionResponse, DatingCardResponse } from "src/api/generated";
+import { DatingBlindView } from "src/components/dating-blind-view";
 import { DatingDateView } from "src/components/dating-date-view";
 import { DeckAdvisorSwipe } from "src/components/deck-advisor-swipe";
 import type { Badge } from "src/utils/advisor-impact";
@@ -164,6 +165,32 @@ function Probe() {
                 onMeetCards={() => {}}
                 onBuildAnyway={() => {}}
                 onBack={() => {}}
+            />
+        );
+    }
+
+    if (state.startsWith("blind-")) {
+        return (
+            <DatingBlindView
+                name={"Krenko, Mob Boss"}
+                art={art("Krenko, Mob Boss")}
+                state={
+                    state === "blind-revealed"
+                        ? {
+                              kind: "revealed",
+                              added: 64,
+                              themes: [
+                                  { theme: "tribal", label: "Goblins", level: "allin" },
+                                  { theme: "tokens", label: "Tokens", level: "core" },
+                                  { theme: "aristocrats", label: "Aristocrats", level: "light" },
+                              ],
+                          }
+                        : state === "blind-failed"
+                          ? { kind: "failed" }
+                          : { kind: "waiting" }
+                }
+                onSwipe={() => {}}
+                onBuild={() => {}}
             />
         );
     }
