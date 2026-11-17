@@ -97,7 +97,8 @@ Every cache and pool the API holds is **per worker**, so workers multiply
 them: each worker misses the response cache once for the same deck, pays the
 startup corpus scans itself, gets its own `FILL_MAX_CONCURRENT` solver slots
 (so total in-flight solves are `FILL_MAX_CONCURRENT x WORKERS`, each holding
-`SOLVER_NUM_WORKERS` threads), and rate-limits each client separately rather
+`SOLVER_NUM_WORKERS` threads), runs its graph reads on its own
+`GRAPH_READ_WORKERS` threads, and rate-limits each client separately rather
 than globally. That is the accepted price of needing no shared store; see
 `.env.example` for the knobs.
 
