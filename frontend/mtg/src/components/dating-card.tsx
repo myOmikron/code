@@ -87,13 +87,25 @@ export function DatingCard({ card, top, onSwipe, onOpenBio }: DatingCardProps) {
                 }
             >
                 {art !== null && (
-                    <img
-                        src={art}
-                        alt={t("accessibility.art", { name: card.name })}
-                        draggable={false}
-                        crossOrigin={"anonymous"}
-                        className={"absolute inset-0 size-full object-cover object-[center_35%]"}
-                    />
+                    <>
+                        <img
+                            src={art}
+                            alt={""}
+                            aria-hidden={true}
+                            draggable={false}
+                            crossOrigin={"anonymous"}
+                            className={"absolute inset-0 size-full scale-125 object-cover blur-2xl brightness-50"}
+                        />
+                        <img
+                            src={art}
+                            alt={t("accessibility.art", { name: card.name })}
+                            draggable={false}
+                            crossOrigin={"anonymous"}
+                            className={
+                                "absolute inset-x-0 top-0 aspect-[626/457] w-full mask-b-from-70% mask-b-to-100% object-cover"
+                            }
+                        />
+                    </>
                 )}
                 {card.your_type && (
                     <span
