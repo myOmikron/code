@@ -174,6 +174,9 @@ MAPPINGS: dict[str, TagMapping] = {
     # differently: Tinybones, Asylum Visitor and Sea Gate Wreckage get better
     # as the hand empties, and a discard outlet is how it empties.
     "hellbent": _m(cares=[R.DISCARD_OWN]),
+    # The other arm of `discard-matters`: Megrim, Waste Not, Liliana's Caress,
+    # Tergrid. What Kefka's deck is built on.
+    "opponent-discard-matters": _m(cares=[R.DISCARD_OPPONENT]),
     # NOT `threshold`, and NOT `discarded-type-matters`. Threshold shares zero
     # cards with self-discard: it counts the graveyard, not the discard, and
     # Cabal Ritual does not care how the cards got there. `discarded-type-
@@ -297,7 +300,11 @@ MAPPINGS: dict[str, TagMapping] = {
     # interaction slot. There is no narrower parent to pick, so subtract the
     # subtree; `control-changing-effects` sits above `theft` and inherits the
     # same leak, so it repeats the same exception.
-    "theft": _m(roles=[(Role.SPOT_REMOVAL, 0.5)], excludes=["reanimate-from-opponent"]),
+    "theft": _m(
+        produces=[R.THEFT],
+        roles=[(Role.SPOT_REMOVAL, 0.5)],
+        excludes=["reanimate-from-opponent"],
+    ),
     "control-changing-effects": _m(
         roles=[(Role.SPOT_REMOVAL, 0.4)], excludes=["reanimate-from-opponent"]
     ),
@@ -485,7 +492,26 @@ MAPPINGS: dict[str, TagMapping] = {
     # `minus-1-minus-1-counters` high-synergy list landed 8/10 inside it.
     # There is no narrower parent to pick: the polarity flip *is* a direct
     # child.
-    "counters-matter": _m(cares=[R.PLUS_ONE_COUNTER], excludes=["mm-counters-matter"]),
+    #
+    # The other counter kinds go too: `counter-fuel` hangs under this tag with
+    # a child per kind, which filed 117 energy cards (Aether Hub) as +1/+1
+    # payoffs and made an energy theme 93% counters.
+    "counters-matter": _m(
+        cares=[R.PLUS_ONE_COUNTER],
+        excludes=[
+            "mm-counters-matter",
+            "counter-fuel-mm",
+            "counter-fuel-energy",
+            "counter-fuel-charge",
+            "counter-fuel-loyalty",
+            "counter-fuel-lore",
+            "counter-fuel-time",
+            "counter-fuel-fade",
+            "counter-fuel-stun",
+            "counter-fuel-shield",
+            "counter-fuel-aesthetic",
+        ],
+    ),
     # The other polarity, given the term it never had. Producers and payoffs
     # both, so this is a bridge and not a supply-only resource: 224 + 74 cards
     # put the counters out, 57 + 11 pay them off.
@@ -506,6 +532,13 @@ MAPPINGS: dict[str, TagMapping] = {
     ),
     "counter-fuel-charge": _m(cares=[R.CHARGE_COUNTER]),
     "counter-fuel-loyalty": _m(cares=[R.LOYALTY_COUNTER]),
+    "counter-fuel-lore": _m(cares=[R.SAGA_MATTERS]),
+    # Mapped to nothing; they exist to be subtracted from `counters-matter`.
+    "counter-fuel-time": _m(),
+    "counter-fuel-fade": _m(),
+    "counter-fuel-stun": _m(),
+    "counter-fuel-shield": _m(),
+    "counter-fuel-aesthetic": _m(),
     # --- Trigger payoffs (the CARES_ABOUT side of the bridge) --------------
     "death-trigger": _m(cares=[R.DEATH_TRIGGER]),
     "death-trigger-self": _m(cares=[R.DEATH_TRIGGER]),
@@ -558,11 +591,18 @@ MAPPINGS: dict[str, TagMapping] = {
     # Atraxa list as "16 cards want lifegain, 2 make it".
     "life-payment": _m(produces=[R.LIFE_PAYMENT]),
     # --- Typal and permanent-type synergies --------------------------------
-    "typal": _m(cares=[R.TRIBAL_PAYOFF]),
-    "typal-creature": _m(cares=[R.TRIBAL_PAYOFF]),
+    # The type-diversity payoffs sit under `typal-creature` but want the
+    # opposite of a tribe, so they leave the Typal theme.
+    "typal": _m(cares=[R.TRIBAL_PAYOFF], excludes=["typal-each", "typal-non-share"]),
+    "typal-creature": _m(cares=[R.TRIBAL_PAYOFF], excludes=["typal-each", "typal-non-share"]),
     "noncreature-typal": _m(cares=[R.TRIBAL_PAYOFF]),
     "synergy-artifact": _m(cares=[R.ARTIFACT_MATTERS]),
-    "copy": _m(produces=[R.COPY_SPELL]),
+    # The spell-copying children only. `copy` itself also holds copy-creature,
+    # clone, copy-artifact and copy-land: 930 producers, which read every
+    # Clone and Vesuva as a spellslinger card. These three are 204.
+    "copy-spell": _m(produces=[R.COPY_SPELL]),
+    "copy-instant": _m(produces=[R.COPY_SPELL]),
+    "copy-sorcery": _m(produces=[R.COPY_SPELL]),
     # --- Artifact-token economies ------------------------------------------
     "repeatable-treasures": _m(produces=[R.TREASURE]),
     "synergy-treasure": _m(cares=[R.TREASURE]),
@@ -794,6 +834,62 @@ MAPPINGS: dict[str, TagMapping] = {
     # `keywords-matter` (7 taggings, none in corpus) and `references-keyword`
     # (noise: Thousand-Year Storm) are deliberately not mapped.
     "keyword-counter": _m(produces=[R.KEYWORD_SOUP]),
+    # --- Creature-type diversity (Federation) --------------------------------
+    # `typal-each`: X counts the creature types among your creatures (Hoshi
+    # Sato, Starfleet Academy, Valiant Changeling, Diligent Zookeeper).
+    # `typal-non-share`: rewards types you have not had yet (both Volos,
+    # Radagast, Long List of the Ents). 12 cards together.
+    "typal-each": _m(cares=[R.TYPE_DIVERSITY]),
+    "typal-non-share": _m(cares=[R.TYPE_DIVERSITY]),
+    # Bodies with two or more species types (Seton's Scout, Pet Avengers):
+    # 106 cards, no changeling or Borg among them. Changelings stay out on
+    # purpose — they are Borg, which every Federation card excludes.
+    "multiple-species-types": _m(produces=[R.TYPE_DIVERSITY]),
+    "four-plus-creature-types": _m(produces=[R.TYPE_DIVERSITY]),
+    # --- Sagas, snow, group hug ----------------------------------------------
+    # The Saga and snow permanents themselves arrive structurally, off the type
+    # line (`permanents_supply_their_own_type` in graph.py).
+    # Minus `synergy-historic`, which Tagger hangs under it: a historic payoff
+    # (Jhoira) wants artifacts and legends at least as much as Sagas.
+    "synergy-saga": _m(cares=[R.SAGA_MATTERS], excludes=["synergy-historic"]),
+    "synergy-historic": _m(),
+    "synergy-snow": _m(cares=[R.SNOW_MATTERS]),
+    # `group-hug` minus its two children: `selective-group-hug` is mostly
+    # removal whose drawback helps the target (Baleful Mastery, Into the Flood
+    # Maw), `bribery` takes from an opponent's library. 173 cards left.
+    "group-hug": _m(produces=[R.GROUP_HUG], excludes=["selective-group-hug", "bribery"]),
+    "selective-group-hug": _m(),
+    # --- Clones and cascade -------------------------------------------------
+    # The rest of each side comes from rules.py (`clone_effect`,
+    # `cascade_keyword`), read off text and keywords.
+    # Permanent copies, token or not: Twinflame and Electroduplicate are what
+    # an Etali clones deck is built from. Not `copy-self` (Myriad, encore) or
+    # `copy-from-graveyard` (embalm), which are other plans.
+    "clone": _m(produces=[R.CLONE]),
+    "copy-permanent": _m(produces=[R.CLONE]),
+    "copy-creature": _m(produces=[R.CLONE]),
+    "copy-artifact": _m(produces=[R.CLONE]),
+    "copy-enchantment": _m(produces=[R.CLONE]),
+    "copy-planeswalker": _m(produces=[R.CLONE]),
+    "copy-legendary": _m(produces=[R.CLONE]),
+    "copy-nonland": _m(produces=[R.CLONE]),
+    "gives-cascade": _m(produces=[R.CASCADE]),
+    "synergy-cascade": _m(cares=[R.CASCADE]),
+    "synergy-discover": _m(cares=[R.CASCADE]),
+    "gives-flying": _m(produces=[R.FLYING]),
+    "synergy-flying": _m(cares=[R.FLYING]),
+    # Exiling an opponent's card to cast it (Gonti, Etali, Praetor's Grasp);
+    # not under `theft`.
+    "nightveil-theft": _m(produces=[R.THEFT]),
+    "synergy-theft": _m(cares=[R.THEFT]),
+    "synergy-goad": _m(cares=[R.GOAD]),
+    "x-cost-matters": _m(cares=[R.X_SPELL]),
+    # Locust God, Niv-Mizzet, Psychosis Crawler: payoffs a wheel feeds.
+    "draw-matters": _m(cares=[R.CARD_DRAW]),
+    # Timetwister, Winds of Change, Day's Undoing: the wheels whose text the
+    # `opponent_draw_producer` rule's "discards their hand" misses.
+    "wheel-symmetrical": _m(produces=[R.OPPONENT_DRAW]),
+    "bribery": _m(),
 }
 
 # Any card that wants a resource but fills no other role is, by definition, a

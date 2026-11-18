@@ -454,7 +454,7 @@ RULES: tuple[Rule, ...] = (
     Rule(
         id="goad",
         where="c.oracle_text =~ $goad",
-        params={"goad": r"(?si).*\bgoads?\b.*"},
+        params={"goad": r"(?si).*\b(goads?|(is|are|becomes?) goaded)\b.*"},
         produces=(R.GOAD, R.ATTACK_TRIGGER),
         why="Goading forces attacks, which is what an attack trigger is waiting for.",
     ),
@@ -611,6 +611,146 @@ RULES: tuple[Rule, ...] = (
         ),
         produces=(R.KEYWORD_SOUP,),
         why="Carries three or more of the twelve keyword-counter keywords — Kathril's fuel",
+    ),
+    # The Federation payoffs, read off the text: a new set's cards arrive
+    # before Tagger tags them `typal-each`.
+    Rule(
+        id="creature_type_count_payoff",
+        where="c.oracle_text =~ $types_among",
+        params={"types_among": r"(?si).*\bcreature types among\b.*"},
+        cares_about=(R.TYPE_DIVERSITY,),
+        why="Counts the creature types among your creatures — Federation.",
+    ),
+    # Saga payoffs Tagger leaves untagged (Tom Bombadil, Barbara Wright, Narci).
+    # Phrases only a payoff uses: a bare "Saga" is mostly the historic reminder
+    # text, and a Saga's own reminder says "lore counter", hence the type gate.
+    Rule(
+        id="saga_payoff",
+        where="NOT c.type_line CONTAINS 'Saga' AND c.oracle_text =~ $saga",
+        params={
+            "saga": (
+                r"(?si).*\b(Sagas? you control|lore counters?|final chapter|target Saga"
+                r"|Saga (spells?|cards?))\b.*"
+            )
+        },
+        cares_about=(R.SAGA_MATTERS,),
+        why="Counts, copies or ticks Sagas — Tom Bombadil, Barbara Wright.",
+    ),
+    # Snow payoffs: {S} costs and cards that count snow permanents.
+    Rule(
+        id="snow_payoff",
+        where="c.oracle_text =~ $snow OR c.mana_cost CONTAINS '{S}'",
+        params={"snow": r"(?si).*(\{S\}|\bsnow (permanents?|lands?|creatures?|mana|sources?)\b).*"},
+        cares_about=(R.SNOW_MATTERS,),
+        why="Pays {S} or counts snow permanents.",
+    ),
+    # Clones Tagger leaves untagged: 145 cards enter or become a copy.
+    Rule(
+        id="clone_effect",
+        where="c.oracle_text =~ $clone",
+        params={
+            "clone": (
+                r"(?si).*(enters?( the battlefield)? as a copy of|becomes? a copy of"
+                r"|have it (enter|become) as a copy).*"
+            )
+        },
+        produces=(R.CLONE,),
+        why="Enters or becomes a copy of a permanent — Clone, Spark Double.",
+    ),
+    # Exact by keyword, the `infect_toxic_keywords` treatment.
+    Rule(
+        id="cascade_keyword",
+        where="any(k IN c.keywords WHERE k IN ['Cascade', 'Discover'])",
+        produces=(R.CASCADE,),
+        why="Has cascade or discover — a free spell off the top.",
+    ),
+    Rule(
+        id="goad_payoff",
+        where="c.oracle_text =~ $goaded",
+        params={
+            "goaded": (
+                r"(?si).*\b(goaded (creatures?|player|opponent)|(a|another|each|for each"
+                r"|number of) goaded|creatures? that (is|are) goaded|goaded by you)\b.*"
+            )
+        },
+        cares_about=(R.GOAD,),
+        why="Pays off goaded creatures — Vengeful Ancestor, Baeloth, Maeve.",
+    ),
+    Rule(
+        id="discard_punisher",
+        where="c.oracle_text =~ $punisher",
+        params={
+            "punisher": (
+                r"(?si).*\bwhenever (an opponent|a player|one or more (players|opponents)"
+                r"|each opponent) discards?\b.*"
+            )
+        },
+        cares_about=(R.DISCARD_OPPONENT,),
+        why="Triggers on another player discarding — Megrim, Waste Not, Liliana's Caress.",
+    ),
+    # Self-draw payoffs. Not `opponent_draw_payoff`: Locust God wants your
+    # own draws, which a wheel supplies as much as any draw spell.
+    Rule(
+        id="draw_payoff",
+        where="c.oracle_text =~ $draw_payoff",
+        params={
+            "draw_payoff": r"(?si).*\bwhenever you draw (a|your (first|second|third)) card\b.*"
+        },
+        cares_about=(R.CARD_DRAW,),
+        why="Triggers on drawing cards — Locust God, Psychosis Crawler, Niv-Mizzet.",
+    ),
+    Rule(
+        id="flying_creature",
+        where="c.type_line CONTAINS 'Creature' AND 'Flying' IN c.keywords",
+        produces=(R.FLYING,),
+        why="A creature with flying.",
+    ),
+    # "you control" in every branch: "whenever a creature with flying
+    # attacks" is Gravity Well and Raking Canopy, flying hate.
+    Rule(
+        id="flying_payoff",
+        where="c.oracle_text =~ $flying_payoff",
+        params={
+            "flying_payoff": (
+                r"(?si).*(creatures? you control (that have|with) flying|flying creatures? you"
+                r" control|creatures? with flying you control"
+                r"|(another|other) creatures? you control with flying).*"
+            )
+        },
+        cares_about=(R.FLYING,),
+        why="Pays off a team of fliers — Favorable Winds, Empyrean Eagle, Kangee.",
+    ),
+    # Not "cards your opponents own": that is the Eldrazi processors moving
+    # exiled cards, not stealing them.
+    Rule(
+        id="theft_payoff",
+        where="c.oracle_text =~ $theft_payoff",
+        params={
+            "theft_payoff": (
+                r"(?si).*\b(you (control|cast) but don.t own|you don.t own"
+                r"|spells? (that )?your opponents own)\b.*"
+            )
+        },
+        cares_about=(R.THEFT,),
+        why="Pays off what you took — Don Andres, Laughing Jasper Flint, Tinybones.",
+    ),
+    Rule(
+        id="x_spell",
+        where="c.mana_cost CONTAINS '{X}'",
+        produces=(R.X_SPELL,),
+        why="Has {X} in its mana cost.",
+    ),
+    Rule(
+        id="x_spell_payoff",
+        where="c.oracle_text =~ $x_payoff",
+        params={
+            "x_payoff": (
+                r"(?si).*(\{X\} in (its|their|that spell.s) mana costs?"
+                r"|mana costs? (that )?contains? \{X\}|\bX spells?\b).*"
+            )
+        },
+        cares_about=(R.X_SPELL,),
+        why="Pays off spells with {X} — Zaxara, Unbound Flourishing, Rosheen.",
     ),
     # Protection that names the commander. The `protects-creature` mapping
     # gave commander_protection to all 880 of its cards, duplicating

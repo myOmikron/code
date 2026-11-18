@@ -167,10 +167,13 @@ def test_discard_payoffs_do_not_claim_the_opponent_facing_branch():
 
     Tergrid and Liliana's Caress want an opponent to pitch, not you, and the
     parent mapping would have paired a Faithless Looting with a Bloodchief
-    Ascension — the `mana-sink` error in a new place.
+    Ascension — the `mana-sink` error in a new place. They pay off the
+    opponent side instead.
     """
     assert "discard-matters" not in MAPPINGS
-    assert "opponent-discard-matters" not in MAPPINGS
+    opponent = MAPPINGS["opponent-discard-matters"]
+    assert opponent.cares_about == (Resource.DISCARD_OPPONENT,)
+    assert not opponent.produces
 
 
 def test_threshold_is_not_a_discard_payoff():
@@ -428,3 +431,55 @@ def test_the_broad_free_spell_candidates_are_measured_and_rejected():
     oversight a future diff silently reverses."""
     assert "pitch-spell" not in MAPPINGS
     assert "manaless-value" not in MAPPINGS
+
+
+def test_type_diversity_payoffs_leave_the_typal_theme():
+    """Federation wants many types, not one tribe: its payoffs sit under
+    `typal-creature` in Tagger and must not count as `tribal_payoff`."""
+    for parent in ("typal", "typal-creature"):
+        assert {"typal-each", "typal-non-share"} <= set(MAPPINGS[parent].excludes), parent
+    assert MAPPINGS["typal-each"].cares_about == (Resource.TYPE_DIVERSITY,)
+    assert MAPPINGS["typal-non-share"].cares_about == (Resource.TYPE_DIVERSITY,)
+    assert MAPPINGS["multiple-species-types"].produces == (Resource.TYPE_DIVERSITY,)
+    assert MAPPINGS["four-plus-creature-types"].produces == (Resource.TYPE_DIVERSITY,)
+
+
+def test_counters_matter_sheds_the_other_counter_kinds():
+    """`counter-fuel` hangs under `counters-matter` with a child per kind; the
+    energy child alone made 117 energy cards +1/+1 payoffs."""
+    for kind in ("energy", "charge", "loyalty", "lore", "time", "aesthetic"):
+        assert f"counter-fuel-{kind}" in MAPPINGS["counters-matter"].excludes, kind
+    assert "counter-fuel-pp" not in MAPPINGS["counters-matter"].excludes
+
+
+def test_saga_snow_and_group_hug_mappings():
+    assert MAPPINGS["synergy-saga"].cares_about == (Resource.SAGA_MATTERS,)
+    # Historic payoffs sit under `synergy-saga` and want artifacts as much.
+    assert "synergy-historic" in MAPPINGS["synergy-saga"].excludes
+    assert MAPPINGS["synergy-snow"].cares_about == (Resource.SNOW_MATTERS,)
+    assert MAPPINGS["group-hug"].produces == (Resource.GROUP_HUG,)
+    assert {"selective-group-hug", "bribery"} <= set(MAPPINGS["group-hug"].excludes)
+
+
+def test_copy_spell_reads_only_the_spell_copying_children():
+    """`copy` also holds copy-creature, clone and copy-land: 930 producers that
+    read every Clone and Vesuva as spellslinger. The spell children are 204."""
+    assert "copy" not in MAPPINGS
+    for slug in ("copy-spell", "copy-instant", "copy-sorcery"):
+        assert MAPPINGS[slug].produces == (Resource.COPY_SPELL,), slug
+    for slug in ("clone", "copy-creature", "copy-artifact"):
+        assert MAPPINGS[slug].produces == (Resource.CLONE,), slug
+
+
+def test_flying_theft_goad_x_and_draw_payoff_tags():
+    assert MAPPINGS["synergy-flying"].cares_about == (Resource.FLYING,)
+    assert MAPPINGS["gives-flying"].produces == (Resource.FLYING,)
+    assert Resource.THEFT in MAPPINGS["theft"].produces
+    assert "reanimate-from-opponent" in MAPPINGS["theft"].excludes
+    assert MAPPINGS["nightveil-theft"].produces == (Resource.THEFT,)
+    assert MAPPINGS["synergy-theft"].cares_about == (Resource.THEFT,)
+    assert MAPPINGS["synergy-goad"].cares_about == (Resource.GOAD,)
+    assert MAPPINGS["x-cost-matters"].cares_about == (Resource.X_SPELL,)
+    assert MAPPINGS["draw-matters"].cares_about == (Resource.CARD_DRAW,)
+    # Timetwister's "shuffle, then draw seven" is a wheel the rule misses.
+    assert MAPPINGS["wheel-symmetrical"].produces == (Resource.OPPONENT_DRAW,)

@@ -141,20 +141,27 @@ THEME_TAG_SLUGS: dict[str, str] = {
     # safely if EDHREC ever splits the tag more finely than this theme's
     # narrower scope.
     "land_sacrifice": "lands-matter",
-    # No `"energy"` entry: an `energy` theme was built and measured
-    # (`themes.py`'s `THEMES` dict, trailing comment) but dropped on its own
-    # overlap check against `counters` before shipping, so there is no
-    # `energy` theme id for a slug to map. Satya, Aetherflux Genius was
-    # ingested as this round's external anchor before the drop — `energy` is
-    # her own #1 tag by a wide margin, 3,218 decks against her #2 (`clones`,
-    # 532) — and no top-50 page carries a load-bearing `energy` tag otherwise
-    # (Atraxa's is the largest at 91 decks, an ancillary axis on her page).
     # Verified against Narset, Enlightened Master's cached `tag_counts`,
     # ingested fresh as this round's external anchor (not her near-namesake,
     # Narset, Enlightened Exile — a different commander a prefix lookup would
     # return first): `extra-turns` is her own #1 tag at 535 decks, ahead of
     # `extra-combats` (197) and `planeswalkers` (185).
     "extra_turns": "extra-turns",
+    # Each is its anchor commander's own #1 tag on the live page (2026-11-17):
+    # Satya, Tom Bombadil, Kwain and Isu the Abominable.
+    "energy": "energy",
+    "sagas": "sagas",
+    "group_hug": "group-hug",
+    "snow": "snow",
+    # Seen as Auntie Ool's, Hashaton's, Etali's and Yidris's own tags (2026-11-18).
+    "minus_counters": "minus-1-minus-1-counters",
+    "discard": "discard",
+    "clones": "clones",
+    "cascade": "cascade",
+    "flyers": "flying",
+    "theft": "theft",
+    "goad": "forced-combat",
+    "x_spells": "x-spells",
 }
 
 # EDHREC serves a real subpage at `pages/commanders/<slug>/cedh.json` for

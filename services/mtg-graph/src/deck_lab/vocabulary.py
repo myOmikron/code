@@ -296,6 +296,35 @@ class Resource(StrEnum):
     # Odric/Kathril axis. No BROADER links: keyword breadth is its own axis,
     # not a child of evasion or counters.
     KEYWORD_SOUP = "keyword_soup"
+    # How many different creature types the deck's creatures carry — the
+    # Federation axis (Hoshi Sato, Starfleet Academy, Volo). Its own axis like
+    # KEYWORD_SOUP; the opposite of tribal_payoff, so no parent there.
+    TYPE_DIVERSITY = "type_diversity"
+    # Sagas: every Saga supplies one (type line); Tom Bombadil, Barbara Wright
+    # and Narci pay them off. Own axis — a Saga deck is not an enchantress deck.
+    SAGA_MATTERS = "saga_matters"
+    # Snow permanents (type line) and the cards that count them or pay {S}.
+    SNOW_MATTERS = "snow_matters"
+    # Giving the table cards, mana, lands or life (Howling Mine, Rites of
+    # Flourishing, Kwain). Supply-only: nothing pays off a hug except the hug.
+    GROUP_HUG = "group_hug"
+    # A permanent entering or becoming a copy of another (Clone, Spark Double,
+    # Mirrorweave). Not `token_copy`: a clone creates no token, and Tokens
+    # must not read Copy Artifact as a token maker.
+    CLONE = "clone"
+    # Cascade and discover: casting a free spell off the top. The keyword
+    # cards and the commanders that grant it (Yidris, Maelstrom Wanderer).
+    CASCADE = "cascade"
+    # Creatures with flying, and the cards that pay off a flying team
+    # (Favorable Winds, Kangee, Gravitational Shift). A child of evasion: a
+    # flier is evasive, but "creatures with flying" is not met by menace.
+    FLYING = "flying"
+    # Taking what opponents own: gaining control of their permanents or
+    # casting their cards (Gonti, Tergrid, Don Andres' "you don't own").
+    THEFT = "theft"
+    # Spells with {X} in their mana cost, and Zaxara, Rosheen and Unbound
+    # Flourishing who pay them off. Not high_mv_spell: X is how big, not how much.
+    X_SPELL = "x_spell"
 
     # --- Commander-zone specific (see context_rules) ---
     COMMANDER_RECURSION = "commander_recursion"
@@ -451,7 +480,8 @@ RESOURCE_PARENTS: dict[Resource, tuple[Resource, ...]] = {
     Resource.BLOOD: (Resource.ARTIFACT_TOKEN,),
     Resource.ARTIFACT_TOKEN: (Resource.ARTIFACT_MATTERS,),
     Resource.MANA_ROCK: (Resource.ARTIFACT_MATTERS,),
-    # Impulse draw is card draw for quota purposes, but not for "draw matters".
+    # Impulse draw is card draw for quota purposes. It also meets a "whenever
+    # you draw" payoff's demand without triggering it; accepted, not split.
     Resource.IMPULSE_DRAW: (Resource.CARD_DRAW,),
     # Fast mana is a kind of burst mana — narrower (immediate, net-positive,
     # usable the turn it lands) than the ritual family it broadens to. A
@@ -459,6 +489,7 @@ RESOURCE_PARENTS: dict[Resource, tuple[Resource, ...]] = {
     # lets Sol Ring answer that query as readily as Dark Ritual does, without
     # every mana rock in the corpus also claiming to be one.
     Resource.FAST_MANA: (Resource.RITUAL_MANA,),
+    Resource.FLYING: (Resource.EVASION,),
 }
 
 
@@ -504,6 +535,9 @@ SUPPLY_ONLY: frozenset[Resource] = frozenset(
         # Nothing in Magic wants a Winter Orb. Supply-only by the nature of the
         # archetype, not by an extraction gap — same standing as mill_opponent.
         Resource.RESOURCE_DENIAL,
+        Resource.GROUP_HUG,
+        # Nothing pays off a copy for being a copy; what it copies is the point.
+        Resource.CLONE,
         Resource.COMMANDER_PROTECTION,
         Resource.MANA_FIXING,
         Resource.EXTRA_TURN,
@@ -523,7 +557,6 @@ SUPPLY_ONLY: frozenset[Resource] = frozenset(
         # Interaction is supply-only throughout (see `SPOT_REMOVAL` above);
         # protecting your own turn is no different.
         Resource.PROACTIVE_PROTECTION,
-        Resource.DISCARD_OPPONENT,
         Resource.MILL_OPPONENT,
         Resource.LIFELOSS_OPPONENT,
         Resource.LIFE_PAYMENT,
@@ -538,7 +571,6 @@ SUPPLY_ONLY: frozenset[Resource] = frozenset(
         Resource.RECURSION_TO_HAND,
         Resource.RECURSION_TO_BATTLEFIELD,
         Resource.COMMANDER_RECURSION,
-        Resource.CARD_DRAW,
         Resource.IMPULSE_DRAW,
         # Confirmed by `deck-lab audit`: these have thousands of producers and
         # no consumer, and that is correct. Nothing in Magic "wants a sacrifice
@@ -578,4 +610,5 @@ def is_bridge_resource(resource: Resource) -> bool:
 # (`recursion_to_battlefield`). Keep entries to names players actually search.
 ALIASES: dict[str, tuple[str, ...]] = {
     Resource.RECURSION_TO_BATTLEFIELD: ("reanimator", "reanimate"),
+    Resource.TYPE_DIVERSITY: ("federation", "creature types"),
 }

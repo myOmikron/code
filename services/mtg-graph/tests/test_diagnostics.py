@@ -743,3 +743,34 @@ def test_deck_size_scales_the_reported_targets(monkeypatch):
     assert creature_mean(scaled) == pytest.approx(creature_mean(full) * 60 / 99, abs=0.11)
 
     assert scaled.deck_size == full.deck_size == 1
+
+
+def test_a_stray_typal_edge_on_the_commander_does_not_flood_typal(monkeypatch):
+    """Every creature supplies `tribal_payoff`, so a commander's Typal edge
+    unlocks the theme for the whole deck. Yawgmoth's "protection from Humans"
+    read 42 cards as Typal; only a commander naming a type keeps the unlock."""
+    from deck_lab import graph
+    from deck_lab.diagnostics import DeckEntry, diagnose
+
+    resources = {
+        "cmdr": {"produces": set(), "cares_about": {"tribal_payoff"}},
+        **{f"body{i}": {"produces": {"tribal_payoff"}, "cares_about": set()} for i in range(6)},
+    }
+    _stub_diagnose_graph(monkeypatch, resources=resources)
+    entries = [DeckEntry(oracle_id="cmdr", qty=1)] + [
+        DeckEntry(oracle_id=f"body{i}", qty=1) for i in range(6)
+    ]
+
+    def typal_cards(cares_type):
+        monkeypatch.setattr(
+            graph,
+            "deck_card_types",
+            lambda deck: [
+                {"oracle_id": "cmdr", "is_type": [], "cares_type": cares_type, "makes_type": []}
+            ],
+        )
+        report = diagnose(entries, commander_oracle_id="cmdr")
+        return next((t.cards for t in report.themes if t.theme == "tribal"), 0)
+
+    assert typal_cards(["Goblin"]) >= 6
+    assert typal_cards([]) <= 1

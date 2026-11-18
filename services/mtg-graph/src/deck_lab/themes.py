@@ -496,6 +496,131 @@ THEMES: dict[str, Theme] = {
         "Keyword breadth as a resource — Odric shares it, Kathril inherits it.",
         retrieve_on="either",
     ),
+    # Federation: the payoffs make the deck, so detection is cares-gated (a
+    # deck of multi-species bodies is not the archetype); retrieval also
+    # offers the bodies, the `keywords` split. Ancillaries by measured lift
+    # over the 118-card population: the ETB payoffs (Hoshi Sato, Saavik)
+    # 3.1x, creature tokens 1.6x. `legendary_matters` (4.7x) is the partner
+    # pairs' type lines, not the strategy, and stays out.
+    "type_diversity": _t(
+        "type_diversity",
+        "Creature type diversity",
+        [R.TYPE_DIVERSITY],
+        {R.TYPE_DIVERSITY: 1.0, R.ETB_TRIGGER: 0.3, R.CREATURE_TOKEN: 0.2},
+        "Many different creature types instead of one tribe — Federation.",
+        retrieve_on="either",
+    ),
+    # Shipped on its second attempt. The first was 93% inside `counters`:
+    # `counters-matter` filed every energy card as a +1/+1 payoff through its
+    # `counter-fuel-energy` child (now subtracted), and proliferate cares about
+    # energy (hence the produces gate). After both: 19 of 135 overlap counters.
+    "energy": _t(
+        "energy",
+        "Energy",
+        [R.ENERGY],
+        {R.ENERGY: 1.0, R.PROLIFERATE: 0.3},
+        "Energy counters gathered and spent — Satya, the Kaladesh engines.",
+        gate_on="produces",
+    ),
+    "sagas": _t(
+        "sagas",
+        "Sagas",
+        [R.SAGA_MATTERS],
+        {R.SAGA_MATTERS: 1.0, R.ENCHANTMENT_MATTERS: 0.3, R.PROLIFERATE: 0.25},
+        "Sagas and the cards that tick, copy or reward them — Tom Bombadil.",
+        retrieve_on="either",
+    ),
+    "snow": _t(
+        "snow",
+        "Snow",
+        [R.SNOW_MATTERS],
+        {R.SNOW_MATTERS: 1.0, R.MANA_FIXING: 0.3},
+        "Snow permanents and the cards that pay {S} or count them.",
+        retrieve_on="either",
+    ),
+    # Supply-gated like `energy`: proliferate cares about -1/-1 counters, and
+    # a proliferate deck is not a -1/-1 deck. Yawgmoth and Hapatra put the
+    # counters out themselves.
+    "minus_counters": _t(
+        "minus_counters",
+        "-1/-1 counters",
+        [R.MINUS_ONE_COUNTER],
+        {R.MINUS_ONE_COUNTER: 1.0, R.DEATH_TRIGGER: 0.3, R.PROLIFERATE: 0.3},
+        "Putting -1/-1 counters out, and the payoffs for creatures shrinking or dying.",
+        gate_on="produces",
+    ),
+    "discard": _t(
+        "discard",
+        "Discard",
+        [R.DISCARD_OWN, R.DISCARD_OPPONENT],
+        {R.DISCARD_OWN: 1.0, R.DISCARD_OPPONENT: 0.9, R.RECURSION_TO_HAND: 0.25},
+        "Discarding on purpose — madness, Hashaton, Kefka.",
+        retrieve_on="either",
+    ),
+    # Token copies rank but do not gate: populate copies tokens, and a
+    # Trostani deck is a tokens deck (it read Clones 23% when they gated).
+    "clones": _t(
+        "clones",
+        "Clones",
+        [R.CLONE],
+        {R.CLONE: 1.0, R.TOKEN_COPY: 0.7, R.ETB_TRIGGER: 0.3},
+        "Copying your best permanents — Spark Double, Helm of the Host.",
+        gate_on="produces",
+    ),
+    "cascade": _t(
+        "cascade",
+        "Cascade & discover",
+        [R.CASCADE],
+        {R.CASCADE: 1.0, R.HIGH_MV_SPELL: 0.3},
+        "Free spells off the top of the library — Yidris, Pantlaza.",
+        gate_on="produces",
+    ),
+    # Ancillaries by lift over each theme's own cards (goad: over its eight
+    # commanders' decks, its 80 cards are too few): combat_damage_trigger
+    # 3.06x for fliers, haste_grant 7.8x and impulse_draw 4.6x for theft
+    # (Threaten, cast-from-exile), tax_effect 5.4x for goad (pillow fort),
+    # plus_one_counter 2.1x for X (hydras). power_boost and
+    # sacrifice_outlet fell below base rate.
+    "flyers": _t(
+        "flyers",
+        "Flyers",
+        [R.FLYING],
+        {R.FLYING: 1.0, R.COMBAT_DAMAGE_TRIGGER: 0.3},
+        "A team of fliers and the cards that pay them off — Kangee, Favorable Winds.",
+        retrieve_on="either",
+    ),
+    "theft": _t(
+        "theft",
+        "Theft",
+        [R.THEFT],
+        {R.THEFT: 1.0, R.HASTE_GRANT: 0.3, R.IMPULSE_DRAW: 0.25},
+        "Taking opponents' permanents and casting their cards — Gonti, Tergrid.",
+        gate_on="either",
+    ),
+    "goad": _t(
+        "goad",
+        "Goad",
+        [R.GOAD],
+        {R.GOAD: 1.0, R.TAX_EFFECT: 0.3},
+        "Forcing opponents' creatures to attack each other — Marchesa, Kardur.",
+        gate_on="either",
+    ),
+    "x_spells": _t(
+        "x_spells",
+        "X spells",
+        [R.X_SPELL],
+        {R.X_SPELL: 1.0, R.PLUS_ONE_COUNTER: 0.3},
+        "Spells with {X} in their cost and what rewards them — Zaxara, Rosheen.",
+        retrieve_on="either",
+    ),
+    "group_hug": _t(
+        "group_hug",
+        "Group hug",
+        [R.GROUP_HUG],
+        {R.GROUP_HUG: 1.0, R.OPPONENT_DRAW: 0.4, R.LAND_RAMP: 0.25},
+        "Giving the table cards, mana and lands — Kwain, Howling Mine.",
+        gate_on="produces",
+    ),
     # Supply-and-payoff, for the third time (see `counters` and `tokens`).
     # 190 cards make Treasure and 49 care about it, so a cares gate is a gate
     # on `synergy-treasure` alone: Smothering Tithe and Old Gnawbone were not
@@ -775,8 +900,8 @@ THEMES: dict[str, Theme] = {
     "wheels": _t(
         "wheels",
         "Wheels",
-        [R.OPPONENT_DRAW],
-        {R.OPPONENT_DRAW: 1.0, R.DISCARD_OPPONENT: 0.5, R.DISCARD_OWN: 0.3},
+        [R.OPPONENT_DRAW, R.CARD_DRAW],
+        {R.OPPONENT_DRAW: 1.0, R.CARD_DRAW: 0.6, R.DISCARD_OPPONENT: 0.5, R.DISCARD_OWN: 0.3},
         "Everyone drawing extra cards, and the punishers who profit from it.",
         retrieve_on="either",
     ),
@@ -932,65 +1057,6 @@ THEMES: dict[str, Theme] = {
         gate_on="produces",
         retrieve_on="either",
     ),
-    # An `energy` theme (`TOP50-COVERAGE.md` gap 6, "the strongest kind" —
-    # 135 producers / 216 cares, the largest of the four counter kinds this
-    # round touches) was built exactly to the plan's spec —
-    # `requires_any=[R.ENERGY]`, `gate_on="cares"` (default), `retrieve_on=
-    # "either"`, weights `{R.ENERGY: 1.0, R.PROLIFERATE: 0.4}` — and
-    # **dropped** rather than shipped, on the plan's own mandatory overlap
-    # check against `counters`.
-    #
-    # Measured live via `FITS_THEME` edges after a rebuild with the theme in
-    # place, the `enchantress`/`aura_matters` and `discard`/`reanimator`
-    # methodology: of `energy`'s 234-card either-population, **218 (93.2%)**
-    # also clear `FIT_THRESHOLD` on `counters` — decisively past the plan's
-    # ~30% bar, on the same order as `discard`'s 88.8% collision against
-    # `reanimator` (`WHEELS-DISCARD-RESULTS.md`), not the 0-2-card pairwise
-    # noise the four hidden-theme-study themes shipped at.
-    #
-    # Root-caused rather than left as a bare number, and it does not go away
-    # under a narrower gate — checked directly before giving up on the theme.
-    # Two independent causes stack:
-    #
-    # 1. The blanket `proliferate` rule (rules.py: cares about all seven
-    #    counter kinds at once, "it multiplies every counter kind") gives
-    #    every proliferate-producing card a `CARES_ABOUT energy` edge whether
-    #    or not it has ever seen an energy counter — 95 of `energy`'s 216
-    #    cares-side edges trace to exactly this (Tezzeret's Gambit, Reject
-    #    Imperfection, Ezuri, Stalker of Spheres — none of which touch energy
-    #    in their own text). This is the identical mechanism `poison`'s own
-    #    comment already documents and solves with `gate_on="produces"`.
-    # 2. But `gate_on="produces"` does not rescue this theme the way it
-    #    rescues `superfriends` above: measured directly, `energy`'s
-    #    PRODUCES-only population (135 cards — cards that literally grant or
-    #    spend {E}) *still* overlaps `counters`' `FITS_THEME` membership at
-    #    **88.1%** (119/135). Traced to a second, independent defect: plain
-    #    Kaladesh-block energy cards with zero +1/+1 text (Aether Hub,
-    #    Aethergeode Miner, Aethertide Whale) carry a `CARES_ABOUT
-    #    plus_one_counter` edge of their own — the same shape of tag-closure
-    #    over-attachment `vocabulary.py`'s own comment documents for
-    #    `minus_one_counter` (82 cards wrongly swept into `plus_one_counter`
-    #    via an unexcluded `mm-counters-matter` subtag), here on the energy
-    #    side and outside `tag_mapping.py`, which this round's file list does
-    #    not include.
-    #
-    # Because the second cause sits on `energy`'s own PRODUCES side — the one
-    # side every gate variant must read — no `gate_on` choice available in
-    # `themes.py` alone can separate `energy` from `counters`. Retrieval
-    # channel confirmed dead on arrival too: `retrieve_on="either"` was the
-    # plan's own spec and the wider either-population's overlap (93.2%) is
-    # even worse than the produces-only figure.
-    #
-    # The theme's own numbers were otherwise strong and are recorded rather
-    # than discarded along with it: Satya, Aetherflux Genius (this round's
-    # external anchor, ingested fresh — `energy` is her own #1 EDHREC tag,
-    # 3,218 decks, 6x her #2) read `energy 0.701` (47 cards, rank 1) against
-    # the plan's 0.25 bar. A good number on a theme that fails its overlap
-    # gate is still a fail — the plan's own instruction, applied here exactly
-    # as `discard` applied it in `WHEELS-DISCARD-RESULTS.md`. `ENERGY` itself,
-    # and its existing edges, are untouched; only the standalone theme is cut.
-    # No `"energy"` entry exists in `edhrec.py`'s `THEME_TAG_SLUGS` for the
-    # same reason `"discard"` has none there.
     # A `discard` theme — Hashaton's discard-to-copy engine and madness/
     # hellbent decks generally (`TOP50-COVERAGE.md` gap 1) — was built and
     # measured (`gate_on="cares"` on `[R.DISCARD_OWN]`, `retrieve_on="either"`,
