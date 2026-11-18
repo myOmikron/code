@@ -11,6 +11,8 @@ import { formatCurrency } from "src/utils/format";
 export type DatingBioDialogProps = {
     /** The Commander shown, `null` while closed */
     card: DatingCardResponse | null;
+    /** What the Commander is looking for, if it has a line for that */
+    tagline?: string | null;
     /** Close it */
     onClose: () => void;
 };
@@ -20,7 +22,7 @@ export type DatingBioDialogProps = {
  *
  * @returns the dialog
  */
-export function DatingBioDialog({ card, onClose }: DatingBioDialogProps) {
+export function DatingBioDialog({ card, tagline, onClose }: DatingBioDialogProps) {
     const [t] = useTranslation("dating");
 
     return (
@@ -33,6 +35,11 @@ export function DatingBioDialog({ card, onClose }: DatingBioDialogProps) {
                     </DialogTitle>
                     <DialogBody className={"flex flex-col gap-4"}>
                         <Text className={"text-xs"}>{card.type_line}</Text>
+                        {tagline && (
+                            <p className={"text-base/6 font-semibold text-zinc-950 dark:text-white"}>
+                                {t("description.looking-for", { tagline })}
+                            </p>
+                        )}
                         <p
                             className={
                                 "rounded-(--radius-control) bg-zinc-100 px-3 py-2.5 text-sm/6 whitespace-pre-line text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
