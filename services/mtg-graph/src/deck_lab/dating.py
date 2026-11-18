@@ -6,6 +6,7 @@ dimension that scored worst, so the joke stays honest advice.
 
 from __future__ import annotations
 
+import hashlib
 import math
 import random
 from collections.abc import Callable, Iterable
@@ -447,26 +448,40 @@ def stack(
     count: int,
     seed: int,
 ) -> list[DatingCommander]:
-    """Popularity-weighted random order, with an occasional best-fit "your type" card."""
-    rng = random.Random(seed)
-    candidates = [
-        row
-        for row in pool
-        if row["oracle_id"] not in exclude
-        and (colors is None or set(row.get("color_identity") or []) <= colors)
-    ]
+    """The pool in one fixed popularity-weighted order per seed, without the excluded cards.
+
+    Every fifth place of the order holds the best fit among the next few, the "your type"
+    card. Excluding cards only skips places, so a reload resumes where the player left off.
+    """
+    ordered = sorted(
+        (row for row in pool if colors is None or set(row.get("color_identity") or []) <= colors),
+        key=lambda row: _order_key(row, seed),
+        reverse=True,
+    )
+    fits: dict[str, float] = {}
+
+    def fit(row: dict) -> float:
+        if row["oracle_id"] not in fits:
+            fits[row["oracle_id"]] = score(profile, commander_card(row))
+        return fits[row["oracle_id"]]
+
     out: list[DatingCommander] = []
-    while candidates and len(out) < count:
-        if len(out) % YOUR_TYPE_EVERY == YOUR_TYPE_EVERY - 1:
-            sample = rng.sample(candidates, min(YOUR_TYPE_SAMPLE, len(candidates)))
-            pick = max(sample, key=lambda row: score(profile, commander_card(row)))
-            your_type = True
-        else:
-            pick = rng.choices(candidates, weights=[_popularity(row) for row in candidates])[0]
-            your_type = False
-        candidates.remove(pick)
-        out.append(commander_card(pick, your_type=your_type))
+    place = 0
+    while ordered and len(out) < count:
+        your_type = place % YOUR_TYPE_EVERY == YOUR_TYPE_EVERY - 1
+        pick = max(ordered[:YOUR_TYPE_SAMPLE], key=fit) if your_type else ordered[0]
+        ordered.remove(pick)
+        place += 1
+        if pick["oracle_id"] not in exclude:
+            out.append(commander_card(pick, your_type=your_type))
     return out
+
+
+def _order_key(row: dict, seed: int) -> float:
+    """A weighted shuffle key (Efraimidis-Spirakis) that depends only on the card and the seed."""
+    digest = hashlib.blake2b(f"{seed}:{row['oracle_id']}".encode(), digest_size=8).digest()
+    draw = (int.from_bytes(digest) + 1) / 2**64
+    return math.log(draw) / _popularity(row)
 
 
 def _tier(support: float) -> Literal["high", "mid", "low"]:

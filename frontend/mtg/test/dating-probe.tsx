@@ -1,6 +1,6 @@
 /**
  * Mounts Command Zone Dating's components with mock Commanders, so each state can be
- * screenshotted without a login. `?state=stack|match|reject|super|bio|profile|date-answer|date-pick|date-done|date-left|swipe`,
+ * screenshotted without a login. `?state=stack|flip|match|reject|super|bio|profile|date-answer|date-pick|date-done|date-left|swipe`,
  * `?lng=de`.
  */
 import { Heading } from "components";
@@ -24,8 +24,8 @@ import { DatingVerdict } from "src/components/dating-verdict";
 import type { Verdict } from "src/components/dating-verdict";
 import type { Color, SwipeDirection } from "src/utils/dating";
 
-const art = (name: string) =>
-    `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=art_crop`;
+const art = (name: string, version = "art_crop") =>
+    `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=${version}`;
 
 const card = (name: string, colors: string, interests: string[], yourType = false): DatingCardResponse => ({
     commander: name.toLowerCase().replace(/\W+/g, "-"),
@@ -33,7 +33,7 @@ const card = (name: string, colors: string, interests: string[], yourType = fals
     name,
     color_identity: colors,
     image_art_crop: art(name),
-    image_normal: null,
+    image_normal: art(name, "normal"),
     type_line: "Legendary Creature",
     oracle_text: "Flying, vigilance, deathtouch, lifelink\nAt the beginning of your end step, proliferate.",
     edhrec_rank: 12,
@@ -142,6 +142,7 @@ const PRINTINGS = new Map<string, Printing>(
 function Probe() {
     const [stack, setStack] = useState(STACK);
     const [exit, setExit] = useState<SwipeDirection | null>(null);
+    const [flipped, setFlipped] = useState(state === "flip");
     const [colors, setColors] = useState<Set<Color>>(new Set(["U", "B"]));
     const top = stack[0];
     const verdict: Verdict | null =
@@ -246,10 +247,13 @@ function Probe() {
                                 key={item.commander}
                                 card={item}
                                 top={item.commander === top?.commander}
+                                flipped={flipped}
                                 onSwipe={(direction) => {
                                     setExit(direction);
+                                    setFlipped(false);
                                     setStack((current) => current.slice(1));
                                 }}
+                                onFlip={() => setFlipped((turned) => !turned)}
                                 onOpenBio={() => {}}
                             />
                         ))}

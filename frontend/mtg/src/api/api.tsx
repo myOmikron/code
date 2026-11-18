@@ -742,7 +742,7 @@ export const Api = {
     // server-side and the client is handed numbers rather than the whole shelf.
     dating: {
         stack: async (req: DatingStackRequest) => handleError(defaultApi.getDatingStack({ DatingStackRequest: req })),
-        swipe: async (req: SwipeRequest) => handleError(defaultApi.swipeCommander({ SwipeRequest: req })),
+        swipe: async (req: SwipeRequest) => quietSessionRead(defaultApi.swipeCommander({ SwipeRequest: req })),
         rewind: async () => handleError(defaultApi.rewindSwipe()),
         dates: async () => handleError(defaultApi.getDates()),
         comeBack: async (commander: UUID) => handleError(defaultApi.comeBackDate({ commander })),
@@ -910,9 +910,10 @@ export async function handleError<T>(promise: Promise<T>): Promise<T> {
 }
 
 /**
- * Keeps cosmetic background failures local while still respecting an expired session.
+ * Keeps failures local while still respecting an expired session, for background reads
+ * and for requests whose page handles the failure itself.
  *
- * @param request a background HTTP read
+ * @param request the HTTP request
  * @returns its normal response, without reporting transport failures globally
  */
 async function quietSessionRead<T>(request: Promise<T>): Promise<T> {

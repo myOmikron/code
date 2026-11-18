@@ -197,6 +197,19 @@ def test_the_same_seed_gives_the_same_stack():
     assert ids(3) == ids(3)
 
 
+def test_excluding_cards_keeps_the_order_of_the_rest():
+    pool = [row(f"c{index}", edhrec_rank=index + 1) for index in range(60)]
+
+    def cards(exclude: set[str], count: int) -> list[tuple[str, bool]]:
+        result = stack(pool, profile(), exclude=exclude, colors=None, count=count, seed=5)
+        return [(card.oracle_id, card.your_type) for card in result]
+
+    first = cards(set(), 10)
+
+    assert cards({first[0][0], first[1][0], first[2][0]}, 7) == first[3:]
+    assert cards({first[4][0]}, 9) == first[:4] + first[5:]
+
+
 @pytest.fixture
 def pool(monkeypatch):
     rows = [row("teysa"), row("toxrill", salt=3.2, color_identity=["U", "B"])]

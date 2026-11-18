@@ -4,7 +4,8 @@
         "back": "Zurück",
         "chemistry": "Chemie",
         "close-bio": "Profil schließen",
-        "color-filter": "Nach Farben filtern"
+        "color-filter": "Nach Farben filtern",
+        "open-bio": "Profil öffnen"
     },
     "button": {
         "answer-questions": "Profil anlegen",
@@ -134,11 +135,12 @@
         "round": "Runde {{round}} von 3",
         "salt": "Salz",
         "super-stamp": "SUPER",
-        "tap-for-bio": "Tippen für Profil",
+        "tap-to-read": "Tippen, um die Karte zu lesen",
         "unmatched": "Aufgelöst",
         "your-type": "Dein Typ"
     },
     "toast": {
-        "passes-reset": "Abgelehnte Commander sind wieder im Stapel"
+        "passes-reset": "Abgelehnte Commander sind wieder im Stapel",
+        "swipe-failed": "Der Swipe wurde nicht gespeichert"
     }
 }
