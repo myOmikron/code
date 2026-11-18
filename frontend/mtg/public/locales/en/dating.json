@@ -4,7 +4,8 @@
         "back": "Back",
         "chemistry": "Chemistry",
         "close-bio": "Close bio",
-        "color-filter": "Filter by colors"
+        "color-filter": "Filter by colors",
+        "open-bio": "Open bio"
     },
     "button": {
         "answer-questions": "Set up profile",
@@ -134,11 +135,12 @@
         "round": "Round {{round}} of 3",
         "salt": "Salt",
         "super-stamp": "SUPER",
-        "tap-for-bio": "Tap for bio",
+        "tap-to-read": "Tap to read the card",
         "unmatched": "Unmatched",
         "your-type": "Your type"
     },
     "toast": {
-        "passes-reset": "Passed Commanders are back in the stack"
+        "passes-reset": "Passed Commanders are back in the stack",
+        "swipe-failed": "The swipe was not saved"
     }
 }

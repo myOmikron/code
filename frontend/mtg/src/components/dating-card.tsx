@@ -1,3 +1,4 @@
+import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import { motion, useMotionValue, useTransform } from "motion/react";
 import type { Variants } from "motion/react";
 import { useRef } from "react";
@@ -23,6 +24,10 @@ const LEAVE: Variants = {
     }),
 };
 
+/** One side of the card */
+const FACE =
+    "absolute inset-0 block overflow-hidden rounded-(--radius-card) bg-zinc-800 text-left text-white shadow-(--shadow-card-lg) ring-1 ring-zinc-950/10 backface-hidden dark:ring-white/10";
+
 /**
  * The properties for {@link DatingCard}
  */
@@ -31,18 +36,23 @@ export type DatingCardProps = {
     card: DatingCardResponse;
     /** Whether it is the top card, the only one that can be dragged */
     top: boolean;
+    /** Whether the card is turned to its rules text */
+    flipped: boolean;
     /** A finished swipe */
     onSwipe: (direction: SwipeDirection) => void;
     /** A tap without a drag */
+    onFlip: () => void;
+    /** The info button */
     onOpenBio: () => void;
 };
 
 /**
  * One Commander of the swipe stack: full-bleed art, its name, colors and interests.
+ * A tap turns it over to the card itself.
  *
  * @returns the card
  */
-export function DatingCard({ card, top, onSwipe, onOpenBio }: DatingCardProps) {
+export function DatingCard({ card, top, flipped, onSwipe, onFlip, onOpenBio }: DatingCardProps) {
     const [t] = useTranslation("dating");
     const x = useMotionValue(0);
     const y = useMotionValue(0);
@@ -52,10 +62,21 @@ export function DatingCard({ card, top, onSwipe, onOpenBio }: DatingCardProps) {
     const superLike = useTransform(y, [-SWIPE_DISTANCE, -20], [1, 0]);
     const dragged = useRef(false);
     const art = card.image_art_crop ?? card.image_normal ?? null;
+    const turned = top && flipped;
+
+    /**
+     * Runs a tap unless it ended a drag
+     *
+     * @param action what the tap does
+     * @returns the click handler
+     */
+    const tap = (action: () => void) => () => {
+        if (!dragged.current) action();
+    };
 
     return (
         <motion.div
-            className={"absolute inset-0 touch-none select-none"}
+            className={"absolute inset-0 touch-none select-none perspective-distant"}
             style={{ x, y, rotate, zIndex: top ? 2 : 1 }}
             initial={{ scale: 0.94, opacity: 0, y: 16 }}
             animate={top ? { scale: 1, opacity: 1, y: 0 } : { scale: 0.94, opacity: 0.6, y: 14 }}
@@ -76,18 +97,76 @@ export function DatingCard({ card, top, onSwipe, onOpenBio }: DatingCardProps) {
                 if (direction !== null) onSwipe(direction);
             }}
         >
-            <button
-                type={"button"}
-                disabled={!top}
-                onClick={() => {
-                    if (!dragged.current) onOpenBio();
-                }}
-                className={
-                    "relative block size-full overflow-hidden rounded-(--radius-card) bg-zinc-800 text-left text-white shadow-(--shadow-card-lg) ring-1 ring-zinc-950/10 dark:ring-white/10"
-                }
+            <motion.div
+                className={"relative size-full transform-3d"}
+                initial={false}
+                animate={{ rotateY: turned ? 180 : 0 }}
+                transition={{ type: "spring", stiffness: 260, damping: 26 }}
             >
-                {art !== null && (
-                    <>
+                <button type={"button"} disabled={!top} inert={turned} onClick={tap(onFlip)} className={FACE}>
+                    {art !== null && (
+                        <>
+                            <img
+                                src={art}
+                                alt={""}
+                                aria-hidden={true}
+                                draggable={false}
+                                crossOrigin={"anonymous"}
+                                className={"absolute inset-0 size-full scale-125 object-cover blur-2xl brightness-50"}
+                            />
+                            <img
+                                src={art}
+                                alt={t("accessibility.art", { name: card.name })}
+                                draggable={false}
+                                crossOrigin={"anonymous"}
+                                className={
+                                    "absolute inset-x-0 top-0 aspect-[626/457] w-full mask-b-from-70% mask-b-to-100% object-cover"
+                                }
+                            />
+                        </>
+                    )}
+                    {card.your_type && (
+                        <span
+                            className={
+                                "absolute top-3 right-3 rounded-full bg-lime-400 px-2.5 py-1 text-xs font-bold text-lime-950"
+                            }
+                        >
+                            {t("label.your-type")}
+                        </span>
+                    )}
+                    <span
+                        className={
+                            "absolute inset-x-0 bottom-0 flex flex-col gap-2.5 bg-linear-to-t from-zinc-950/95 from-40% to-transparent px-4 pt-20 pb-4"
+                        }
+                    >
+                        {card.color_identity !== "" && (
+                            <ManaCost value={manaSymbols(card.color_identity)} symbolClassName={"size-5"} />
+                        )}
+                        <span className={"text-2xl leading-tight font-extrabold tracking-tight"}>{card.name}</span>
+                        <span className={"flex flex-wrap gap-1.5"}>
+                            {card.interests.map((interest) => (
+                                <span
+                                    key={interest.label}
+                                    className={
+                                        "rounded-full bg-lime-400/15 px-2.5 py-1 text-xs font-semibold text-lime-100 ring-1 ring-lime-400/40"
+                                    }
+                                >
+                                    {interest.label}
+                                </span>
+                            ))}
+                        </span>
+                        <span className={"text-xs text-zinc-300"}>{t("label.tap-to-read")}</span>
+                    </span>
+                </button>
+
+                <button
+                    type={"button"}
+                    disabled={!top}
+                    inert={!turned}
+                    onClick={tap(onFlip)}
+                    className={`${FACE} rotate-y-180`}
+                >
+                    {art !== null && (
                         <img
                             src={art}
                             alt={""}
@@ -96,79 +175,67 @@ export function DatingCard({ card, top, onSwipe, onOpenBio }: DatingCardProps) {
                             crossOrigin={"anonymous"}
                             className={"absolute inset-0 size-full scale-125 object-cover blur-2xl brightness-50"}
                         />
-                        <img
-                            src={art}
-                            alt={t("accessibility.art", { name: card.name })}
-                            draggable={false}
-                            crossOrigin={"anonymous"}
-                            className={
-                                "absolute inset-x-0 top-0 aspect-[626/457] w-full mask-b-from-70% mask-b-to-100% object-cover"
-                            }
-                        />
-                    </>
-                )}
-                {card.your_type && (
-                    <span
-                        className={
-                            "absolute top-3 right-3 rounded-full bg-lime-400 px-2.5 py-1 text-xs font-bold text-lime-950"
-                        }
-                    >
-                        {t("label.your-type")}
-                    </span>
-                )}
-
-                <motion.span
-                    aria-hidden={true}
-                    style={{ opacity: like }}
-                    className={
-                        "absolute top-12 left-5 -rotate-12 rounded-lg border-4 border-lime-400 px-3 py-1 text-3xl font-extrabold text-lime-400"
-                    }
-                >
-                    {t("label.like-stamp")}
-                </motion.span>
-                <motion.span
-                    aria-hidden={true}
-                    style={{ opacity: pass }}
-                    className={
-                        "absolute top-12 right-5 rotate-12 rounded-lg border-4 border-zinc-200 px-3 py-1 text-3xl font-extrabold text-zinc-200"
-                    }
-                >
-                    {t("label.pass-stamp")}
-                </motion.span>
-                <motion.span
-                    aria-hidden={true}
-                    style={{ opacity: superLike }}
-                    className={
-                        "absolute bottom-44 left-1/2 -translate-x-1/2 rounded-lg border-4 border-sky-400 px-3 py-1 text-3xl font-extrabold text-sky-400"
-                    }
-                >
-                    {t("label.super-stamp")}
-                </motion.span>
-
-                <span
-                    className={
-                        "absolute inset-x-0 bottom-0 flex flex-col gap-2.5 bg-linear-to-t from-zinc-950/95 from-40% to-transparent px-4 pt-20 pb-4"
-                    }
-                >
-                    {card.color_identity !== "" && (
-                        <ManaCost value={manaSymbols(card.color_identity)} symbolClassName={"size-5"} />
                     )}
-                    <span className={"text-2xl leading-tight font-extrabold tracking-tight"}>{card.name}</span>
-                    <span className={"flex flex-wrap gap-1.5"}>
-                        {card.interests.map((interest) => (
-                            <span
-                                key={interest.label}
-                                className={
-                                    "rounded-full bg-lime-400/15 px-2.5 py-1 text-xs font-semibold text-lime-100 ring-1 ring-lime-400/40"
-                                }
-                            >
-                                {interest.label}
-                            </span>
-                        ))}
-                    </span>
-                    <span className={"text-xs text-zinc-300"}>{t("label.tap-for-bio")}</span>
-                </span>
-            </button>
+                    {card.image_normal ? (
+                        <span className={"absolute inset-3 flex items-center justify-center"}>
+                            <img
+                                src={card.image_normal}
+                                alt={`${card.name}. ${card.oracle_text}`}
+                                draggable={false}
+                                crossOrigin={"anonymous"}
+                                className={"max-h-full max-w-full rounded-[4.75%/3.5%] shadow-(--shadow-card-lg)"}
+                            />
+                        </span>
+                    ) : (
+                        <span className={"absolute inset-0 flex flex-col justify-center gap-2 p-5"}>
+                            <span className={"text-xl font-extrabold"}>{card.name}</span>
+                            <span className={"text-xs text-zinc-300 dark:text-zinc-300"}>{card.type_line}</span>
+                            <span className={"text-sm/6 whitespace-pre-line"}>{card.oracle_text}</span>
+                        </span>
+                    )}
+                </button>
+            </motion.div>
+
+            {top && (
+                <button
+                    type={"button"}
+                    onClick={tap(onOpenBio)}
+                    aria-label={t("accessibility.open-bio")}
+                    className={
+                        "absolute top-3 left-3 z-10 flex size-10 items-center justify-center rounded-full bg-zinc-950/50 text-white ring-1 ring-white/20 backdrop-blur-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-500 dark:bg-zinc-950/50 dark:text-white dark:ring-white/20"
+                    }
+                >
+                    <InformationCircleIcon className={"size-5"} />
+                </button>
+            )}
+
+            <motion.span
+                aria-hidden={true}
+                style={{ opacity: like }}
+                className={
+                    "pointer-events-none absolute top-16 left-5 z-10 -rotate-12 rounded-lg border-4 border-lime-400 bg-zinc-950/40 px-3 py-1 text-3xl font-extrabold text-lime-400 dark:bg-zinc-950/40"
+                }
+            >
+                {t("label.like-stamp")}
+            </motion.span>
+            <motion.span
+                aria-hidden={true}
+                style={{ opacity: pass }}
+                className={
+                    "pointer-events-none absolute top-16 right-5 z-10 rotate-12 rounded-lg border-4 border-zinc-200 bg-zinc-950/40 px-3 py-1 text-3xl font-extrabold text-zinc-200 dark:bg-zinc-950/40"
+                }
+            >
+                {t("label.pass-stamp")}
+            </motion.span>
+            <motion.span
+                aria-hidden={true}
+                style={{ opacity: superLike }}
+                className={
+                    "pointer-events-none absolute bottom-44 left-1/2 z-10 -translate-x-1/2 rounded-lg border-4 border-sky-400 bg-zinc-950/40 px-3 py-1 text-3xl font-extrabold text-sky-400 dark:bg-zinc-950/40"
+                }
+            >
+                {t("label.super-stamp")}
+            </motion.span>
         </motion.div>
     );
 }

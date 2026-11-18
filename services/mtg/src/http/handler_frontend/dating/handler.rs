@@ -208,13 +208,12 @@ pub async fn get_dating_stack(
     let super_likes_left = super_likes_left(&mut tx, account.uuid).await?;
     tx.commit().await?;
 
-    let swiped = exclude.len();
     let seen: HashSet<Uuid> = exclude.iter().copied().collect();
     exclude.extend(request.pending.iter().filter(|id| !seen.contains(id)));
 
     let mut hasher = DefaultHasher::new();
     account.uuid.into_inner().hash(&mut hasher);
-    swiped.hash(&mut hasher);
+    OffsetDateTime::now_utc().date().hash(&mut hasher);
 
     let stack = remote::stack(
         &profile,

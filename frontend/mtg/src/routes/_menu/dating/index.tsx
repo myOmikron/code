@@ -55,16 +55,19 @@ function RouteComponent() {
     const [exit, setExit] = useState<SwipeDirection | null>(null);
     const [last, setLast] = useState<{ card: DatingCardResponse; kind: SwipeKind } | null>(null);
     const [bio, setBio] = useState<DatingCardResponse | null>(null);
+    const [flipped, setFlipped] = useState<string | null>(null);
     const [date, setDate] = useState<{ card: DatingCardResponse; verdict: Verdict } | null>(null);
     const [busy, setBusy] = useState(false);
     const refilling = useRef(false);
+    const gone = useRef(new Set<string>());
+    const saving = useRef(new Set<string>());
     const filter = colorFilter(colors);
 
     const load = useCallback(
         async (pending: DatingCardResponse[]) => {
             const response = await Api.dating.stack({
                 colors: filter,
-                pending: pending.map((card) => card.commander),
+                pending: [...pending.map((card) => card.commander), ...saving.current],
             });
             setProfileNeeded(response.profile_needed);
             setSupers(response.super_likes_left);
@@ -93,11 +96,12 @@ function RouteComponent() {
         refilling.current = true;
         load(stack)
             .then((cards) => {
-                setExhausted(cards.length === 0);
-                setStack((current) => [
-                    ...current,
-                    ...cards.filter((card) => !current.some((held) => held.commander === card.commander)),
-                ]);
+                const fresh = cards.filter((card) => !gone.current.has(card.commander));
+                setExhausted(fresh.length === 0);
+                setStack((current) => {
+                    const added = fresh.filter((card) => !current.some((held) => held.commander === card.commander));
+                    return added.length === 0 ? current : [...current, ...added];
+                });
             })
             .finally(() => {
                 refilling.current = false;
@@ -115,10 +119,24 @@ function RouteComponent() {
             direction === "left" ? SwipeKind.Pass : direction === "right" ? SwipeKind.Like : SwipeKind.SuperLike;
 
         setExit(direction);
-        setStack((current) => current.slice(1));
         setLast({ card: top, kind });
+        gone.current.add(top.commander);
+        saving.current.add(top.commander);
+        setStack((current) => current.slice(1));
 
-        const response = await Api.dating.swipe({ commander: top.commander, kind });
+        let response;
+        try {
+            response = await Api.dating.swipe({ commander: top.commander, kind });
+        } catch {
+            notify.error(t("toast.swipe-failed"));
+            gone.current.delete(top.commander);
+            setLast((held) => (held?.card.commander === top.commander ? null : held));
+            setExit(null);
+            setStack((current) => [top, ...current.filter((card) => card.commander !== top.commander)]);
+            return;
+        } finally {
+            saving.current.delete(top.commander);
+        }
         setSupers(response.super_likes_left);
         if (kind === SwipeKind.Pass) return;
         setDate({
@@ -135,18 +153,24 @@ function RouteComponent() {
     };
 
     const rewind = async () => {
-        if (last === null || busy) return;
+        if (last === null || busy || saving.current.size > 0) return;
         setBusy(true);
         try {
             await Api.dating.rewind();
             setExit(null);
             setDate(null);
+            gone.current.delete(last.card.commander);
             setStack((current) => [last.card, ...current.filter((card) => card.commander !== last.card.commander)]);
             if (last.kind === SwipeKind.SuperLike) setSupers((count) => count + 1);
             setLast(null);
         } finally {
             setBusy(false);
         }
+    };
+
+    const flip = () => {
+        const card = stack[0];
+        if (card !== undefined) setFlipped((turned) => (turned === card.commander ? null : card.commander));
     };
 
     const toggleColor = (color: Color) =>
@@ -162,6 +186,7 @@ function RouteComponent() {
             arrowleft: () => swipe("left"),
             arrowright: () => swipe("right"),
             arrowup: () => swipe("up"),
+            arrowdown: () => flip(),
             backspace: () => rewind(),
         },
         date === null && bio === null && !profileNeeded,
@@ -209,6 +234,7 @@ function RouteComponent() {
                                 <PrimaryButton
                                     onClick={async () => {
                                         await Api.dating.resetPasses();
+                                        gone.current.clear();
                                         notify.success(t("toast.passes-reset"));
                                         setColors(new Set());
                                         setStack(await load([]));
@@ -229,7 +255,9 @@ function RouteComponent() {
                                         key={card.commander}
                                         card={card}
                                         top={card.commander === top.commander}
+                                        flipped={flipped === card.commander}
                                         onSwipe={swipe}
+                                        onFlip={flip}
                                         onOpenBio={() => setBio(card)}
                                     />
                                 ))}
