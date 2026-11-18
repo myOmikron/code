@@ -191,6 +191,8 @@ function Probe() {
                           : { kind: "waiting" }
                 }
                 onSwipe={() => {}}
+                onSurprise={() => {}}
+                surprising={false}
                 onBuild={() => {}}
             />
         );

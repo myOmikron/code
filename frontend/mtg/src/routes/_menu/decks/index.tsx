@@ -4,6 +4,7 @@ import {
     ArrowTopRightOnSquareIcon,
     ChevronRightIcon,
     CubeIcon,
+    FireIcon,
     FolderIcon,
     FolderMinusIcon,
     MagnifyingGlassIcon,
@@ -341,10 +342,14 @@ function RouteComponent() {
                             </Text>
                         )}
                     </div>
-                    <div className={"flex items-center gap-2"}>
+                    <div className={"flex flex-wrap items-center gap-2"}>
                         <Button outline={true} onClick={() => setManagingFolders(true)}>
                             <FolderIcon />
                             {t("button.manage-folders")}
+                        </Button>
+                        <Button outline={true} href={"/dating"}>
+                            <FireIcon />
+                            {t("button.dating")}
                         </Button>
                         <PrimaryButton onClick={() => setDialog({ deck: null })}>
                             {t("button.create-deck")}

@@ -8,6 +8,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use uuid::Uuid;
 
+use crate::models::card_attributes::rarity::CardRarity;
 use crate::models::dating::DateStatus;
 use crate::models::dating::date::DateProgress;
 use crate::models::dating::date::TurnBy;
@@ -65,8 +66,25 @@ pub struct RejectReason {
 pub struct DatingStackRequest {
     /// Only Commanders within these colors, as letters of WUBRG
     pub colors: Option<MaxStr<8>>,
+    /// Only Commanders printed in one of these sets, by code; empty means every set
+    #[serde(default)]
+    pub sets: Vec<MaxStr<16>>,
+    /// Only Commanders printed at one of these rarities; empty means every rarity
+    #[serde(default)]
+    pub rarities: Vec<CardRarity>,
     /// Commanders the client still holds, unswiped
     pub pending: Vec<Uuid>,
+}
+
+/// A set with legendary cards, to filter the stack by
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DatingSetResponse {
+    /// Set code, upper case
+    pub code: String,
+    /// Full set name
+    pub name: String,
+    /// How many legendary cards it holds
+    pub legends: usize,
 }
 
 /// One EDHREC tag of a Commander
@@ -140,6 +158,8 @@ pub struct SwipeResponse {
     pub shared: Option<String>,
     /// Super likes left today
     pub super_likes_left: i64,
+    /// The Commander said yes only because the last likes were all rejected
+    pub pity: bool,
 }
 
 /// What a rewind undid

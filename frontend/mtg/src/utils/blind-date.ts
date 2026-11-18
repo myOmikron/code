@@ -1,5 +1,5 @@
 import { Api } from "src/api/api";
-import type { BlindDate } from "src/api/graph-generated";
+import type { BlindCard, BlindDate } from "src/api/graph-generated";
 import { GraphApi } from "src/api/graph";
 import { DeckZone } from "src/api/generated";
 import { fromResponse, toRequest } from "src/utils/advisor-settings";
@@ -51,16 +51,15 @@ export async function rollBlindDate(
 }
 
 /**
- * Puts a Blind Date into the deck: its sure cards, its theme levels and the bracket.
+ * Files cards of a Blind Date's fill into the deck, one copy each.
  *
  * @param deck the deck
- * @param date the rolled date
- * @param bracket the player's bracket, if known
+ * @param fill the cards
  * @returns how many cards went in
  */
-export async function applyBlindDate(deck: string, date: BlindDate, bracket: number | null): Promise<number> {
-    const printings = await resolveCardNames(date.add_now.map((card) => card.name));
-    const cards = date.add_now
+async function addFill(deck: string, fill: BlindCard[]): Promise<number> {
+    const printings = await resolveCardNames(fill.map((card) => card.name));
+    const cards = fill
         .map((card) => printings.get(card.name))
         .filter((printing) => printing !== undefined)
         .map((printing) => ({
@@ -70,11 +69,35 @@ export async function applyBlindDate(deck: string, date: BlindDate, bracket: num
             foil: defaultFoil(printing.finishes),
         }));
     if (cards.length > 0) await Api.decks.cards.import(deck, { cards, mode: "Fill" });
+    return cards.length;
+}
+
+/**
+ * Fills the slots a Blind Date left open for swiping with the rest of its fill.
+ *
+ * @param deck the deck
+ * @param date the rolled date
+ * @returns how many cards went in
+ */
+export function surpriseMe(deck: string, date: BlindDate): Promise<number> {
+    return addFill(deck, date.add_later ?? []);
+}
+
+/**
+ * Puts a Blind Date into the deck: its sure cards, its theme levels and the bracket.
+ *
+ * @param deck the deck
+ * @param date the rolled date
+ * @param bracket the player's bracket, if known
+ * @returns how many cards went in
+ */
+export async function applyBlindDate(deck: string, date: BlindDate, bracket: number | null): Promise<number> {
+    const added = await addFill(deck, date.add_now);
 
     const settings = fromResponse(await Api.decks.advisorSettings.get(deck));
     const levels = { ...settings.themes.levels };
     for (const theme of date.themes) levels[theme.theme] = theme.level;
     await Api.decks.advisorSettings.save(deck, toRequest({ ...settings, themes: { levels }, setup_done: true }));
     if (bracket !== null) await Api.decks.setBracket(deck, Math.min(5, Math.max(1, Math.round(bracket))));
-    return cards.length;
+    return added;
 }

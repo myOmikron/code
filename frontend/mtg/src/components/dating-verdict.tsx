@@ -5,13 +5,13 @@ import { useTranslation } from "react-i18next";
 import type { RejectReason } from "src/api/generated";
 import { ManaCost } from "src/components/mana-cost";
 import { PrimaryButton } from "src/components/primary-button";
-import { manaSymbols, matchKey, rejectionKey } from "src/utils/dating";
+import { manaSymbols, matchKey, pityKey, rejectionKey } from "src/utils/dating";
 import { pickLine } from "src/utils/dating-lines";
 import type { CommanderLines } from "src/utils/dating-lines";
 import type { StartMode } from "src/utils/use-start-deck";
 
 /** How a match came about */
-export type MatchKind = "like" | "super" | "comeback";
+export type MatchKind = "like" | "super" | "comeback" | "pity";
 
 /** What the overlay shows */
 export type Verdict =
@@ -59,11 +59,15 @@ export function DatingVerdict(props: DatingVerdictProps) {
                 ? t("heading.super-match")
                 : verdict.how === "comeback"
                   ? t("heading.second-chance")
-                  : t("heading.match");
+                  : verdict.how === "pity"
+                    ? t("heading.pity-match")
+                    : t("heading.match");
         line =
             verdict.how === "comeback"
                 ? (lines?.comeback ?? t("description.second-chance", { name }))
-                : (pickLine(lines?.match, commander) ?? t(matchKey(commander), { name }));
+                : verdict.how === "pity"
+                  ? t(pityKey(commander), { name })
+                  : (pickLine(lines?.match, commander) ?? t(matchKey(commander), { name }));
     } else {
         title = t("heading.passed", { name });
         line =

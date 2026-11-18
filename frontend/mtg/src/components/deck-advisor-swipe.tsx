@@ -17,6 +17,9 @@ import type { Printing } from "src/utils/scryfall";
 /** An add move, the only kind swiping shows */
 type AddMove = Extract<Move, { kind: "add" }>;
 
+/** The card on screen, with the printing it was shown with */
+type Shown = { move: AddMove; printing: Printing };
+
 /** Where a card flies: right into the deck, left away */
 const LEAVE: Variants = {
     leave: (direction: "left" | "right" | null) => ({
@@ -75,14 +78,33 @@ export function DeckAdvisorSwipe(props: DeckAdvisorSwipeProps) {
     const [t] = useTranslation("advisor");
     const [exit, setExit] = useState<"left" | "right" | null>(null);
     const [busy, setBusy] = useState(false);
+    // Pinned until swiped: a late graph answer re-ranks the moves and must not swap the card on screen.
+    const [shown, setShown] = useState<Shown | null>(null);
+    const [swiped, setSwiped] = useState<Array<Shown>>([]);
 
     const ready = moves.filter((move): move is AddMove => move.kind === "add" && cards.has(move.name));
-    const top = ready[0];
+    const next = ready.find((move) => !swiped.some((held) => held.move.oracle_id === move.oracle_id));
+    if (shown === null && next !== undefined) setShown({ move: next, printing: cards.get(next.name)! });
+    const current = shown ?? (next === undefined ? undefined : { move: next, printing: cards.get(next.name)! });
+    // The freshest facts and badges for the pinned card, while the graph still suggests it
+    const top = current && (ready.find((move) => move.oracle_id === current.move.oracle_id) ?? current.move);
     const full = count >= target;
 
+    const undo = async () => {
+        const last = swiped.at(-1);
+        if (last !== undefined) {
+            setExit(null);
+            setSwiped((held) => held.slice(0, -1));
+            setShown(last);
+        }
+        await onUndo();
+    };
+
     const decide = async (direction: "left" | "right") => {
-        if (top === undefined || busy) return;
+        if (current === undefined || top === undefined || busy) return;
         setExit(direction);
+        setSwiped((held) => [...held, current]);
+        setShown(null);
         setBusy(true);
         try {
             if (direction === "right") await onAdd(top);
@@ -128,13 +150,13 @@ export function DeckAdvisorSwipe(props: DeckAdvisorSwipeProps) {
                             <p className={"text-2xl font-extrabold"}>{t("heading.swipe-full")}</p>
                             <PrimaryButton onClick={onClose}>{t("button.swipe-open-advisor")}</PrimaryButton>
                         </div>
-                    ) : top === undefined ? (
+                    ) : current === undefined || top === undefined ? (
                         <Text>{loading ? t("description.swipe-loading") : t("description.swipe-empty")}</Text>
                     ) : (
                         <AnimatePresence custom={exit} initial={false}>
                             <SwipeCard
                                 key={top.oracle_id}
-                                printing={cards.get(top.name)!}
+                                printing={current.printing}
                                 name={top.name}
                                 addLabel={t("label.swipe-add-stamp")}
                                 neverLabel={t("label.swipe-never-stamp")}
@@ -149,9 +171,7 @@ export function DeckAdvisorSwipe(props: DeckAdvisorSwipeProps) {
                         <div className={"flex items-baseline justify-between gap-3"}>
                             <p className={"text-sm/snug text-zinc-700 dark:text-zinc-300"}>{top.fact}</p>
                             <p className={"shrink-0 text-sm font-semibold text-zinc-500 dark:text-zinc-400"}>
-                                {cards.get(top.name)?.priceEur != null
-                                    ? formatCurrency(cards.get(top.name)!.priceEur!)
-                                    : ""}
+                                {current?.printing.priceEur != null ? formatCurrency(current.printing.priceEur) : ""}
                             </p>
                         </div>
                         <div className={"flex flex-wrap items-center gap-1.5"}>
@@ -174,7 +194,7 @@ export function DeckAdvisorSwipe(props: DeckAdvisorSwipeProps) {
                 <div className={"flex items-center justify-center gap-5 py-5"}>
                     <button
                         type={"button"}
-                        onClick={onUndo}
+                        onClick={undo}
                         disabled={!canUndo || busy}
                         aria-label={t("accessibility.swipe-undo")}
                         className={clsx(ROUND, QUIET, "size-12 text-amber-500")}

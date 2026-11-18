@@ -98,6 +98,7 @@ struct StackRequest<'a> {
     profile: &'a GraphProfile,
     exclude: &'a [Uuid],
     colors: Option<Vec<String>>,
+    only: Option<&'a [Uuid]>,
     count: usize,
     seed: u64,
 }
@@ -140,6 +141,7 @@ pub async fn stack(
     profile: &GraphProfile,
     exclude: &[Uuid],
     colors: Option<&str>,
+    only: Option<&[Uuid]>,
     count: usize,
     seed: u64,
 ) -> anyhow::Result<Stack> {
@@ -147,6 +149,7 @@ pub async fn stack(
         profile,
         exclude,
         colors: colors.map(letters),
+        only,
         count,
         seed,
     };

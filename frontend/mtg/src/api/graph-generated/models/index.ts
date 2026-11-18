@@ -57,7 +57,7 @@ export interface AxesPosition {
     note?: string;
 }
 /**
- * A card a Blind Date puts in the deck right away.
+ * A card of a Blind Date's fill.
  * @export
  * @interface BlindCard
  */
@@ -85,6 +85,10 @@ export interface BlindDate {
      * 
      */
     add_now: Array<BlindCard>;
+    /**
+     * 
+     */
+    add_later?: Array<BlindCard>;
     /**
      * 
      */
@@ -755,6 +759,10 @@ export interface DatingStackRequest {
      * 
      */
     colors?: Array<DatingStackRequestColorsEnum> | null;
+    /**
+     * 
+     */
+    only?: Array<string> | null;
     /**
      * 
      */

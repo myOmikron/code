@@ -2534,6 +2534,25 @@ export interface DatingProfileResponse {
     themes: Array<ThemeStrength>;
 }
 /**
+ * A set with legendary cards, to filter the stack by
+ * @export
+ * @interface DatingSetResponse
+ */
+export interface DatingSetResponse {
+    /**
+     * Set code, upper case
+     */
+    code: string;
+    /**
+     * How many legendary cards it holds
+     */
+    legends: number;
+    /**
+     * Full set name
+     */
+    name: string;
+}
+/**
  * Asks for the next Commanders
  * @export
  * @interface DatingStackRequest
@@ -2547,6 +2566,14 @@ export interface DatingStackRequest {
      * Commanders the client still holds, unswiped
      */
     pending: Array<string>;
+    /**
+     * Only Commanders printed at one of these rarities; empty means every rarity
+     */
+    rarities?: Array<CardRarity>;
+    /**
+     * Only Commanders printed in one of these sets, by code; empty means every set
+     */
+    sets?: Array<string>;
 }
 /**
  * The next Commanders to swipe
@@ -9384,6 +9411,10 @@ export interface SwipeRequest {
  * @interface SwipeResponse
  */
 export interface SwipeResponse {
+    /**
+     * The Commander said yes only because the last likes were all rejected
+     */
+    pity: boolean;
     /**
      * Why a rejection happened
      */

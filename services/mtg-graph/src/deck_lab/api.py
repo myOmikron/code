@@ -602,6 +602,7 @@ class DatingStackRequest(BaseModel):
     profile: DatingProfile
     exclude: list[OracleId] = Field(default_factory=list, max_length=dating.MAX_EXCLUDED)
     colors: list[dating.Color] | None = Field(None, max_length=5)
+    only: list[OracleId] | None = Field(None, max_length=dating.MAX_EXCLUDED)
     count: int = Field(10, ge=1, le=dating.MAX_STACK)
     seed: int = 0
 
@@ -641,6 +642,7 @@ def post_dating_stack(request: DatingStackRequest) -> DatingStackResponse:
     pool = _dating_pool()
     exclude = set(request.exclude)
     colors = set(request.colors) if request.colors is not None else None
+    only = set(request.only) if request.only is not None else None
     commanders = dating.stack(
         pool.values(),
         request.profile,
@@ -648,12 +650,12 @@ def post_dating_stack(request: DatingStackRequest) -> DatingStackResponse:
         colors=colors,
         count=request.count,
         seed=request.seed,
+        only=only,
     )
     remaining = sum(
         1
         for row in pool.values()
-        if row["oracle_id"] not in exclude
-        and (colors is None or set(row.get("color_identity") or []) <= colors)
+        if row["oracle_id"] not in exclude and dating.in_filter(row, colors, only)
     )
     return DatingStackResponse(commanders=commanders, remaining=remaining)
 
@@ -736,9 +738,13 @@ def post_dating_blind(request: DatingBlindRequest) -> dating.BlindDate:
         if (fit["fit"] or 0.0) >= FIT_THRESHOLD
     }
     inclusion = inclusion_among(request.commander, ids)
-    add_now, open_slots = dating.split_fill(chosen, lands, fitting, inclusion)
+    add_now, add_later, open_slots = dating.split_fill(chosen, lands, fitting, inclusion)
     return dating.BlindDate(
-        themes=themes, add_now=add_now, open_slots=open_slots, solved=result.solved
+        themes=themes,
+        add_now=add_now,
+        add_later=add_later,
+        open_slots=open_slots,
+        solved=result.solved,
     )
 
 

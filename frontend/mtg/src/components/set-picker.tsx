@@ -32,12 +32,14 @@ export type SetPickerProps = {
     sets: IndexedSet[];
     /** Set codes selected on open; empty means nothing chosen yet. */
     initialSelection: string[];
+    /** The confirm button's label; starts a scan by default */
+    confirmLabel?: string;
     onCancel: () => void;
     onConfirm: (codes: string[]) => void;
 };
 
 /**
- * Picks which sets the scanner searches.
+ * Picks sets, for the scanner to search or the dating stack to filter by.
  *
  * Releases are offered as one entry ("Secrets of Strixhaven" covers its commander decks, tokens,
  * art series and promos), because that is how a box of cards actually arrives — but every set code
@@ -46,7 +48,7 @@ export type SetPickerProps = {
  *
  * @returns the set dialog
  */
-export function SetPicker({ open, sets, initialSelection, onCancel, onConfirm }: SetPickerProps) {
+export function SetPicker({ open, sets, initialSelection, confirmLabel, onCancel, onConfirm }: SetPickerProps) {
     const [t] = useTranslation("set-picker");
     const [tg] = useTranslation();
     const families = useMemo(() => groupSetsIntoFamilies(sets), [sets]);
@@ -247,7 +249,7 @@ export function SetPicker({ open, sets, initialSelection, onCancel, onConfirm }:
                     {tg("button.cancel")}
                 </Button>
                 <PrimaryButton disabled={selected.size === 0} onClick={() => onConfirm([...selected])}>
-                    {t("button.start-scan")}
+                    {confirmLabel ?? t("button.start-scan")}
                 </PrimaryButton>
             </DialogActions>
         </Dialog>

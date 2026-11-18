@@ -7,6 +7,7 @@ The Commander\'s answer
 
 Name | Type
 ------------ | -------------
+`pity` | boolean
 `reason` | [RejectReason](RejectReason.md)
 `shared` | string
 `status` | [DateStatus](DateStatus.md)

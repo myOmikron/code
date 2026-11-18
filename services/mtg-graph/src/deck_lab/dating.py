@@ -95,7 +95,7 @@ class RolledTheme(BaseModel):
 
 
 class BlindCard(BaseModel):
-    """A card a Blind Date puts in the deck right away."""
+    """A card of a Blind Date's fill."""
 
     oracle_id: str
     name: str
@@ -106,6 +106,7 @@ class BlindDate(BaseModel):
 
     themes: list[RolledTheme]
     add_now: list[BlindCard]
+    add_later: list[BlindCard] = Field(default_factory=list)
     open_slots: int
     solved: bool
 
@@ -439,6 +440,13 @@ def _popularity(row: dict) -> float:
     return 1 / math.sqrt((row.get("edhrec_rank") or 20_000) + 25)
 
 
+def in_filter(row: dict, colors: set[str] | None, only: set[str] | None) -> bool:
+    """Whether a pool row passes the color filter and the `only` list."""
+    if only is not None and row["oracle_id"] not in only:
+        return False
+    return colors is None or set(row.get("color_identity") or []) <= colors
+
+
 def stack(
     pool: Iterable[dict],
     profile: DatingProfile,
@@ -447,6 +455,7 @@ def stack(
     colors: set[str] | None,
     count: int,
     seed: int,
+    only: set[str] | None = None,
 ) -> list[DatingCommander]:
     """The pool in one fixed popularity-weighted order per seed, without the excluded cards.
 
@@ -454,7 +463,7 @@ def stack(
     card. Excluding cards only skips places, so a reload resumes where the player left off.
     """
     ordered = sorted(
-        (row for row in pool if colors is None or set(row.get("color_identity") or []) <= colors),
+        (row for row in pool if in_filter(row, colors, only)),
         key=lambda row: _order_key(row, seed),
         reverse=True,
     )
@@ -564,13 +573,17 @@ def split_fill(
     *,
     slots: int = 99,
     open_slots: int = BLIND_OPEN_SLOTS,
-) -> tuple[list[BlindCard], int]:
-    """Lands and the surest picks go in now, until `open_slots` are left for swiping."""
+) -> tuple[list[BlindCard], list[BlindCard], int]:
+    """Lands and the surest picks go in now, until `open_slots` are left for swiping.
+
+    The rest of the fill comes back as well, for a player who skips the swiping.
+    """
     keep = max(0, slots - open_slots)
     land_cards = [(oid, name) for oid, name in chosen if oid in lands]
     others = sorted(
         ((oid, name) for oid, name in chosen if oid not in lands),
         key=lambda card: (card[0] not in fitting, -inclusion.get(card[0], 0.0)),
     )
-    now = (land_cards + others)[:keep]
-    return [BlindCard(oracle_id=oid, name=name) for oid, name in now], slots - len(now)
+    ordered = [BlindCard(oracle_id=oid, name=name) for oid, name in land_cards + others]
+    now = ordered[:keep]
+    return now, ordered[keep:], slots - len(now)

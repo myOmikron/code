@@ -1,3 +1,4 @@
+import { SparklesIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Button } from "components";
 import { motion } from "motion/react";
@@ -22,6 +23,10 @@ export type DatingBlindViewProps = {
     state: BlindState;
     /** Go on to card swiping */
     onSwipe: () => void;
+    /** Fill the open slots without swiping */
+    onSurprise: () => void;
+    /** The open slots are being filled */
+    surprising: boolean;
     /** Open the deck as it is */
     onBuild: () => void;
 };
@@ -34,7 +39,7 @@ const FAN = [-18, -6, 6, 18];
  *
  * @returns the full-screen view
  */
-export function DatingBlindView({ name, art, state, onSwipe, onBuild }: DatingBlindViewProps) {
+export function DatingBlindView({ name, art, state, onSwipe, onSurprise, surprising, onBuild }: DatingBlindViewProps) {
     const [t] = useTranslation("dating");
 
     return (
@@ -102,9 +107,20 @@ export function DatingBlindView({ name, art, state, onSwipe, onBuild }: DatingBl
                         ))}
                     </ul>
                     <p className={"text-zinc-300"}>{t("description.blind-added", { count: state.added })}</p>
-                    <PrimaryButton className={"w-full"} onClick={onSwipe}>
-                        {t("button.swipe-rest")}
-                    </PrimaryButton>
+                    <div className={"flex w-full flex-col gap-2"}>
+                        <PrimaryButton className={"w-full"} disabled={surprising} onClick={onSwipe}>
+                            {t("button.swipe-rest")}
+                        </PrimaryButton>
+                        <Button
+                            plain={true}
+                            className={"w-full text-white!"}
+                            disabled={surprising}
+                            onClick={onSurprise}
+                        >
+                            <SparklesIcon className={"fill-lime-400!"} />
+                            {t("button.surprise-me")}
+                        </Button>
+                    </div>
                 </motion.div>
             )}
 

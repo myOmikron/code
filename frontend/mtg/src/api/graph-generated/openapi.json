@@ -739,7 +739,7 @@
                     "name"
                 ],
                 "title": "BlindCard",
-                "description": "A card a Blind Date puts in the deck right away."
+                "description": "A card of a Blind Date's fill."
             },
             "BlindDate": {
                 "properties": {
@@ -756,6 +756,13 @@
                         },
                         "type": "array",
                         "title": "Add Now"
+                    },
+                    "add_later": {
+                        "items": {
+                            "$ref": "#/components/schemas/BlindCard"
+                        },
+                        "type": "array",
+                        "title": "Add Later"
                     },
                     "open_slots": {
                         "type": "integer",
@@ -1756,6 +1763,22 @@
                             }
                         ],
                         "title": "Colors"
+                    },
+                    "only": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "maxLength": 64
+                                },
+                                "type": "array",
+                                "maxItems": 20000
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Only"
                     },
                     "count": {
                         "type": "integer",
