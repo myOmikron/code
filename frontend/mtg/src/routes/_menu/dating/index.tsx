@@ -1,4 +1,9 @@
-import { ArrowUturnLeftIcon, ChatBubbleLeftRightIcon, UserCircleIcon } from "@heroicons/react/20/solid";
+import {
+    AdjustmentsHorizontalIcon,
+    ArrowUturnLeftIcon,
+    ChatBubbleLeftRightIcon,
+    UserCircleIcon,
+} from "@heroicons/react/20/solid";
 import { HeartIcon, StarIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import { createFileRoute } from "@tanstack/react-router";
 import clsx from "clsx";
@@ -8,10 +13,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { DateStatus, SwipeKind } from "src/api/generated";
-import type { DatingCardResponse } from "src/api/generated";
+import type { CardRarity, DatingCardResponse } from "src/api/generated";
 import { DatingBioDialog } from "src/components/dating-bio-dialog";
 import { DatingCard } from "src/components/dating-card";
 import { DatingColorFilter } from "src/components/dating-color-filter";
+import { DatingFilterDialog } from "src/components/dating-filter-dialog";
 import { DatingVerdict } from "src/components/dating-verdict";
 import type { Verdict } from "src/components/dating-verdict";
 import { PrimaryButton } from "src/components/primary-button";
@@ -52,6 +58,9 @@ function RouteComponent() {
     const [supers, setSupers] = useState(1);
     const [profileNeeded, setProfileNeeded] = useState(false);
     const [colors, setColors] = useState<Set<Color>>(new Set());
+    const [rarities, setRarities] = useState<Set<CardRarity>>(new Set());
+    const [sets, setSets] = useState<string[]>([]);
+    const [filtering, setFiltering] = useState(false);
     const [exit, setExit] = useState<SwipeDirection | null>(null);
     const [last, setLast] = useState<{ card: DatingCardResponse; kind: SwipeKind } | null>(null);
     const [bio, setBio] = useState<DatingCardResponse | null>(null);
@@ -67,13 +76,15 @@ function RouteComponent() {
         async (pending: DatingCardResponse[]) => {
             const response = await Api.dating.stack({
                 colors: filter,
+                sets,
+                rarities: [...rarities],
                 pending: [...pending.map((card) => card.commander), ...saving.current],
             });
             setProfileNeeded(response.profile_needed);
             setSupers(response.super_likes_left);
             return response.commanders;
         },
-        [filter],
+        [filter, sets, rarities],
     );
 
     useEffect(() => {
@@ -145,7 +156,7 @@ function RouteComponent() {
                 response.status === DateStatus.Matched
                     ? {
                           kind: "match",
-                          how: kind === SwipeKind.SuperLike ? "super" : "like",
+                          how: response.pity ? "pity" : kind === SwipeKind.SuperLike ? "super" : "like",
                           shared: response.shared ?? null,
                       }
                     : { kind: "reject", reason: response.reason ?? null },
@@ -189,10 +200,11 @@ function RouteComponent() {
             arrowdown: () => flip(),
             backspace: () => rewind(),
         },
-        date === null && bio === null && !profileNeeded,
+        date === null && bio === null && !profileNeeded && !filtering,
     );
 
     const top = stack[0];
+    const filtered = rarities.size > 0 || sets.length > 0;
 
     return (
         <RequireAccount>
@@ -204,6 +216,22 @@ function RouteComponent() {
                 <header className={"flex items-center justify-between gap-2"}>
                     <Heading>{t("heading.title")}</Heading>
                     <div className={"flex items-center"}>
+                        {!profileNeeded && (
+                            <Button
+                                plain={true}
+                                className={"relative"}
+                                aria-label={t("button.filter")}
+                                onClick={() => setFiltering(true)}
+                            >
+                                <AdjustmentsHorizontalIcon />
+                                {filtered && (
+                                    <span
+                                        aria-hidden={true}
+                                        className={"absolute top-1.5 right-1.5 size-2 rounded-full bg-lime-500"}
+                                    />
+                                )}
+                            </Button>
+                        )}
                         <Button plain={true} href={"/dating/profile"} aria-label={t("button.profile")}>
                             <UserCircleIcon />
                         </Button>
@@ -224,6 +252,21 @@ function RouteComponent() {
                             description={t("description.no-profile")}
                             action={
                                 <PrimaryButton href={"/dating/profile"}>{t("button.answer-questions")}</PrimaryButton>
+                            }
+                        />
+                    ) : top === undefined && filtered ? (
+                        <EmptyState
+                            title={t("heading.title")}
+                            description={t("description.empty-filtered")}
+                            action={
+                                <PrimaryButton
+                                    onClick={() => {
+                                        setRarities(new Set());
+                                        setSets([]);
+                                    }}
+                                >
+                                    {t("button.clear-filters")}
+                                </PrimaryButton>
                             }
                         />
                     ) : top === undefined ? (
@@ -314,6 +357,14 @@ function RouteComponent() {
                 )}
             </div>
 
+            <DatingFilterDialog
+                open={filtering}
+                onClose={() => setFiltering(false)}
+                rarities={rarities}
+                onRarities={setRarities}
+                sets={sets}
+                onSets={setSets}
+            />
             <DatingBioDialog
                 card={bio}
                 tagline={bio === null ? null : (lines?.[bio.name]?.tagline ?? null)}

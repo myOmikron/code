@@ -9,6 +9,7 @@ Name | Type
 ------------ | -------------
 `themes` | [Array&lt;RolledTheme&gt;](RolledTheme.md)
 `add_now` | [Array&lt;BlindCard&gt;](BlindCard.md)
+`add_later` | [Array&lt;BlindCard&gt;](BlindCard.md)
 `open_slots` | number
 `solved` | boolean
 

@@ -4293,6 +4293,58 @@
                 }
             }
         },
+        "/api/frontend/v1/dating/sets": {
+            "get": {
+                "summary": "The sets the stack can be filtered by",
+                "description": "The sets the stack can be filtered by",
+                "operationId": "get_dating_sets",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/DatingSetResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/dating/swipes": {
             "post": {
                 "summary": "Swipe on a Commander; a like is answered by the Commander",
@@ -20335,6 +20387,31 @@
                     "themes"
                 ]
             },
+            "DatingSetResponse": {
+                "description": "A set with legendary cards, to filter the stack by",
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "description": "Set code, upper case",
+                        "type": "string"
+                    },
+                    "legends": {
+                        "description": "How many legendary cards it holds",
+                        "type": "integer",
+                        "minimum": 0.0,
+                        "format": "uint"
+                    },
+                    "name": {
+                        "description": "Full set name",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "code",
+                    "legends",
+                    "name"
+                ]
+            },
             "DatingStackRequest": {
                 "description": "Asks for the next Commanders",
                 "type": "object",
@@ -20354,6 +20431,22 @@
                         "items": {
                             "type": "string",
                             "format": "uuid"
+                        }
+                    },
+                    "rarities": {
+                        "description": "Only Commanders printed at one of these rarities; empty means every rarity",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CardRarity"
+                        }
+                    },
+                    "sets": {
+                        "description": "Only Commanders printed in one of these sets, by code; empty means every set",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MaxStr_16"
                         }
                     }
                 },
@@ -29994,6 +30087,10 @@
                 "description": "The Commander's answer",
                 "type": "object",
                 "properties": {
+                    "pity": {
+                        "description": "The Commander said yes only because the last likes were all rejected",
+                        "type": "boolean"
+                    },
                     "reason": {
                         "nullable": true,
                         "description": "Why a rejection happened",
@@ -30023,6 +30120,7 @@
                     }
                 },
                 "required": [
+                    "pity",
                     "status",
                     "super_likes_left"
                 ]

@@ -95,6 +95,7 @@ All URIs are relative to *http://localhost*
 | [**getDate**](DefaultApi.md#getdate) | **GET** /api/frontend/v1/dating/date/{deck} | The date planning a deck |
 | [**getDates**](DefaultApi.md#getdates) | **GET** /api/frontend/v1/dating/dates | Matches and the Commanders that said no |
 | [**getDatingProfile**](DefaultApi.md#getdatingprofile) | **GET** /api/frontend/v1/dating/profile | What Commanders see of the account |
+| [**getDatingSets**](DefaultApi.md#getdatingsets) | **GET** /api/frontend/v1/dating/sets | The sets the stack can be filtered by |
 | [**getDatingStack**](DefaultApi.md#getdatingstack) | **POST** /api/frontend/v1/dating/stack | The next Commanders to swipe |
 | [**getDeck**](DefaultApi.md#getdeck) | **GET** /api/frontend/v1/decks/{deck} | Fetch a single deck, with the caller\&#39;s role on it |
 | [**getDeckAdvisorSettings**](DefaultApi.md#getdeckadvisorsettings) | **GET** /api/frontend/v1/decks/{deck}/advisor-settings | Read this deck\&#39;s advisor settings |
@@ -6652,6 +6653,68 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**DatingProfileResponse**](DatingProfileResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getDatingSets
+
+> Array&lt;DatingSetResponse&gt; getDatingSets()
+
+The sets the stack can be filtered by
+
+The sets the stack can be filtered by
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetDatingSetsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getDatingSets();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**Array&lt;DatingSetResponse&gt;**](DatingSetResponse.md)
 
 ### Authorization
 

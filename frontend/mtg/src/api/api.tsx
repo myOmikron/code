@@ -748,6 +748,7 @@ export const Api = {
         comeBack: async (commander: UUID) => handleError(defaultApi.comeBackDate({ commander })),
         unmatch: async (commander: UUID) => handleError(defaultApi.unmatchDate({ commander })),
         resetPasses: async () => handleError(defaultApi.resetDatingPasses()),
+        sets: async () => handleError(defaultApi.getDatingSets()),
         profile: async () => handleError(defaultApi.getDatingProfile()),
         answer: async (req: DatingAnswers) => handleError(defaultApi.updateDatingProfile({ DatingAnswers: req })),
         date: {

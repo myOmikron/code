@@ -179,6 +179,14 @@ def test_stack_excludes_swiped_and_off_color_commanders():
     assert sorted(card.oracle_id for card in result) == ["c", "d"]
 
 
+def test_stack_keeps_only_the_listed_commanders():
+    pool = [row("a"), row("b"), row("c")]
+
+    result = stack(pool, profile(), exclude=set(), colors=None, count=10, seed=1, only={"a", "c"})
+
+    assert sorted(card.oracle_id for card in result) == ["a", "c"]
+
+
 def test_every_fifth_card_is_your_type():
     pool = [row(f"c{index}", edhrec_rank=index + 1) for index in range(20)]
 
@@ -228,6 +236,15 @@ def test_stack_endpoint_returns_commanders_and_what_remains(pool):
 
     assert response.status_code == 200
     data = response.json()
+    assert [card["oracle_id"] for card in data["commanders"]] == ["toxrill"]
+    assert data["remaining"] == 1
+
+
+def test_stack_endpoint_counts_only_the_listed_commanders(pool):
+    body = {"profile": profile().model_dump(), "only": ["toxrill"], "count": 5}
+
+    data = client.post("/dating/stack", json=body).json()
+
     assert [card["oracle_id"] for card in data["commanders"]] == ["toxrill"]
     assert data["remaining"] == 1
 
@@ -321,7 +338,7 @@ def test_a_blind_date_rolls_two_or_three_supported_themes():
 def test_lands_and_the_surest_picks_go_in_first():
     chosen = [("land", "Mountain"), ("a", "A"), ("b", "B"), ("c", "C"), ("d", "D")]
 
-    now, open_slots = dating.split_fill(
+    now, later, open_slots = dating.split_fill(
         chosen,
         lands={"land"},
         fitting={"c"},
@@ -331,6 +348,7 @@ def test_lands_and_the_surest_picks_go_in_first():
     )
 
     assert [card.oracle_id for card in now] == ["land", "c", "a"]
+    assert [card.oracle_id for card in later] == ["d", "b"]
     assert open_slots == 3
 
 
@@ -364,4 +382,5 @@ def test_blind_endpoint_fills_and_splits(pool, monkeypatch):
     data = response.json()
     assert len(data["add_now"]) == 64
     assert data["add_now"][0]["oracle_id"] == "c0"
+    assert len(data["add_later"]) == 6
     assert data["open_slots"] == 35

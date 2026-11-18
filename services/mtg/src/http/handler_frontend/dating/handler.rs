@@ -33,6 +33,7 @@ use crate::http::handler_frontend::dating::schema::DatesResponse;
 use crate::http::handler_frontend::dating::schema::DatingAnswers;
 use crate::http::handler_frontend::dating::schema::DatingCardResponse;
 use crate::http::handler_frontend::dating::schema::DatingProfileResponse;
+use crate::http::handler_frontend::dating::schema::DatingSetResponse;
 use crate::http::handler_frontend::dating::schema::DatingStackRequest;
 use crate::http::handler_frontend::dating::schema::DatingStackResponse;
 use crate::http::handler_frontend::dating::schema::InterestResponse;
@@ -61,6 +62,7 @@ use crate::models::dating::date::DateState;
 use crate::models::dating::date::DateTheme;
 use crate::models::dating::date::DatingDate;
 use crate::models::dating::date::palette;
+use crate::models::dating::legends::legends;
 use crate::models::dating::profile_key;
 use crate::models::dating::read_commander_printings;
 use crate::models::dating::read_profile_decks;
@@ -74,12 +76,23 @@ const STACK_SIZE: usize = 10;
 /// How many unswiped Commanders a client may hold
 const MAX_PENDING: usize = 60;
 
+/// After this many rejections in a row, the next like matches
+const PITY_AFTER: u64 = 2;
+
+/// How many sets one stack request may filter by
+const MAX_FILTER_SETS: usize = 100;
+
 /// Super likes per day
 const SUPER_LIKES_PER_DAY: i64 = 1;
 
 fn advisor_error(error: anyhow::Error) -> ApiError {
     warn!(%error, "The advisor did not answer a dating request");
     ApiError::server_error("The advisor did not answer")
+}
+
+fn catalog_error(error: anyhow::Error) -> ApiError {
+    warn!(%error, "Reading the legendary printings failed");
+    ApiError::server_error("The catalog could not be read")
 }
 
 fn letters_only(colors: &str) -> bool {
@@ -193,6 +206,24 @@ pub async fn get_dating_stack(
     {
         return Err(ApiError::bad_request("Colors must be letters of WUBRG"));
     }
+    if request.sets.len() > MAX_FILTER_SETS {
+        return Err(ApiError::bad_request("Too many sets"));
+    }
+    let only = if request.sets.is_empty() && request.rarities.is_empty() {
+        None
+    } else {
+        let sets: HashSet<String> = request
+            .sets
+            .iter()
+            .map(|code| code.to_uppercase())
+            .collect();
+        Some(
+            legends()
+                .await
+                .map_err(catalog_error)?
+                .matching(&sets, &request.rarities),
+        )
+    };
 
     let Some(profile) = current_profile(account.uuid).await? else {
         return Ok(ApiJson(DatingStackResponse {
@@ -219,6 +250,7 @@ pub async fn get_dating_stack(
         &profile,
         &exclude,
         colors.as_deref(),
+        only.as_deref(),
         STACK_SIZE,
         hasher.finish() >> 11,
     )
@@ -278,12 +310,15 @@ pub async fn swipe_commander(
     let snapshot = DatingProfile::get(&mut tx, account.uuid)
         .await?
         .and_then(|row| row.snapshot);
+    let recent = Swipe::recent_likes(&mut tx, account.uuid, PITY_AFTER).await?;
     tx.commit().await?;
+    let denied = pity_due(&recent);
 
     if request.kind == SwipeKind::SuperLike && left <= 0 {
         return Err(ApiError::bad_request("No super like left today"));
     }
 
+    let mut pity = false;
     let insert = match request.kind {
         SwipeKind::Pass => SwipeInsert {
             commander: request.commander,
@@ -307,7 +342,8 @@ pub async fn swipe_commander(
                 return Err(ApiError::bad_request("Commander is not in the dating pool"));
             };
             let super_like = request.kind == SwipeKind::SuperLike;
-            let matched = super_like || verdict.is_match;
+            pity = denied && !super_like && !verdict.is_match;
+            let matched = super_like || verdict.is_match || pity;
             SwipeInsert {
                 commander: request.commander,
                 status: if matched {
@@ -339,7 +375,13 @@ pub async fn swipe_commander(
         ),
         shared: swipe.shared,
         super_likes_left,
+        pity,
     }))
+}
+
+/// Whether the newest likes were all rejected, enough of them for a pity match
+fn pity_due(recent: &[DateStatus]) -> bool {
+    recent.len() as u64 == PITY_AFTER && recent.iter().all(|status| *status == DateStatus::Rejected)
 }
 
 /// Undo the newest swipe
@@ -416,6 +458,24 @@ pub async fn unmatch_date(
     Path(commander): Path<Uuid>,
 ) -> ApiResult<ApiJson<DateResponse>> {
     move_date(account, commander, DateStatus::Unmatched, false).await
+}
+
+/// The sets the stack can be filtered by
+#[get("/sets")]
+pub async fn get_dating_sets() -> ApiResult<ApiJson<Vec<DatingSetResponse>>> {
+    Ok(ApiJson(
+        legends()
+            .await
+            .map_err(catalog_error)?
+            .sets()
+            .iter()
+            .map(|set| DatingSetResponse {
+                code: set.code.clone(),
+                name: set.name.clone(),
+                legends: set.legends,
+            })
+            .collect(),
+    ))
 }
 
 /// Forget every pass
@@ -702,4 +762,19 @@ pub async fn come_back_to_date(
         })
     })
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn two_rejections_in_a_row_earn_a_pity_match() {
+        use DateStatus::*;
+        assert!(pity_due(&[Rejected, Rejected]));
+        assert!(!pity_due(&[Rejected, Matched]));
+        assert!(!pity_due(&[Matched, Rejected]));
+        assert!(!pity_due(&[Rejected]));
+        assert!(!pity_due(&[]));
+    }
 }

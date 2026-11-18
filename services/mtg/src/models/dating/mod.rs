@@ -34,6 +34,7 @@ use crate::models::row::decode;
 
 pub mod date;
 pub(in crate::models) mod db;
+pub mod legends;
 pub mod remote;
 
 /// How many decks feed a profile, newest first
@@ -457,6 +458,24 @@ impl Swipe {
             .all()
             .await?;
         Ok(rows.len() as i64)
+    }
+
+    /// How the newest `count` likes ended, newest first
+    #[instrument(name = "Swipe::recent_likes", skip(tx))]
+    pub async fn recent_likes(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        count: u64,
+    ) -> Result<Vec<DateStatus>, rorm::Error> {
+        rorm::query(&mut *tx, DatingSwipeModel.status)
+            .condition(rorm::and![
+                DatingSwipeModel.owner.equals(owner.into_inner()),
+                DatingSwipeModel.status.not_equals(DateStatus::Passed),
+            ])
+            .order_desc(DatingSwipeModel.created_at)
+            .limit(count)
+            .all()
+            .await
     }
 
     /// Every date that got past a pass, newest first

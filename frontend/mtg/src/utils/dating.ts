@@ -81,6 +81,16 @@ export function matchKey(seed: string): string {
 }
 
 /**
+ * The pity match line for a Commander, the same one every time.
+ *
+ * @param seed the Commander's oracle id
+ * @returns a `description.pity-…` key of the dating namespace
+ */
+export function pityKey(seed: string): string {
+    return `description.pity-${lineVariant(seed)}`;
+}
+
+/**
  * Turns missing color letters into a mana cost the app can draw.
  *
  * @param letters color letters, e.g. `"RB"`

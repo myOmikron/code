@@ -72,6 +72,7 @@ import type {
     DatesResponse,
     DatingAnswers,
     DatingProfileResponse,
+    DatingSetResponse,
     DatingStackRequest,
     DatingStackResponse,
     DeckCardResponse,
@@ -6933,6 +6934,45 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getDatingProfile(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DatingProfileResponse> {
         const response = await this.getDatingProfileRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getDatingSets without sending the request
+     */
+    async getDatingSetsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/dating/sets`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The sets the stack can be filtered by
+     * The sets the stack can be filtered by
+     */
+    async getDatingSetsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<DatingSetResponse>>> {
+        const requestOptions = await this.getDatingSetsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The sets the stack can be filtered by
+     * The sets the stack can be filtered by
+     */
+    async getDatingSets(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<DatingSetResponse>> {
+        const response = await this.getDatingSetsRaw(initOverrides);
         return await response.value();
     }
 
