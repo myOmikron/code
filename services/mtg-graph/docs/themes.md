@@ -345,6 +345,131 @@ argued from mechanics", and the report explains itself: "1 suggestion
 promoted — no play data exists for Far Traveler, so its own themes argue from
 mechanics instead."
 
+## Creature type diversity — the thirty-third theme
+
+Federation (Hoshi Sato, Starfleet Academy, Infinite Diversity) counts the
+creature types among your non-Borg creatures; Volo and Radagast reward types
+you have not had yet. Built on a new `type_diversity` resource:
+
+- **cares**, 12 cards: Tagger's `typal-each` and `typal-non-share`, plus the
+  `creature_type_count_payoff` rule for text that arrives before the tags.
+  Both tags are subtracted from `typal`/`typal-creature`, which used to file
+  these cards as `tribal_payoff` — the opposite of what they want.
+- **produces**, 110 cards: `multiple-species-types` and
+  `four-plus-creature-types`. Changelings stay out: they are every type,
+  Borg included, so every Federation card ignores them.
+
+Relative IDF 1.356 (`keyword_soup` 1.169, `treasure` 1.213). Detection is
+cares-gated, retrieval reads either side — the `keywords` split. Ancillaries
+by lift over the 118-card population: `etb_trigger` 0.3 (3.1x, the ETB
+payoffs), `creature_token` 0.2 (1.6x); `legendary_matters` (4.7x) is the
+partner pairs' type lines and stays out.
+
+A deck whose theme identity includes `type_diversity` has its tribes silenced
+in `suggest()`, the same switch as excluding `tribal`: its Elves and Allies are
+diversity, not a tribe, and the off-tribe filters would otherwise drop the
+bodies it wants. A Hoshi Sato proxy list reads 87% type diversity, Typal 2%.
+
+## Energy, Sagas, Snow, Group hug — the thirty-fourth to thirty-seventh themes
+
+Asked for by name (Group hug missing from search; Tom Bombadil's Sagas). Each
+has its anchor commander's own #1 EDHREC tag, now in `THEME_TAG_SLUGS`.
+
+| theme | supply | payoffs | gate | anchor reads |
+|---|---|---|---|---|
+| `energy` | 135 (`energy-generator`) | proliferate + `counter-fuel-energy` | produces | Satya, energy 78% |
+| `sagas` | 232 Sagas (type line) | 22: `synergy-saga` minus `synergy-historic`, `saga_payoff` rule, `counter-fuel-lore` | cares | Tom Bombadil, sagas 63%; Narci, enchantress 55% then sagas 35% |
+| `snow` | 107 snow permanents (type line) | 106: `synergy-snow` + `snow_payoff` rule ({S}, "snow lands") | cares | Isu, snow 93% |
+| `group_hug` | 173 (`group-hug` minus `selective-group-hug`, `bribery`) | none, supply-only | produces | Kwain 70%, Phelddagrif 51% |
+
+**Energy, second attempt.** The first was dropped at 93% overlap with
+`counters`. Root cause: `counters-matter` maps to `plus_one_counter` and its
+closure holds `counter-fuel`, with a child per counter kind, so 117 energy
+cards (Aether Hub) read as +1/+1 payoffs. `counters-matter` now subtracts the
+non-+1/+1 kinds (energy, charge, loyalty, lore, time, fade, stun, shield,
+aesthetic, mm). The produces gate keeps proliferators out. Overlap after: 19 of
+135. The largest is now `aggro` at 47 — energy creatures attack.
+
+**Sagas overlap `enchantress` 93% at retrieval**, because every Saga is an
+enchantment and `enchantress` retrieves either side. Detection tells them
+apart (Tom reads sagas, Narci reads both in EDHREC's order), which is what the
+theme is for.
+
+**`selective-group-hug` is not a hug.** It is mostly removal whose drawback
+helps the target (Baleful Mastery, Into the Flood Maw, Prismari Command).
+
+## -1/-1 counters, Discard, Clones, Cascade — from the top-500 rescan
+
+The 2026-11-18 rescan of EDHREC's top 500 ranked these among the largest tags
+no theme read. Each was checked on its commander×tag page, not only the
+commander page: a tag carried by part of a commander's decks barely shows in
+the page's overall top 60.
+
+| theme | gate | reads |
+|---|---|---|
+| `minus_counters` | produces (proliferate cares, like `energy`) | Auntie Ool 75%, Hapatra 70%; Yawgmoth/Toxrill 3rd–4th behind aristocrats |
+| `discard` | cares, retrieve either | Hashaton 69%, Norman Osborn 79%; Muldrotha and Teval keep reanimator |
+| `clones` | produces `clone`; `token_copy` only ranks (populate is tokens: Trostani read Clones 23% when it gated) | Etali and Obeka /clones rank 1, Deadpool 2 |
+| `cascade` | produces, Cascade/Discover keyword + `gives-cascade` | Yidris 78% |
+
+**Discard ships despite the 89% retrieval overlap with `reanimator`** that
+dropped it before. That overlap is the shared outlets, and detection separates
+the decks; the same holds for `sagas`/`enchantress`. Since the next round it
+also counts opponents discarding (see below).
+
+Two mapping defects fixed on the way:
+
+- **`copy` mapped `copy_spell` for its whole subtree** (930 producers), so every
+  Clone, Spark Double and Vesuva read as spellslinger. Only `copy-spell`,
+  `copy-instant` and `copy-sorcery` copy spells (204); the permanent-copy
+  children now produce `clone` (396). Spellslinger commanders held (Veyran,
+  Storm 73%, Azula 47%).
+- **A commander's stray Typal edge flooded `tribal`.** Every creature supplies
+  `tribal_payoff`, so the commander unlock counted all of Yawgmoth's creatures
+  (his "protection from Humans" is tagged typal): Typal 64%. The unlock now
+  needs a commander that cares about a specific type. Krenko, Edgar, Lathril,
+  Ur-Dragon and Sliver Overlord read Typal unchanged.
+
+## Flyers, Theft, Goad, X spells — and Discard and Wheels widened
+
+The rest of the 2026-11-18 gap register. Ancillaries by lift over each
+theme's own cards; goad's 80 cards are too few, so over its eight
+forced-combat commanders' decks instead.
+
+| theme | gate | resource | ancillary (lift) |
+|---|---|---|---|
+| `flyers` | cares, retrieve either | `flying` (child of `evasion`): creatures with the keyword, `gives-flying`; payoffs `synergy-flying` + "creatures you control with flying" | `combat_damage_trigger` 3.06x |
+| `theft` | either | `theft`: the `theft` subtree (minus reanimating theirs) + `nightveil-theft`; payoffs `synergy-theft` + "you don't own" | `haste_grant` 7.8x, `impulse_draw` 4.6x |
+| `goad` | either | `goad`: the rule now also reads "is goaded" (22 Impetus-style cards it missed); payoffs `synergy-goad` + goaded-creature text | `tax_effect` 5.4x (pillow fort) |
+| `x_spells` | cares, retrieve either | `x_spell`: `{X}` in the mana cost (535); payoffs `x-cost-matters` + "{X} in its mana cost" | `plus_one_counter` 2.1x |
+
+**Discard is discard either way.** `opponent-discard-matters` and a "whenever
+an opponent discards" rule give `discard_opponent` its first consumers
+(Megrim, Waste Not, Liliana's Caress); the theme gates on both sides.
+Tergrid now reads Discard first.
+
+**Wheels reads draw payoffs.** `draw-matters` and "whenever you draw a card"
+care about `card_draw`, which joins the wheels gate at 0.6. A draw spell
+alone stays below the fit bar (IDF 1.7 against `opponent_draw`'s 5.9).
+`wheel-symmetrical` now supplies `opponent_draw` for the 21 of 35 wheels the
+rule's "discards their hand, then draws" missed (Timetwister, Winds of
+Change). `impulse_draw` is a child of `card_draw`, so it meets a draw
+payoff's demand without triggering it; accepted.
+
+Rescan against the previous one (commanders with the EDHREC tag in their top
+3, read in our top 3 at >=10%): theft 0→5/12, forced-combat 0→7/10, x-spells
+0→3/8, wheels 5→7/15, discard 7→8/15. Flying stays 0/12: those decks read
+their tribe (Dragons, Angels, Birds), which is the honest reading; Derevi's
+/flying page reads Flyers first. Theft also reads in Satoru (7 stealing
+ninjas) and Prosper (9 cards casting opponents' exiled cards), real cards.
+
+**Kefka stays 4th (0.10).** His discard is supply, and the commander anchor
+reads a cares-gated theme on its cares side only. Letting the anchor read the
+commander's supply too put Kefka's Discard first (0.25) but changed 220 of
+500 top-3 readings for a net loss (tokens −10, counters −5; Yawgmoth's and
+Sauron's Typal flood came back through their `tribal_payoff` supply).
+Rejected.
+
 ## Defects fixed along the way
 
 Recorded with their commits; each body carries the measurements.

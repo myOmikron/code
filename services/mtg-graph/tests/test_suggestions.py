@@ -3352,6 +3352,21 @@ def test_excluding_tribal_silences_the_typal_channel_and_the_on_profile_boost_in
 
     fired = _run(None)
     silenced = _run(["tribal"])
+    # A pinned type-diversity theme is the same switch.
+    monkeypatch.setattr(graph, "channel_themes", lambda *args, **kwargs: [])
+    assert not [
+        s
+        for s in suggest(
+            ["cmdr"],
+            [],
+            commander_oracle_id="cmdr",
+            diagnostics=_GoblinDeck(),
+            channels={"typal_bridge"},
+            include_combos=False,
+            pinned_themes=["type_diversity"],
+        ).suggestions
+        if any(p.channel == "typal_bridge" for p in s.provenance)
+    ]
 
     fired_typal = [
         s for s in fired.suggestions if any(p.channel == "typal_bridge" for p in s.provenance)

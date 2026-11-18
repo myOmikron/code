@@ -959,6 +959,15 @@ def diagnose(
     # claims to field, and a Rule 0 extra the graph could not resolve still
     # pays a Bastion Protector at the table. Counting only resolved seats would
     # make an unknown commander quietly *lower* the theme.
+    # A Typal payoff edge unlocks the `tribal` theme for the deck, and every
+    # creature supplies it, so a stray one floods it: Yawgmoth's "protection
+    # from Humans" read 42 cards as Typal. Only a commander that cares about a
+    # specific type (Krenko) keeps it; the typal profile below names the tribe.
+    types_by_card = {row["oracle_id"]: row for row in deck_card_types(deck)}
+    names_a_type = any(types_by_card.get(seat_id, {}).get("cares_type") for seat_id in effective)
+    if commander_resources is not None and not names_a_type:
+        commander_resources[1].discard(Resource.TRIBAL_PAYOFF)
+
     profile, theme_evidence = deck_theme_breakdown(
         card_resources,
         resource_idf(),
@@ -971,7 +980,6 @@ def diagnose(
     # typal candidate (a tribe reaching the commander×tag subpage tier)
     # needs this profile as an input. Pure reordering: reads only
     # `deck`/`cards`/`effective`, nothing the type-target block produces.
-    types_by_card = {row["oracle_id"]: row for row in deck_card_types(deck)}
     card_types = [
         (
             set(types_by_card.get(card["oracle_id"], {}).get("is_type") or []),

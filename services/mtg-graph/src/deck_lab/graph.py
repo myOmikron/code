@@ -669,9 +669,12 @@ STRUCTURAL_CORRECTIONS = [
         MERGE (au:Resource {name: 'aura_matters'})
         MERGE (eq:Resource {name: 'equipment_matters'})
         MERGE (v:Resource {name: 'vehicle_matters'})
-        WITH a, e, au, eq, v
+        MERGE (sa:Resource {name: 'saga_matters'})
+        MERGE (sn:Resource {name: 'snow_matters'})
+        WITH a, e, au, eq, v, sa, sn
         MATCH (c:Card)
         WHERE c.type_line CONTAINS 'Artifact' OR c.type_line CONTAINS 'Enchantment'
+           OR c.type_line CONTAINS 'Snow'
         FOREACH (_ IN CASE WHEN c.type_line CONTAINS 'Artifact' THEN [1] ELSE [] END |
             MERGE (c)-[r1:PRODUCES]->(a) SET r1.source = 'structural')
         FOREACH (_ IN CASE WHEN c.type_line CONTAINS 'Enchantment' THEN [1] ELSE [] END |
@@ -682,6 +685,10 @@ STRUCTURAL_CORRECTIONS = [
             MERGE (c)-[r4:PRODUCES]->(eq) SET r4.source = 'structural')
         FOREACH (_ IN CASE WHEN c.type_line CONTAINS 'Vehicle' THEN [1] ELSE [] END |
             MERGE (c)-[r5:PRODUCES]->(v) SET r5.source = 'structural')
+        FOREACH (_ IN CASE WHEN c.type_line CONTAINS 'Saga' THEN [1] ELSE [] END |
+            MERGE (c)-[r6:PRODUCES]->(sa) SET r6.source = 'structural')
+        FOREACH (_ IN CASE WHEN c.type_line CONTAINS 'Snow' THEN [1] ELSE [] END |
+            MERGE (c)-[r7:PRODUCES]->(sn) SET r7.source = 'structural')
         RETURN count(c) AS n
         """,
     ),

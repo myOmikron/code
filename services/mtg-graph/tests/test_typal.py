@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from deck_lab.typal import build_vocabulary, extract, own_types, plural_forms
+from deck_lab.typal import TYPE_GROUPS, build_vocabulary, extract, own_types, plural_forms
 
 LINES = [
     "Legendary Creature — Crab Druid",
@@ -101,3 +101,45 @@ def test_own_types_reads_the_type_line():
     # Druid is a creature type too — a card is every subtype on its line.
     assert own_types("Legendary Creature — Crab Druid", VOCAB) == {"Crab", "Druid"}
     assert own_types("Land — Forest", VOCAB) == set()
+
+
+GROUP_VOCAB = build_vocabulary(
+    [f"Creature — {t}" for members in TYPE_GROUPS.values() for t in members]
+    + ["Creature — Merfolk"]
+)
+
+
+def test_every_group_word_reads_as_its_members():
+    """A new TYPE_GROUPS entry is tested by being added."""
+    for group, members in TYPE_GROUPS.items():
+        plural = next(f for f in plural_forms(group) if f.endswith("s") and f != group)
+        cares, _ = extract(f"Other {plural} you control get +1/+1.", "X", GROUP_VOCAB)
+        assert cares == members, group
+        assert group not in GROUP_VOCAB.types
+
+
+def test_sea_monster_card_reads_past_its_reminder_text():
+    text = (
+        "All Sea Monsters you cast have emerge. The emerge cost is equal to the mana cost. "
+        "(You may sacrifice a creature to reduce the emerge cost of spells that are Krakens, "
+        "Leviathans, Octopuses, Serpents, or Whales by that creature's mana value.)"
+    )
+    cares, _ = extract(text, "X", GROUP_VOCAB)
+    assert cares == TYPE_GROUPS["Sea Monster"]
+
+
+def test_outlaw_is_lowercase_and_its_hate_is_not_a_payoff():
+    """Outlaws are printed lowercase; "non-outlaw" is removal, not a payoff."""
+    cares, _ = extract(
+        "Whenever you cast an outlaw spell, copy that spell. "
+        "(Assassins, Mercenaries, Pirates, Rogues, and Warlocks are outlaws.)",
+        "Double Down",
+        GROUP_VOCAB,
+    )
+    assert cares == TYPE_GROUPS["outlaw"]
+    cares, _ = extract("Destroy target non-outlaw creature.", "Shoot the Sheriff", GROUP_VOCAB)
+    assert cares == set()
+
+
+def test_a_group_member_body_is_only_its_own_type():
+    assert own_types("Creature — Whale", GROUP_VOCAB) == {"Whale"}

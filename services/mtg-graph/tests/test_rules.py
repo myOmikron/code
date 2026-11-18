@@ -267,6 +267,108 @@ def test_keyword_rich_bodies_covers_all_twelve_keywords_at_the_measured_threshol
     assert ">= 3" in where
 
 
+def test_creature_type_count_payoff_reads_the_federation_template():
+    """Matches the quoted card, which reached no corpus yet, and not a
+    single-tribe count."""
+    pattern = _pattern("creature_type_count_payoff", "types_among")
+    federation = (
+        "Federation — At the beginning of combat on your turn, draw a card for "
+        "every five creature types among non-Borg creatures you control."
+    )
+    assert pattern.fullmatch(federation)
+    assert not pattern.fullmatch("Draw a card for each Elf you control.")
+
+
+def test_type_diversity_is_a_two_sided_bridge():
+    assert is_bridge_resource(Resource.TYPE_DIVERSITY)
+
+
+def test_saga_payoff_reads_payoffs_and_not_the_historic_reminder():
+    pattern = _pattern("saga_payoff", "saga")
+    tom = (
+        "As long as there are four or more lore counters among Sagas you control, "
+        "Tom Bombadil has hexproof and indestructible."
+    )
+    historic = (
+        "Whenever you cast a historic spell, scry 1. "
+        "(Artifacts, legendaries, and Sagas are historic.)"
+    )
+    assert pattern.fullmatch(tom)
+    assert not pattern.fullmatch(historic)
+    assert (
+        "NOT c.type_line CONTAINS 'Saga'" in next(r for r in RULES if r.id == "saga_payoff").where
+    )
+
+
+def test_snow_payoff_reads_snow_mana_and_snow_counts():
+    pattern = _pattern("snow_payoff", "snow")
+    assert pattern.fullmatch("{S}: This creature gets +1/+1 until end of turn.")
+    assert pattern.fullmatch("Draw a card for each snow land you control.")
+    assert not pattern.fullmatch("Destroy target creature.")
+
+
+def test_clone_effect_reads_copies_and_not_spell_copies():
+    pattern = _pattern("clone_effect", "clone")
+    assert pattern.fullmatch(
+        "You may have this creature enter as a copy of any creature on the battlefield."
+    )
+    assert pattern.fullmatch(
+        "Target creature you control becomes a copy of another target creature."
+    )
+    assert not pattern.fullmatch("Copy target instant or sorcery spell.")
+
+
+def test_goad_rule_reads_goaded_auras_and_payoff_reads_goaded_creatures():
+    assert _pattern("goad", "goad").fullmatch("Enchanted creature gets +1/+1 and is goaded.")
+    payoff = _pattern("goad_payoff", "goaded")
+    assert payoff.fullmatch("Whenever a goaded creature attacks, draw a card.")
+    assert not payoff.fullmatch("Enchanted creature is goaded.")
+
+
+def test_discard_punisher_reads_opponents_discarding_only():
+    pattern = _pattern("discard_punisher", "punisher")
+    assert pattern.fullmatch("Whenever an opponent discards a card, that player loses 2 life.")
+    assert pattern.fullmatch("Whenever a player discards a card, you gain 1 life.")
+    assert not pattern.fullmatch("Whenever you discard a card, draw a card.")
+
+
+def test_draw_payoff_reads_self_draw_not_opponent_draw():
+    pattern = _pattern("draw_payoff", "draw_payoff")
+    assert pattern.fullmatch("Whenever you draw a card, create a 1/1 Insect creature token.")
+    assert pattern.fullmatch("Whenever you draw your second card each turn, scry 1.")
+    assert not pattern.fullmatch("Whenever an opponent draws a card, they lose 1 life.")
+
+
+def test_flying_payoff_needs_your_own_fliers():
+    pattern = _pattern("flying_payoff", "flying_payoff")
+    assert pattern.fullmatch("Creatures you control with flying get +1/+1.")
+    assert pattern.fullmatch("Flying creatures you control have ward 1.")
+    assert not pattern.fullmatch("Whenever a creature with flying attacks, it loses flying.")
+
+
+def test_theft_payoff_skips_the_eldrazi_processors():
+    pattern = _pattern("theft_payoff", "theft_payoff")
+    assert pattern.fullmatch("Creatures you control but don't own get +2/+2.")
+    assert pattern.fullmatch("Spells you cast but don't own cost {1} less to cast.")
+    assert not pattern.fullmatch(
+        "You may put two cards your opponents own from exile into their owners' graveyards."
+    )
+
+
+def test_x_spell_payoff_reads_x_in_the_cost():
+    pattern = _pattern("x_spell_payoff", "x_payoff")
+    assert pattern.fullmatch("Whenever you cast a spell with {X} in its mana cost, draw a card.")
+    assert pattern.fullmatch(
+        "Whenever you cast a permanent spell with a mana cost that contains {X}, double X."
+    )
+    assert "{X}" in next(r for r in RULES if r.id == "x_spell").where
+
+
+def test_cascade_keyword_covers_discover():
+    where = next(r for r in RULES if r.id == "cascade_keyword").where
+    assert "'Cascade'" in where and "'Discover'" in where
+
+
 def test_keyword_rich_bodies_is_gated_to_creatures():
     """An Equipment granting two keywords is a granter, not a body."""
     where = next(r for r in RULES if r.id == "keyword_rich_bodies").where

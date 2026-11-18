@@ -722,6 +722,20 @@ def test_keywords_detects_on_payoffs_and_retrieves_the_bodies():
     assert theme_fit(*payoff, keywords, FLAT_IDF) > 0.0
 
 
+def test_type_diversity_detects_on_payoffs_and_retrieves_the_bodies():
+    """A deck of multi-species bodies is not a Federation deck; Hoshi Sato
+    and Starfleet Academy make it one, and then the bodies are retrievable."""
+    theme = THEMES["type_diversity"]
+    body = ({R.TYPE_DIVERSITY}, set())
+    payoff = (set(), {R.TYPE_DIVERSITY})
+
+    assert theme.gate_on == "cares"
+    assert theme_fit(*body, theme, FLAT_IDF) == 0.0
+    assert theme_fit(*body, theme, FLAT_IDF, retrieval=True) > 0.0
+    assert theme_fit(*payoff, theme, FLAT_IDF) > 0.0
+    assert R.TRIBAL_PAYOFF not in theme.weights
+
+
 def test_keywords_gate_and_retrieve_on():
     keywords = THEMES["keywords"]
     assert keywords.gate_on == "cares"
@@ -790,13 +804,90 @@ def test_superfriends_gate_and_retrieve_on():
     assert R.LOYALTY_COUNTER in superfriends.weights
 
 
-def test_energy_theme_was_not_shipped():
-    """Built and measured (`themes.py`'s trailing comment) but dropped on
-    its own overlap check against `counters` — 93.2% of its either-population
-    also clears `counters`' `FITS_THEME`, the `discard`/`reanimator`
-    precedent. No `energy` key should ever silently reappear without a fresh
-    overlap measurement."""
-    assert "energy" not in THEMES
+def test_energy_gates_on_producers_so_proliferate_alone_is_not_energy():
+    """Proliferate cares about energy; a proliferate deck is not an energy deck."""
+    energy = THEMES["energy"]
+    assert energy.gate_on == "produces"
+    assert theme_fit(set(), {R.ENERGY, R.PROLIFERATE}, energy, FLAT_IDF) == 0.0
+    assert theme_fit({R.ENERGY}, set(), energy, FLAT_IDF) > 0.0
+
+
+def test_sagas_and_snow_detect_on_payoffs_and_retrieve_the_permanents():
+    for theme_id, resource in (("sagas", R.SAGA_MATTERS), ("snow", R.SNOW_MATTERS)):
+        theme = THEMES[theme_id]
+        supply = ({resource}, set())
+        assert theme_fit(*supply, theme, FLAT_IDF) == 0.0, theme_id
+        assert theme_fit(*supply, theme, FLAT_IDF, retrieval=True) > 0.0, theme_id
+        assert theme_fit(set(), {resource}, theme, FLAT_IDF) > 0.0, theme_id
+
+
+def test_minus_counters_clones_and_cascade_gate_on_their_supply():
+    """Proliferate cares about -1/-1 counters; that alone is not the theme."""
+    for theme_id, resource in (
+        ("minus_counters", R.MINUS_ONE_COUNTER),
+        ("clones", R.CLONE),
+        ("cascade", R.CASCADE),
+    ):
+        theme = THEMES[theme_id]
+        assert theme.gate_on == "produces", theme_id
+        assert theme_fit({resource}, set(), theme, FLAT_IDF) > 0.0, theme_id
+    assert (
+        theme_fit(set(), {R.MINUS_ONE_COUNTER, R.PROLIFERATE}, THEMES["minus_counters"], FLAT_IDF)
+        == 0.0
+    )
+    # Populate copies tokens; that alone is a tokens card, not a clone.
+    assert theme_fit({R.TOKEN_COPY}, set(), THEMES["clones"], FLAT_IDF) == 0.0
+
+
+def test_discard_detects_on_payoffs_and_retrieves_the_outlets():
+    """Reanimator weights `discard_own` too; detection on payoffs is what
+    keeps Muldrotha a reanimator deck and Hashaton a discard deck."""
+    discard = THEMES["discard"]
+    outlet = ({R.DISCARD_OWN}, set())
+    assert theme_fit(*outlet, discard, FLAT_IDF) == 0.0
+    assert theme_fit(*outlet, discard, FLAT_IDF, retrieval=True) > 0.0
+    assert theme_fit(set(), {R.DISCARD_OWN}, discard, FLAT_IDF) > 0.0
+
+
+def test_discard_reads_punishers_for_opponents_discarding():
+    """Kefka's deck is Megrim and Waste Not; discard is discard either way."""
+    discard = THEMES["discard"]
+    assert theme_fit(set(), {R.DISCARD_OPPONENT}, discard, FLAT_IDF) > 0.0
+    # Hand disruption alone is not the theme.
+    assert theme_fit({R.DISCARD_OPPONENT}, set(), discard, FLAT_IDF) == 0.0
+
+
+def test_wheels_detects_draw_payoffs_but_not_draw_spells():
+    wheels = THEMES["wheels"]
+    assert theme_fit(set(), {R.CARD_DRAW}, wheels, FLAT_IDF) > 0.0
+    assert theme_fit({R.CARD_DRAW}, set(), wheels, FLAT_IDF) == 0.0
+
+
+def test_flyers_and_x_spells_detect_on_payoffs_and_retrieve_the_supply():
+    for theme_id, resource in (("flyers", R.FLYING), ("x_spells", R.X_SPELL)):
+        theme = THEMES[theme_id]
+        supply = ({resource}, set())
+        assert theme_fit(*supply, theme, FLAT_IDF) == 0.0, theme_id
+        assert theme_fit(*supply, theme, FLAT_IDF, retrieval=True) > 0.0, theme_id
+        assert theme_fit(set(), {resource}, theme, FLAT_IDF) > 0.0, theme_id
+
+
+def test_theft_and_goad_read_either_side():
+    """Gonti and Tergrid steal; Don Andres pays off; both are the theme."""
+    for theme_id, resource in (("theft", R.THEFT), ("goad", R.GOAD)):
+        theme = THEMES[theme_id]
+        assert theme_fit({resource}, set(), theme, FLAT_IDF) > 0.0, theme_id
+        assert theme_fit(set(), {resource}, theme, FLAT_IDF) > 0.0, theme_id
+    # Threaten's haste alone is a haste card.
+    assert theme_fit({R.HASTE_GRANT}, set(), THEMES["theft"], FLAT_IDF) == 0.0
+
+
+def test_group_hug_is_supply_gated():
+    """Nothing pays off a hug; the givers are the theme."""
+    group_hug = THEMES["group_hug"]
+    assert group_hug.gate_on == "produces"
+    assert theme_fit({R.GROUP_HUG}, set(), group_hug, FLAT_IDF) > 0.0
+    assert theme_fit({R.OPPONENT_DRAW}, set(), group_hug, FLAT_IDF) == 0.0
 
 
 # --- lands (`TOP50-COVERAGE.md` gap 8) --------------------------------------

@@ -3327,7 +3327,12 @@ def suggest(
     # typal arm and the bridge/theme off-tribe filters below, and skips the
     # typal channel — one switch for every tribe-driven argument. The deck's
     # typal *profile* in diagnostics is untouched: facts stay, conclusions go.
-    tribes_silenced = "tribal" in (excluded_themes or [])
+    #
+    # A deck built on many creature types silences them the same way: its
+    # Elves and Allies are diversity, not a tribe to stay on.
+    tribes_silenced = "tribal" in (excluded_themes or []) or "type_diversity" in _deck_theme_ids(
+        report.themes, pinned_themes or [], set(excluded_themes or [])
+    )
     # The deck's argued tribes — computed once, ahead of the resource bridge
     # so its own off-tribe filter can read it below, and shared from here
     # with the bucket-shortfall loop's typal arm, the typal channel, and the

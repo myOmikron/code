@@ -35,6 +35,9 @@ Four things carry that precision, each worth a measurable amount:
 4. **And/or lists are walked backwards.** Only the last item touches the context
    marker, so "Crabs, Lobsters, Nautiluses, Starfish, and/or Trilobites you
    control" yields two types without it and five with.
+5. **Group words resolve to their members.** "Sea Monsters" and "outlaws" are
+   on no type line; `TYPE_GROUPS` makes each read as the and/or list it
+   abbreviates. A new group is one table entry.
 """
 
 from __future__ import annotations
@@ -59,6 +62,16 @@ CONTEXTS = (
     r"{f} (?i:you own)",
     r"(?i:all) {f}\b",
 )
+
+# Words rules text uses for several creature types at once, keyed as printed:
+# capitalised or not is part of the word ("Sea Monsters", but "outlaws"), and
+# case-sensitive like every type. A group payoff then cares about each member,
+# exactly as if the card had listed them. Members missing from the corpus
+# vocabulary are skipped.
+TYPE_GROUPS: dict[str, frozenset[str]] = {
+    "Sea Monster": frozenset({"Kraken", "Leviathan", "Octopus", "Serpent", "Whale"}),
+    "outlaw": frozenset({"Assassin", "Mercenary", "Pirate", "Rogue", "Warlock"}),
+}
 
 REMINDER = re.compile(r"\([^)]*\)")
 ANIMATE = re.compile(r"(becomes?|is|are)\s+(a|an)?\s*[\d*X]+/[\d*X]+[^.]{0,60}?creature")
@@ -115,6 +128,9 @@ def build_vocabulary(type_lines: list[str]) -> TypeVocabulary:
     for t in types:
         for form in plural_forms(t):
             forms.setdefault(form, set()).add(t)
+    for group, members in TYPE_GROUPS.items():
+        for form in plural_forms(group):
+            forms.setdefault(form, set()).update(members & types)
 
     alternation = "|".join(re.escape(f) for f in sorted(forms, key=len, reverse=True))
     return TypeVocabulary(

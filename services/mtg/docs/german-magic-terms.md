@@ -43,6 +43,7 @@ appears: <https://scryfall.com/card/frc/97/de>.
 | Basic land | `Standardland` | | tdm/291 |
 | Battle | `Schlacht` | | mom/242 |
 | Creature | `Kreatur` | | tdm/425 |
+| Creature type | `Kreaturentyp` | | lcc/108 |
 | Dungeon | `Gewölbe` | | afc/326 |
 | Enchantment | `Verzauberung` | | tdm/392 |
 | Equipment | `Ausrüstung` | | fra/365 |
