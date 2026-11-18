@@ -310,8 +310,8 @@ catalogs:
       specifier: 1.31.1
       version: 1.31.1
     prettier:
-      specifier: 3.9.10
-      version: 3.9.10
+      specifier: 3.10.0
+      version: 3.10.0
     prettier-plugin-tailwindcss:
       specifier: 0.8.1
       version: 0.8.1
@@ -438,10 +438,10 @@ importers:
         version: 14.10.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       prettier:
         specifier: catalog:devDependencies
-        version: 3.9.10
+        version: 3.10.0
       prettier-plugin-tailwindcss:
         specifier: catalog:devDependencies
-        version: 0.8.1(prettier@3.9.10)
+        version: 0.8.1(prettier@3.10.0)
       react:
         specifier: catalog:dependencies
         version: 19.3.1
@@ -556,10 +556,10 @@ importers:
         version: 65.4.5(eslint@10.14.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(typescript@6.0.3)
       prettier:
         specifier: catalog:devDependencies
-        version: 3.9.10
+        version: 3.10.0
       prettier-plugin-tailwindcss:
         specifier: catalog:devDependencies
-        version: 0.8.1(prettier@3.9.10)
+        version: 0.8.1(prettier@3.10.0)
       tailwindcss:
         specifier: catalog:devDependencies
         version: 4.3.5
@@ -653,10 +653,10 @@ importers:
         version: 65.4.5(eslint@10.14.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(typescript@6.0.3)
       prettier:
         specifier: catalog:devDependencies
-        version: 3.9.10
+        version: 3.10.0
       prettier-plugin-tailwindcss:
         specifier: catalog:devDependencies
-        version: 0.8.1(prettier@3.9.10)
+        version: 0.8.1(prettier@3.10.0)
       tailwindcss:
         specifier: catalog:devDependencies
         version: 4.3.5
@@ -795,10 +795,10 @@ importers:
         version: 1.31.1
       prettier:
         specifier: catalog:devDependencies
-        version: 3.9.10
+        version: 3.10.0
       prettier-plugin-tailwindcss:
         specifier: catalog:devDependencies
-        version: 0.8.1(prettier@3.9.10)
+        version: 0.8.1(prettier@3.10.0)
       sharp:
         specifier: catalog:devDependencies
         version: 0.35.5(@types/node@24.19.2)
@@ -931,10 +931,10 @@ importers:
         version: 65.4.5(eslint@10.14.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(typescript@6.0.3)
       prettier:
         specifier: catalog:devDependencies
-        version: 3.9.10
+        version: 3.10.0
       prettier-plugin-tailwindcss:
         specifier: catalog:devDependencies
-        version: 0.8.1(prettier@3.9.10)
+        version: 0.8.1(prettier@3.10.0)
       tailwindcss:
         specifier: catalog:devDependencies
         version: 4.3.5
@@ -4781,8 +4781,8 @@ packages:
       prettier-plugin-svelte:
         optional: true
 
-  prettier@3.9.10:
-    resolution: {integrity: sha512-skGHTH1Yb9QvaTC4hWnRTzEYtCpApF0UMBPz+t/0ZPzP8ihefo/btKd+QA7pUE0fEwA1SbS/NmhyEcstdXOIdA==}
+  prettier@3.10.0:
+    resolution: {integrity: sha512-mBi4765LgjO1PFjlEs7pUeK0nb1bw71c+N4/ItfeUWNdY5cV2pRKaFpbbFRYmDJMO+5ZwzGxHRqHxFZna7iv5w==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -7474,7 +7474,7 @@ snapshots:
       '@tanstack/virtual-file-routes': 1.162.0
       jiti: 2.7.0
       magic-string: 0.30.21
-      prettier: 3.9.10
+      prettier: 3.10.0
       zod: 4.6.7
     transitivePeerDependencies:
       - supports-color
@@ -9634,11 +9634,11 @@ snapshots:
 
   prelude-ls@1.2.1: {}
 
-  prettier-plugin-tailwindcss@0.8.1(prettier@3.9.10):
+  prettier-plugin-tailwindcss@0.8.1(prettier@3.10.0):
     dependencies:
-      prettier: 3.9.10
+      prettier: 3.10.0
 
-  prettier@3.9.10: {}
+  prettier@3.10.0: {}
 
   pretty-bytes@5.6.0: {}
 
