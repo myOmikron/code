@@ -4,6 +4,7 @@ import { Api } from "src/api/api";
 import type { DateSessionResponse } from "src/api/generated";
 import { DatingDateView } from "src/components/dating-date-view";
 import { RequireAccount } from "src/components/require-account";
+import { pickLine, useDatingLines } from "src/utils/dating-lines";
 import i18n from "src/i18n";
 
 export const Route = createFileRoute("/_menu/dating/date/$deckUuid")({
@@ -27,6 +28,7 @@ function RouteComponent() {
     const loaded = Route.useLoaderData();
     const [session, setSession] = useState<DateSessionResponse>(loaded);
     const [busy, setBusy] = useState(false);
+    const lines = useDatingLines();
     const deck = session.deck;
 
     const act = async (move: () => Promise<DateSessionResponse>) => {
@@ -52,6 +54,7 @@ function RouteComponent() {
                 }
                 onBuildAnyway={() => navigate({ to: "/decks/$deckUuid/cards", params: { deckUuid: deck } })}
                 onBack={() => navigate({ to: "/dating/matches" })}
+                leftLine={pickLine(lines?.[session.name]?.reject, session.commander)}
             />
         </RequireAccount>
     );

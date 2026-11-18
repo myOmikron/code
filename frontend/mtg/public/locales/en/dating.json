@@ -47,6 +47,7 @@
         "empty": "You swiped every Commander in reach.",
         "how-much": "How much {{theme}}?",
         "loading": "Shuffling Commanders",
+        "looking-for": "Looking for {{tagline}}",
         "match-1": "{{name}} likes you too.",
         "match-2": "{{name}} has been waiting for someone like you.",
         "match-3": "{{name}} cleared the command zone for you.",

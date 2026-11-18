@@ -11,6 +11,7 @@ import { ManaCost } from "src/components/mana-cost";
 import { RequireAccount } from "src/components/require-account";
 import i18n from "src/i18n";
 import { manaSymbols, rejectionKey } from "src/utils/dating";
+import { pickLine, useDatingLines } from "src/utils/dating-lines";
 import { useStartDeck } from "src/utils/use-start-deck";
 
 export const Route = createFileRoute("/_menu/dating/matches")({
@@ -31,6 +32,7 @@ function RouteComponent() {
     const { matches, shots } = Route.useLoaderData();
     const router = useRouter();
     const startDeck = useStartDeck();
+    const lines = useDatingLines();
     const [busy, setBusy] = useState<string | null>(null);
 
     const [starting, setStarting] = useState<DateResponse | null>(null);
@@ -77,7 +79,8 @@ function RouteComponent() {
                     )}
                     {date.status === DateStatus.Rejected && date.reason && (
                         <Text className={"truncate text-xs"}>
-                            {t(rejectionKey(date.reason, date.commander), { detail: date.reason.detail ?? "" })}
+                            {pickLine(lines?.[date.name]?.reject, date.commander) ??
+                                t(rejectionKey(date.reason, date.commander), { detail: date.reason.detail ?? "" })}
                         </Text>
                     )}
                     {date.status === DateStatus.Unmatched && (

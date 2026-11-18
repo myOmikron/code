@@ -44,6 +44,8 @@ export type DatingDateViewProps = {
     onBuildAnyway: () => void;
     /** Leave for the matches, to come back later */
     onBack: () => void;
+    /** What the Commander says when it leaves, if it has a line for that */
+    leftLine?: string | null;
 };
 
 /**
@@ -53,7 +55,8 @@ export type DatingDateViewProps = {
  * @returns the date
  */
 export function DatingDateView(props: DatingDateViewProps) {
-    const { session, busy, onAnswer, onBring, onDateNight, onComeBack, onMeetCards, onBuildAnyway, onBack } = props;
+    const { session, busy, onAnswer, onBring, onDateNight, onComeBack, onMeetCards, onBuildAnyway, onBack, leftLine } =
+        props;
     const [t] = useTranslation("dating");
     const [mine, setMine] = useState<DateThemeResponse | null>(null);
 
@@ -316,6 +319,7 @@ export function DatingDateView(props: DatingDateViewProps) {
                                 <h2 className={"text-3xl font-extrabold"}>
                                     {t("heading.date-left", { name: session.name })}
                                 </h2>
+                                {leftLine && <p className={"text-lg text-zinc-200"}>{leftLine}</p>}
                                 <div className={"flex w-full flex-col gap-3"}>
                                     <button
                                         type={"button"}

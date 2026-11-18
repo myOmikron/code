@@ -1,0 +1,1202 @@
+{
+    "Aesi, Tyrant of Gyre Strait": {
+        "tagline": "jemanden, der mich ein zusätzliches Land spielen lässt, ohne Fragen",
+        "match": [
+            "Match! Zwei Länder pro Zug, jedes Mal eine Karte. Ich sorge für dich.",
+            "Es passt. Schwimm mit in der Gyre Strait. Das Wasser ist voller Karten."
+        ],
+        "reject": [
+            "Sorry, ich bin eine Tyrannin. Tyrannen machen keine Kompromisse.",
+            "Nein. Du bist süß, aber ich ziehe lieber noch eine Karte."
+        ],
+        "comeback": "Na gut. Ein zusätzliches Land für dich. Verschwende es nicht."
+    },
+    "Alela, Cunning Conqueror": {
+        "tagline": "jemanden, den es nicht stört, dass ich im Zug anderer Leute flirte",
+        "match": [
+            "Ich wirke Zauber in deinem Zug, nur damit du mich bemerkst. Feenhaft, oder?",
+            "Meine Feen treffen dein Herz, und jetzt prügeln sich alle anderen um dich."
+        ],
+        "reject": [
+            "Spontan rein, spontan raus. Und du bist raus.",
+            "Meine Feinde hetze ich aufeinander. Dich ignoriere ich einfach."
+        ],
+        "comeback": "Gerissen, schon vergessen? Ich wusste, dass du fragst. Spontan: ja."
+    },
+    "Aminatou, the Fateshifter": {
+        "tagline": "jemanden, den es nicht stört, wenn das Schicksal alles vertauscht",
+        "match": [
+            "Hab ich schon in der obersten Karte gesehen. Da stand ja.",
+            "Gute Wahl. Ich lasse deine beste Kreatur kurz verschwinden, damit sie frisch zurückkommt."
+        ],
+        "reject": [
+            "Ich hab eine Karte gezogen und eine oben zurückgelegt. Das war meine Antwort.",
+            "Das Schicksal hat sich gedreht. Nach links, weg von dir."
+        ],
+        "comeback": "Na gut. Das Schicksal dreht sich. Manchmal sogar zurück zu dir."
+    },
+    "Animar, Soul of Elements": {
+        "tagline": "jemanden, der Kreaturen wirkt, bis alles nichts mehr kostet",
+        "match": [
+            "Match! Jede Kreatur, die du wirkst, macht mich billiger. Im guten Sinn.",
+            "Es passt. Schutz vor Weiß, Schutz vor Schwarz, offen für dich."
+        ],
+        "reject": [
+            "Sorry, ich habe Schutz vor genau so was.",
+            "Nein. Laut meinen Marken bin ich darüber hinausgewachsen."
+        ],
+        "comeback": "Na gut. Wirk noch eine Kreatur, dann werde ich günstiger für dich."
+    },
+    "Anowon, the Ruin Thief": {
+        "tagline": "jemanden mit großer Bibliothek und keinen Plänen, sie zu behalten",
+        "match": [
+            "Meine Schurken kriegen +1/+1, nur weil sie neben mir stehen. Und erst du!",
+            "Ich stehle Herzen, dann Bibliotheken. Meistens in der Reihenfolge."
+        ],
+        "reject": [
+            "Ich hab schon Ruinen ausgeraubt, die mehr Persönlichkeit hatten.",
+            "Ich würde dich millen, aber da drin ist nichts, was ich will."
+        ],
+        "comeback": "Na gut. Ein guter Dieb kommt immer für einen zweiten Blick zurück."
+    },
+    "Arcades, the Strategist": {
+        "tagline": "jemanden, der hinter meine Mauern schaut und sie angreifen lässt",
+        "match": [
+            "Match! Du siehst hinter meine Mauern. Die meisten sehen nur Mauern.",
+            "Es passt. Für jede Mauer, die du mitbringst, ziehe ich eine Karte."
+        ],
+        "reject": [
+            "Sorry, ich hab Verteidiger. Auch emotional.",
+            "Nein. Ein echter Stratege weiß, wann er hinter der Mauer bleibt."
+        ],
+        "comeback": "Na gut, eine Mauer fällt. Die schlägt aber mit ihrer Widerstandskraft zu."
+    },
+    "Atla Palani, Nest Tender": {
+        "tagline": "jemanden, der bereit für Familie ist, auch wenn keiner weiß, was schlüpft",
+        "match": [
+            "Ich tappe, wir kriegen ein Ei. Jedes ist eine Überraschung. Ziehen wir's groß?",
+            "Unser erstes Ei liegt schon im Spiel. Was drin ist? Weiß keiner!"
+        ],
+        "reject": [
+            "Ich lege nicht alle Eier in deinen Korb.",
+            "Etwas ist zerbrochen, und es war nicht das Ei. Es war mein Interesse."
+        ],
+        "comeback": "Okay. Lass uns das ausbrüten und schauen, was rauskommt."
+    },
+    "Atraxa, Praetors' Voice": {
+        "tagline": "jemanden, der jede Beziehung um eine Marke wachsen lässt",
+        "match": [
+            "Vier Farben Gepäck, aber alles wächst dir ans Herz. Eine Marke pro Zug.",
+            "Match! Meine Superfriends werden dich lieben. Ja, alle. Gleichzeitig."
+        ],
+        "reject": [
+            "Ich lasse vieles wachsen. Diese Beziehung gehört nicht dazu.",
+            "Sorry, meine offene Beziehung ist voll. Die Planeswalker waren zuerst da."
+        ],
+        "comeback": "Na gut. Ich lege eine Marke auf uns und schau am Endsegment, ob was wächst."
+    },
+    "Bello, Bard of the Brambles": {
+        "tagline": "jemanden mit teuren Möbeln, die auch zuschlagen können",
+        "match": [
+            "In meinem Zug werden deine schicken Artefakte zu 4/4ern. Und erst du!",
+            "Ich bin ein Waschbär-Barde. Ich singe, klaue Snacks und belebe deine Verzauberungen."
+        ],
+        "reject": [
+            "Ich hab deinen Krimskrams gesehen. Nichts davon kostet vier Mana oder mehr.",
+            "Dieser Waschbär geht zurück ins Gebüsch. Allein. Mit seiner Laute."
+        ],
+        "comeback": "Na gut, ich schreib dir noch ein Lied. Hoffentlich keine Trennungsballade."
+    },
+    "Brago, King Eternal": {
+        "tagline": "jemanden, der es verkraftet, kurz ins Exil geblinkt zu werden",
+        "match": [
+            "Match! Ich treffe dich, blinke dich, und du fühlst dich wie neu.",
+            "Es passt. Stört's dich, wenn ich Winter Orb mitbringe? Für die Stimmung."
+        ],
+        "reject": [
+            "Sorry, ich hab geblinkt, und du warst weg. Für immer.",
+            "Nein. Ein ewiger König hat eine Ewigkeit, um was Besseres zu finden."
+        ],
+        "comeback": "Na gut. Ins Exil und zurück. Betrachte dich als zurückgesetzt."
+    },
+    "Breya, Etherium Shaper": {
+        "tagline": "jemanden, der auch meine Metallteile liebt",
+        "match": [
+            "Match! Ich hab uns zwei Thopter gebaut. Fliegende Anstandsdamen.",
+            "Die Hälfte von mir ist Etherium. Die andere Hälfte mag dich schon."
+        ],
+        "reject": [
+            "Für diese Antwort habe ich zwei Artefakte geopfert. Macht drei Schaden an dir.",
+            "Vier Farben voller Optionen, und keine davon bist du."
+        ],
+        "comeback": "Na gut. Zwei Artefakte opfern, fünf Lebenspunkte erhalten. Nennen wir's Heilung."
+    },
+    "Captain N'ghathrod": {
+        "tagline": "jemanden mit offenem Geist, am besten einem leckeren",
+        "match": [
+            "Ich würde zu gern dein Gehirn anzapfen. Wortwörtlich. Willkommen an Bord der Nautiloid.",
+            "Gegnerische Friedhöfe sind mein Dating-Pool. Du wirst bedrohlich, ich kriege ihr Zeug."
+        ],
+        "reject": [
+            "Ich hab von deinem Verstand gekostet. Fad.",
+            "Meine Tentakel halten schon die Bibliothek von jemand anderem."
+        ],
+        "comeback": "Na gut. Komm an Bord. Vorsicht mit den Kaulquappen."
+    },
+    "Chulane, Teller of Tales": {
+        "tagline": "jemanden mit einer guten Geschichte, am besten einer, die mir eine Karte zieht",
+        "match": [
+            "Match! Ich erzähl dir eine Geschichte. Sie ist lang, und jedes Kapitel zieht eine Karte.",
+            "Jedes Mal, wenn du auftauchst, ziehe ich eine Karte und spiele ein Land. Wachstum."
+        ],
+        "reject": [
+            "Die Geschichte kenne ich schon. Ich schicke sie zurück auf deine Hand.",
+            "Nicht jedes Märchen endet gut. Dieses zieht eine Karte und zieht weiter."
+        ],
+        "comeback": "Na gut. Ich nehme dich auf die Hand und wirke dich neu. Neuer ETB, neuer Anfang."
+    },
+    "Clavileño, First of the Blessed": {
+        "tagline": "einen Vampir mit einem kleinen Dämon im Inneren, der rauswill",
+        "match": [
+            "Greif mit mir an und ich hole den Dämon in dir raus. Wortwörtlich.",
+            "Eine Fledermaus, ein Vampir und ein Priester gehen in eine Bar. Das bin alles ich. Hi."
+        ],
+        "reject": [
+            "Der Segen ist für Vampire. Du bist offensichtlich nur Tourist.",
+            "Ich kenne deine Sünden. Und keine davon ist von der lustigen Sorte."
+        ],
+        "comeback": "Na gut. Jeder verdient einen Segen. Verschwende ihn nicht."
+    },
+    "Dragonlord Ojutai": {
+        "tagline": "jemanden, der geduldig wartet, bis ich getappt und verletzlich bin",
+        "match": [
+            "Fluchsicher bin ich nur ungetappt. Für dich greife ich an und lasse die Deckung fallen.",
+            "Bei jedem Treffer schaue ich drei Karten an und behalte die beste. Heute bist das du."
+        ],
+        "reject": [
+            "Ungetappt, fluchsicher, unerreichbar.",
+            "Ich habe mir drei Optionen angesehen. Du kommst unter die Bibliothek."
+        ],
+        "comeback": "Na gut. Für dich tappe ich. Einmal. Lass mich meine Verletzlichkeit nicht bereuen."
+    },
+    "Edgar Markov": {
+        "tagline": "jemanden, der altes Geld und noch älteres Blut zu schätzen weiß",
+        "match": [
+            "Match! Jeder Vampir, den du mitbringst, kriegt eine +1/+1-Marke. Familientradition.",
+            "Entzückend. Ich sitze länger in der Kommandozone, als es deine Blutlinie gibt."
+        ],
+        "reject": [
+            "Die Familie wäre leider nicht einverstanden. Und wir sind sehr viele.",
+            "Dir fehlt ein gewisser... Jahrgang, Liebes."
+        ],
+        "comeback": "Nun gut. Ein Glas noch, Liebes. Dann reden wir über deine Blutgruppe."
+    },
+    "Ellivere of the Wild Court": {
+        "tagline": "jemanden, der auf ein bisschen Rollenspiel steht",
+        "match": [
+            "Ich steh auf Rollenspiel. Deine beste Kreatur kriegt von mir eine Virtuous Role.",
+            "Verzauberte Kreatur trifft, ich ziehe eine Karte. Unser Märchen schreibt sich von selbst."
+        ],
+        "reject": [
+            "Sorry, die einzige Rolle, die ich noch für dich habe, ist Cursed.",
+            "Das ist nicht so ein Märchen. Kein Happy End, kein Kuss."
+        ],
+        "comeback": "Na gut. Jedes Märchen braucht einen zweiten Akt. Verpass deinen Einsatz nicht."
+    },
+    "Elsha of the Infinite": {
+        "tagline": "jemanden, den es nicht stört, dass ich immer schon sehe, was als Nächstes kommt",
+        "match": [
+            "Ich weiß immer, was oben auf deiner Bibliothek liegt. Das hier hab ich kommen sehen.",
+            "Bei mir passiert alles mit Instant-Speed. Sogar das Verlieben."
+        ],
+        "reject": [
+            "Ich hab oben in deine Bibliothek gespickt. Ich hab genug gesehen.",
+            "Unendliche Geduld, hieß es. War gelogen."
+        ],
+        "comeback": "Na gut. Ich wirke dich nochmal von oben, mit Aufblitzen."
+    },
+    "Etali, Primal Conqueror": {
+        "tagline": "jemanden, den es nicht stört, wenn ich Zauber aus der Bibliothek seines Ex wirke",
+        "match": [
+            "Ich nehme mir aus jeder Bibliothek am Tisch einen Zauber und wirke alle für dich.",
+            "Gratis-Zauber für alle! Also für mich. Und jetzt für dich."
+        ],
+        "reject": [
+            "Alle schicken ihre oberste Karte ins Exil, ich auch. Im Exil: dieses Date.",
+            "Gib mir Zeit, dann verwandle ich mich in was Schlimmeres. Lauf, solange du kannst."
+        ],
+        "comeback": "Na gut, ich bleib heute die Dino-Version von mir. Kein Gift heute Nacht."
+    },
+    "Ezuri, Renegade Leader": {
+        "tagline": "jemanden, der mit meinen vierzig Elfen klarkommt",
+        "match": [
+            "Match! Fünf Mana, und jeder Elf kriegt +3/+3. Das wird eine Party.",
+            "Es passt. Ich bin ein Abtrünniger. Meine Elfen und ich pfeifen auf Regeln."
+        ],
+        "reject": [
+            "Sorry, meine Elfen haben abgestimmt. Es war eindeutig.",
+            "Nein. Ich würde das ja regenerieren, aber es ist kein Elf."
+        ],
+        "comeback": "Na gut. Ein grünes Mana, und ich regeneriere, was wir hatten."
+    },
+    "Feather, the Redeemed": {
+        "tagline": "jemanden, der mich immer wieder liebevoll als Ziel wählt",
+        "match": [
+            "Match! Ziel mit was Süßem auf mich, und es kommt jeden Zug zurück.",
+            "Es passt. Ich bin geläutert. Meistens. Schleudern geht trotzdem."
+        ],
+        "reject": [
+            "Sorry, ich bin geläutert. Da will ich nicht wieder hin.",
+            "Nein. Was nicht auf mich zielt, kommt nicht zurück."
+        ],
+        "comeback": "Na gut. Jeder Zauber kommt im Endsegment zurück. Warum nicht du?"
+    },
+    "Galadriel, Light of Valinor": {
+        "tagline": "jemanden, der dem Ring widerstehen kann, und vielleicht auch mir",
+        "match": [
+            "Ich habe die Prüfung bestanden. Ich werde nicht schwinden. Ich gehe mit dir in den Westen.",
+            "Schau in meinen Spiegel. Er zeigt, was war, was ist, und uns."
+        ],
+        "reject": [
+            "Alle werden mich lieben und verzweifeln. Du bist beim Verzweifeln.",
+            "Ich habe den Einen Ring abgelehnt. Dich abzulehnen war viel leichter."
+        ],
+        "comeback": "Na gut. Auch die Herrin von Lórien macht manchmal ein zweites Geschenk."
+    },
+    "Ghave, Guru of Spores": {
+        "tagline": "jemanden, der nichts gegen einen kleinen Ashnod's Altar im Schlafzimmer hat",
+        "match": [
+            "Ich bin ein Pilz mit Plan. Bring einen Altar mit, heute gehen wir infinite.",
+            "Marken werden Saprolinge, Saprolinge werden Marken. Wir harmonieren einfach."
+        ],
+        "reject": [
+            "Ich recycle alles. Außer dieses Date. Das kommt direkt in die Tonne.",
+            "Sorry, ich wachse lieber woanders. Pilze brauchen ihren Abstand."
+        ],
+        "comeback": "Na gut, ich opfere meinen Stolz und lege dir eine Marke drauf."
+    },
+    "Giada, Font of Hope": {
+        "tagline": "jemanden, der an Engel glaubt, und zwar im Plural",
+        "match": [
+            "Match! Du kommst mit einer +1/+1-Marke pro Engel ins Spiel, der dich schon liebt.",
+            "Himmlisch. Lern den Chor kennen. Jede macht die Nächste stärker."
+        ],
+        "reject": [
+            "Mein Mana ist nur für Engel. Du bist süß, aber kein Engel.",
+            "Sorry, ich bin monoweiß. Ich hab Prinzipien, und du gehörst nicht dazu."
+        ],
+        "comeback": "Na gut. Ich bin wörtlich die Quelle der Hoffnung. Nimm dir was."
+    },
+    "Gishath, Sun's Avatar": {
+        "tagline": "jemanden, der keine Angst vor einer großen Dino-Familie hat",
+        "match": [
+            "Acht Mana, Eile, Trampelschaden, und ich treffe dich mitten ins Herz.",
+            "Ich treffe und bringe die ganze Herde mit. Meine Familie liebt dich schon."
+        ],
+        "reject": [
+            "Liebe und Dinosaurier: beide hätten ausgestorben bleiben sollen.",
+            "Ich habe meine Bibliothek aufgedeckt. Kein Dino, kein du."
+        ],
+        "comeback": "Na gut, ich decke noch ein paar Karten auf. Vielleicht ist ein Dino für dich dabei."
+    },
+    "Gonti, Lord of Luxury": {
+        "tagline": "jemanden, der seine obersten vier Karten unbeaufsichtigt lässt",
+        "match": [
+            "Ich hab deine obersten vier durchgesehen und dein bestes Geheimnis behalten. Verdeckt.",
+            "Meinesgleichen lebt nicht lange, also gehen wir irgendwohin, wo's teuer ist. Du zahlst."
+        ],
+        "reject": [
+            "Ich hab deine Sachen durchsucht. Nichts, was sich zu stehlen lohnt.",
+            "Lord of Luxury. Du bist eher Wühltisch."
+        ],
+        "comeback": "Na gut. Ich behalte dich verdeckt im Exil, nur für alle Fälle."
+    },
+    "Grand Arbiter Augustin IV": {
+        "tagline": "jemanden, der Formulare dreifach ausfüllt und das 1 extra zahlt",
+        "match": [
+            "Genehmigt. Deine Zaubersprüche kosten 1 weniger, die der anderen 1 mehr. Gern geschehen.",
+            "Unsere Beziehung wurde geprüft, gestempelt und abgeheftet. Glückwunsch."
+        ],
+        "reject": [
+            "Antrag abgelehnt. Bitte mit 1 zusätzlichem generischem Mana erneut einreichen.",
+            "Mit mir zu reden kostet 1 mehr. Du konntest dir nicht mal den ersten Satz leisten."
+        ],
+        "comeback": "Na gut. Einspruch stattgegeben. Es fällt eine Bearbeitungsgebühr an."
+    },
+    "Hakbal of the Surging Soul": {
+        "tagline": "jemanden, der vor jedem Kampf mit mir auf Erkundung geht",
+        "match": [
+            "Match! Lass uns erkunden. Länder auf die Hand, der Rest kriegt eine Marke.",
+            "Es passt. Mein Meervolk hat dein Profil schon erkundet. Zweimal."
+        ],
+        "reject": [
+            "Sorry, ich suche jemanden mit mehr Meervolk im Leben.",
+            "Nein. Ich hab dich erkundet und nichts gefunden, das eine Marke wert ist."
+        ],
+        "comeback": "Okay, ich erkunde dich noch mal. Sei diesmal bitte kein Land."
+    },
+    "Henzie \"Toolbox\" Torre": {
+        "tagline": "jemanden, dem kurze Affären reichen, die eine Karte auf dem Nachttisch lassen",
+        "match": [
+            "Ich komme per Blitz, schlag hart zu und lass dir morgens eine Karte da. Stilvoll.",
+            "Jede große Kreatur kriegt Blitz. Jedes Date wird billiger. Effizient."
+        ],
+        "reject": [
+            "Am Zugende habe ich Besseres geopfert. Für dich lohnt kein Blitz.",
+            "Ich bin ein Riveteer. Ich repariere Dinge. Das hier lohnt das Werkzeug nicht."
+        ],
+        "comeback": "Na gut, wirk mich nochmal. Jedes Mal, wenn ich zurückkomme, wird's billiger."
+    },
+    "Hidetsugu and Kairi": {
+        "tagline": "eine dritte Person für unser sehr verbindliches Oger-und-Drachen-Duo",
+        "match": [
+            "Wir ziehen drei, legen zwei zurück und behalten dich. Bester Brainstorm ever.",
+            "Uns gibt's nur im Doppelpack. Glück gehabt, es ist ein großes Paket."
+        ],
+        "reject": [
+            "Wir haben dich oben auf die Bibliothek gelegt. Und dann gemischt.",
+            "Einer von uns sagte vielleicht. Der andere sagte auf keinen Fall."
+        ],
+        "comeback": "Na gut, wir wirken dich kostenlos. Lass es uns nicht bereuen."
+    },
+    "Isshin, Two Heavens as One": {
+        "tagline": "jemanden, dessen Angriffs-Trigger doppelt auslösen",
+        "match": [
+            "Match! Wenn du angreifst, löse ich ein weiteres Mal aus.",
+            "Zwei Himmel als einer. Du und ich, aber jedes Gefühl doppelt."
+        ],
+        "reject": [
+            "Dein Angriff hat in mir nichts ausgelöst. Nicht mal einmal.",
+            "Ich bin Samurai. Ich habe meinen Frieden gemacht, und mein Frieden sagt Nein."
+        ],
+        "comeback": "Na gut. Eine zweite Chance, und wie alles bei mir löst sie doppelt aus."
+    },
+    "Jetmir, Nexus of Revels": {
+        "tagline": "jemanden, der Freunde mitbringt, denn mit Publikum werde ich immer besser",
+        "match": [
+            "Ab drei Wachsamkeit, ab sechs Trampelschaden, ab neun Doppelschlag. Bring alle mit.",
+            "Willkommen bei den Cabaretti. Du stehst auf der Liste und die Drinks gehen auf uns."
+        ],
+        "reject": [
+            "Sorry, der Club ist voll. Und du stehst nicht auf der Liste.",
+            "Du kommst allein? Zu meiner Party? Türsteher, bitte."
+        ],
+        "comeback": "Na gut, das Seil geht auf. Aber die nächste Runde zahlst du."
+    },
+    "Jodah, the Unifier": {
+        "tagline": "jemanden Legendären, denn ich date nur Legenden",
+        "match": [
+            "Match! Jede Legende macht uns beide größer. So geht Einigkeit.",
+            "Es passt. Fünf Farben, ein Herz und eine Gratis-Legende von oben."
+        ],
+        "reject": [
+            "Sorry, ich date nur Legenden. Du bist eher Common.",
+            "Nein. Ich hab meine halbe Bibliothek ins Exil geschickt. Du warst nicht dabei."
+        ],
+        "comeback": "Na gut. Vielleicht bist du doch legendär. Beweis es."
+    },
+    "Kaalia of the Vast": {
+        "tagline": "jemanden, der mit einem Engel, einem Dämon und einem Drachen gleichzeitig klarkommt",
+        "match": [
+            "Match! Ich bring jemanden mit. Getappt und angreifend, aber nett.",
+            "Du hast mit mir Zug vier erlebt. Das ist quasi eine Ehe."
+        ],
+        "reject": [
+            "Nein. Mein Typ ist Engel, Dämon oder Drache. Du bist nichts davon.",
+            "Sorry, ich überspringe das Kennenlernen und greife direkt an."
+        ],
+        "comeback": "Na gut. Aber wenn mich bis Zug vier keiner entfernt, gehörst du mir."
+    },
+    "Kalamax, the Stormsire": {
+        "tagline": "jemanden, der mich erst mal getappt lässt, denn so kopiere ich am besten",
+        "match": [
+            "Dein erster Spontanzauber pro Zug? Kopier ich. Manches macht man besser zweimal.",
+            "Jede Kopie macht mich größer. Ein Dino, der auf Wiederholung steht."
+        ],
+        "reject": [
+            "Für dich bin ich getappt. Dauerhaft.",
+            "Ich kopiere Spontanzauber, keine Fehler."
+        ],
+        "comeback": "Na gut. Erster Spontanzauber im Zug, und die Entschuldigung kopiere ich gleich mit."
+    },
+    "Kefka, Court Mage": {
+        "tagline": "jemanden, der mit mir über das Ende der Welt lacht",
+        "match": [
+            "Match! Alle werfen eine Karte ab, das wird eine Party! Hihihi!",
+            "Es passt. Ich ruiniere alle anderen, nur für dich."
+        ],
+        "reject": [
+            "Sorry! Ich zerstöre dich lieber. Nichts Persönliches. Hihi!",
+            "Nein. Du bist wie eine kaputte Schallplatte! Kaputt und langweilig!"
+        ],
+        "comeback": "Na schön! Dein Elend macht einfach zu viel Spaß zum Wegwerfen."
+    },
+    "Kenrith, the Returned King": {
+        "tagline": "jemanden, der einen König mit Geschenken in jeder Farbe zu schätzen weiß",
+        "match": [
+            "Match! Du kriegst fünf Lebenspunkte, eine Karte und eine +1/+1-Marke. Ich geb gern.",
+            "Für dieses Date bin ich von den Toten zurückgekehrt. Steht sogar in meinem Namen."
+        ],
+        "reject": [
+            "Ich hole Kreaturen aus jedem Friedhof zurück. Dieses Gefühl nicht.",
+            "Fünf Fähigkeiten, und keine davon ist für dich."
+        ],
+        "comeback": "Na gut. Ich bin auch zurückgekehrt. Vielleicht schaffst du's auch."
+    },
+    "Kinnan, Bonder Prodigy": {
+        "tagline": "jemanden, der etwas extra produziert, so wie jeder meiner Mana-Rocks",
+        "match": [
+            "Match! Du tappst, ich leg eins drauf. Mit Basalt Monolith sind wir unendlich.",
+            "Ich bin der Liebling der cEDH-Szene. Gib dem einen Zug, dann bist du's auch."
+        ],
+        "reject": [
+            "Sorry, ich binde mich nur an Mana-Rocks. Du tappst für gar nichts.",
+            "Ich hab mir die obersten fünf Karten meiner Bibliothek angesehen. Du warst nicht dabei."
+        ],
+        "comeback": "Na gut. Tapp einmal, und ich leg eine zusätzliche Chance drauf. So funktioniere ich."
+    },
+    "Kodama of the East Tree": {
+        "tagline": "jemanden, der offen für Partner ist, einen habe ich, aber der Baum ist groß",
+        "match": [
+            "Wenn jemand einzieht, darf jemand Billigeres mit einziehen. Willkommen!",
+            "Ich habe Partner, aber der Baum ist groß. Such dir einen Ast."
+        ],
+        "reject": [
+            "Etwas kam ins Spiel, aber es waren nicht meine Gefühle für dich.",
+            "Du hast Reichweite. Aber nicht genug, um mich zu erreichen."
+        ],
+        "comeback": "Eine bleibende Karte mit gleichem oder geringerem Wert? Passt. Komm rein."
+    },
+    "Korvold, Fae-Cursed King": {
+        "tagline": "jemanden, den ich beim ersten Date nicht opfern muss",
+        "match": [
+            "Match! Zur Feier habe ich einen Schatz geopfert. Karte gezogen. Gewachsen.",
+            "Du würdest dich gut an meiner Tafel machen. Da wird früher oder später alles gegessen."
+        ],
+        "reject": [
+            "Zum Angreifen muss ich etwas opfern. Leider bist du keine Karte wert.",
+            "Mein Fluch verlangt, dass ich etwas aufgebe. Heute bist das du."
+        ],
+        "comeback": "Na gut, dann opfere ich eben meinen Stolz. Schau, Karte gezogen."
+    },
+    "Krenko, Mob Boss": {
+        "tagline": "jemanden, den es nicht stört, dass ich die ganze Familie mitbringe",
+        "match": [
+            "Match! Ich sag's den Jungs. Allen. Es sind gerade wieder doppelt so viele.",
+            "Super, ein Tisch für zwei. Plus so viele Goblins, wie ich kontrolliere. Sagen wir 50."
+        ],
+        "reject": [
+            "Die Familie hat abgestimmt. Knapp war's nicht, wir sind 64.",
+            "Sorry, die Jungs mögen dich nicht. Und die Jungs sind in der Überzahl."
+        ],
+        "comeback": "Okay, okay. Die Familie gibt dir noch eine Chance. Sie hat sich beim Reden verdoppelt."
+    },
+    "Kykar, Wind's Fury": {
+        "tagline": "jemanden, der ständig Zaubersprüche wirkt, damit die Geister nie ausgehen",
+        "match": [
+            "Wirk einen Zauberspruch und ich mach dir einen Geist. Bei zehn wird's ein Combo-Abend.",
+            "Ein Vogel, der Geister zu Mana macht. Pflegeleicht, aber mit hohem Storm-Count."
+        ],
+        "reject": [
+            "Sogar meine Geister fliegen hier lieber weg.",
+            "Sorry, ich gehe mit jemandem aus, der mehr Cantrips mitbringt."
+        ],
+        "comeback": "Na gut. Noch ein Cantrip, und ein Geist kommt als Anstandsdame mit."
+    },
+    "Lathril, Blade of the Elves": {
+        "tagline": "jemanden, der mithält, wenn zehn Elfen gleichzeitig tappen",
+        "match": [
+            "Match! Zehn Elfen tappen für dich. Zehn verlieren, zehn erhalten, das ist Chemie.",
+            "Bedrohlich heißt: Mich stoppen nur zwei. Zum Glück will ich nur eine Person."
+        ],
+        "reject": [
+            "Sorry, ich bin ein Precon. Mein Herz wurde ohne dich vorkonstruiert.",
+            "Meine Elfen haben zehnmal getappt. Jedes Mal war's ein Nein."
+        ],
+        "comeback": "Na gut, die Elfen haben mich überstimmt. Die Elfen überstimmen mich immer."
+    },
+    "Light-Paws, Emperor's Voice": {
+        "tagline": "jemanden, der mich mit Auren überhäuft und Fuchsohren liebt",
+        "match": [
+            "Match! Für jede Aura von dir suche ich eine passende. Partnerlook!",
+            "Es passt. Ich trage Auren wie Schmuck. Du könntest die nächste sein."
+        ],
+        "reject": [
+            "Sorry, die Stimme des Kaisers sagt nein.",
+            "Nein. Ich trage schon sechs Auren. Für dich ist kein Platz."
+        ],
+        "comeback": "Na gut. Du darfst dich an mich hängen. Nur dieses eine Mal."
+    },
+    "Lord Windgrace": {
+        "tagline": "jemanden, der einen Kater mag, der Länder aus dem Friedhof zurückholt",
+        "match": [
+            "Match! Ich grabe deine alten Länder aus und schenke ihnen neue Liebe.",
+            "Es passt. Mein Ultimate: sechs Katzen und ein Neuanfang. Zusammen."
+        ],
+        "reject": [
+            "Sorry, ich wandle lieber allein durch die Welten. Meist durch Wälder.",
+            "Nein. Ich hab dich abgeworfen und was Besseres gezogen. Zweimal, du warst ein Land."
+        ],
+        "comeback": "Na gut. Ich hol dich zurück wie ein Land aus meinem Friedhof."
+    },
+    "Lord of the Nazgûl": {
+        "tagline": "jemanden, den es nicht stört, dass ich überall acht Freunde mitbringe",
+        "match": [
+            "Wirk einen Zauber und ich mache dir einen Wraith. Romantik à la Mordor.",
+            "Ein Ring, sie zu knechten, und ein Date, dich zu binden. Mein Schatz."
+        ],
+        "reject": [
+            "Für einen Ringgeist müsstest du schon mehr Spontanzauber wirken.",
+            "Wir neun haben abgestimmt. Alle neun haben nein geflüstert."
+        ],
+        "comeback": "Der Ring führt dich in Versuchung, und du offenbar mich. Komm zurück."
+    },
+    "Magda, Brazen Outlaw": {
+        "tagline": "jemanden, der Schätze liebt und kleine Leute mit großen Äxten",
+        "match": [
+            "Jedes Mal, wenn ein Zwerg tappt, gibt's einen Schatz. Reich und romantisch.",
+            "Mit fünf Schätzen klaue ich alles. Angefangen mit deinem Herzen."
+        ],
+        "reject": [
+            "Dreist? Ja. Verzweifelt? Nein.",
+            "Für ein besseres Date als das hier würde ich fünf Schätze opfern."
+        ],
+        "comeback": "Na gut, die Zwerge haben abgestimmt. Sie mögen dich. Tapp dich rein."
+    },
+    "Marwyn, the Nurturer": {
+        "tagline": "jemanden, der mich mit jeder neuen Kreatur aufpäppelt",
+        "match": [
+            "Match! Jede Kreatur, die du mitbringst, macht mich stärker. Und reicher.",
+            "Es passt. Ich tappe für Grün in Höhe meiner Stärke. Behalt mich."
+        ],
+        "reject": [
+            "Sorry, ich päpple Elfen, keine Situationen wie diese.",
+            "Nein. Hier kamen zu wenige Kreaturen ins Spiel, um zu wachsen."
+        ],
+        "comeback": "Okay. Bring noch eine Kreatur, dann wachse ich dir ans Herz."
+    },
+    "Meren of Clan Nel Toth": {
+        "tagline": "jemanden mit Erfahrung, am besten mit vielen Erfahrungsmarken",
+        "match": [
+            "Match! Erfahrung habe ich genug. Marken, um genau zu sein.",
+            "Wenn um mich herum etwas stirbt, hole ich's am Endsegment zurück. Du bist sicher."
+        ],
+        "reject": [
+            "Dein Manabetrag ist höher als meine Erfahrung. Zurück auf die Hand.",
+            "Ich hole viel aus meinem Friedhof zurück. Dieses Gespräch nicht."
+        ],
+        "comeback": "Na gut. Am Endsegment hole ich eine Kreatur aus meinem Friedhof. Heute bist das du."
+    },
+    "Miirym, Sentinel Wyrm": {
+        "tagline": "jemanden, der es wert ist, kopiert zu werden",
+        "match": [
+            "Match! Du bist gerade ins Spiel gekommen, also gibt's dich jetzt doppelt. Doppel-Date.",
+            "Ich hüte meinen Hort, und jetzt gehörst du dazu. Glückwunsch, du bist ein Schatz."
+        ],
+        "reject": [
+            "Abwehr 2. Du kannst nicht mal zahlen, um mir näherzukommen.",
+            "Ich kopiere nur Drachen, die ich mag. Von dir gibt's null Kopien."
+        ],
+        "comeback": "Na gut, ich mache eine Token-Kopie von dir. Die Kopie kriegt die zweite Chance."
+    },
+    "Mizzix of the Izmagnus": {
+        "tagline": "jemanden, der eine Frau mit Erfahrung zu schätzen weiß",
+        "match": [
+            "Je mehr Erfahrung ich sammle, desto günstiger werden unsere Dates.",
+            "Bring deine größten Spontanzauber. Mit meiner Erfahrung kosten die fast nichts."
+        ],
+        "reject": [
+            "Dein Manabetrag liegt unter meiner Erfahrung. Da lerne ich nichts mehr.",
+            "Sorry, mit dir will ich keine Erfahrungen sammeln."
+        ],
+        "comeback": "Na gut. Jede Beziehung ist eine Erfahrung. Die Marke nehme ich mit."
+    },
+    "Mr. House, President and CEO": {
+        "tagline": "jemanden, der hoch würfelt und nie gegen das Haus wettet",
+        "match": [
+            "Das Haus gewinnt immer, und heute Abend, Schätzchen, auch du.",
+            "Würfel eine 4 und ich bau dir einen Roboter. Bei einer 6 gibt's einen Schatz dazu."
+        ],
+        "reject": [
+            "Ich hab die Zahlen durchgerechnet. Die Chancen für uns standen nie gut.",
+            "Ich hocke seit zwei Jahrhunderten in einer Kapsel, um genau solchen Dates auszuweichen."
+        ],
+        "comeback": "Na gut. Noch ein Wurf. Aber der Schatz bleibt beim Haus."
+    },
+    "Ms. Bumbleflower": {
+        "tagline": "jemanden zum Teilen, denn bei mir zieht der ganze Tisch",
+        "match": [
+            "Match! Deinen Freunden hab ich schon eine Karte spendiert. Teilen ist Liebe.",
+            "Bei dir fühl ich mich, als könnte ich fliegen. Zumindest bis zum Ende des Zuges."
+        ],
+        "reject": [
+            "Ach nein. Aber hier, zieh trotzdem eine Karte. Trostpreis.",
+            "Ich umarme den ganzen Tisch, aber hier hoppel ich raus."
+        ],
+        "comeback": "Okay! Zweite Chancen sind wie Karten: Ich verteil sie an alle."
+    },
+    "Muldrotha, the Gravetide": {
+        "tagline": "jemanden, der versteht, dass ich meine Exen immer wieder aus dem Friedhof hole",
+        "match": [
+            "Match! Einmal pro Typ, jeden Zug. Und du bist mein Typ.",
+            "Ich spiele dich jeden Zug aus meinem Friedhof. Das nenne ich Treue."
+        ],
+        "reject": [
+            "Sorry, diesen Zug habe ich schon eine Kreatur aus meinem Friedhof gewirkt.",
+            "Du bist nicht mein Typ. Ich hab jeden Permanent-Typ geprüft."
+        ],
+        "comeback": "Na gut. Ich hol mir eh alles aus dem Friedhof zurück. Dich auch."
+    },
+    "Najeela, the Blade-Blossom": {
+        "tagline": "jemanden, der ein Date will, das nie endet, eine Extra-Kampfphase nach der anderen",
+        "match": [
+            "Fünf Mana und wir kriegen noch einen Kampf. Und noch einen. Und noch einen.",
+            "Jeder Krieger bringt einen Freund mit. Wird eine große, laute Hochzeit."
+        ],
+        "reject": [
+            "Ich bin ein 3-Drop voll cEDH-Chaos. Da kommst du nicht mit.",
+            "Ich enttappe alle Angreifer, aber nicht meine Gefühle für dich."
+        ],
+        "comeback": "WUBRG: enttappen, Eile, Trampelschaden, Lebensverknüpfung. Und noch eine Phase mit dir."
+    },
+    "Narset, Enlightened Exile": {
+        "tagline": "jemanden mit einem Friedhof voller Zaubersprüche, die einen zweiten Blick wert sind",
+        "match": [
+            "Jeder Zauberspruch, den du wirkst, macht mich stärker. So zeigt man Liebe.",
+            "Ich greife an, du kriegst eine Gratis-Kopie aus deiner Vergangenheit. Nennt sich Wachstum."
+        ],
+        "reject": [
+            "Ich habe darüber meditiert. Die Antwort bleibt nein.",
+            "Die Vergangenheit hole ich nur zurück, wenn sie weniger kostet als meine Stärke. Du nicht."
+        ],
+        "comeback": "Na gut. Wer im Exil war, weiß, was eine zweite Chance wert ist."
+    },
+    "Nekusar, the Mindrazer": {
+        "tagline": "jemanden, der gern Karten zieht, solange es ein bisschen wehtut",
+        "match": [
+            "Match! Zieh eine Karte extra, Schatz. Tut nur ein bisschen weh.",
+            "Es passt. Du kriegst mehr Karten, der Tisch mehr Schmerz. Romantisch."
+        ],
+        "reject": [
+            "Nein. Ich hab deine Gedanken gelesen und jetzt Kopfschmerzen.",
+            "Sorry, ich hab deinen Verstand zerlegt und nichts zum Ziehen gefunden."
+        ],
+        "comeback": "Na gut, zieh noch eine Karte. Macht einen Schaden, Liebling."
+    },
+    "Niv-Mizzet, Parun": {
+        "tagline": "jemanden, der Spontanzauber wirkt, damit ich ziehen und pingen kann",
+        "match": [
+            "Match! Jede Karte, die ich ziehe, schickt deinen Feinden einen Schaden.",
+            "Es passt. Neugier? Schatz, ich bin unersättlich."
+        ],
+        "reject": [
+            "Sorry, sechs farbige Manasymbole, und du kannst mich nicht mal wirken.",
+            "Nein. Ich bin ein Genie. Ich hab längst berechnet, wie das endet."
+        ],
+        "comeback": "Na gut. Du hast meine Neugier geweckt. Enttäusch mich nicht."
+    },
+    "Omnath, Locus of Creation": {
+        "tagline": "jemanden, bei dem sich jedes Land wie das erste Mal anfühlt",
+        "match": [
+            "Match! Erstes Land: vier Leben. Zweites: Mana. Drittes: Der Tisch brennt.",
+            "Es passt. Standard kam mit mir nicht klar. Mal sehen, ob du es kannst."
+        ],
+        "reject": [
+            "Sorry, du triggerst mich nur einmal pro Zug. Ich brauche drei.",
+            "Nein. Ich wurde schon aus besseren Beziehungen gebannt."
+        ],
+        "comeback": "Na gut. Spiel noch ein Land, mal sehen, was triggert."
+    },
+    "Omnath, Locus of Mana": {
+        "tagline": "jemanden, der mich mein grünes Mana für immer behalten lässt",
+        "match": [
+            "Ich lasse nie etwas los. Ab jetzt auch dich nicht. Hoffe, du magst Grün.",
+            "Jedes grüne Mana macht mich größer. Du bist mein liebstes."
+        ],
+        "reject": [
+            "Mein Manapool leert sich nie. Meine Geduld schon.",
+            "Ich horte Mana, keine Fehler. Du wärst einer."
+        ],
+        "comeback": "Loslassen konnte ich eh nie. Komm zurück in den Pool."
+    },
+    "Pantlaza, Sun-Favored": {
+        "tagline": "jemanden, mit dem ich jeden Zug etwas Neues entdecke",
+        "match": [
+            "Match! Lass uns zusammen X entdecken. X ist deine Widerstandskraft.",
+            "Rawr. Das ist Dinosaurisch für: Du hast eine tolle Widerstandskraft."
+        ],
+        "reject": [
+            "Ich habe dich entdeckt. Dann habe ich entdeckt, dass ich lieber was anderes wirke.",
+            "Einmal pro Zug entdecke ich etwas. Diesen Zug warst du's nicht."
+        ],
+        "comeback": "Na gut. Brüllen, entdecken, wiederholen. Du kriegst noch einen Zug."
+    },
+    "Prosper, Tome-Bound": {
+        "tagline": "jemanden, der schnell, locker und aus dem Exil spielt",
+        "match": [
+            "Match! Jedes Mal, wenn wir was Spontanes machen, krieg ich einen Schatz.",
+            "Ich habe einen Pakt mit einem Erzteufel. Du wirkst unverbindlicher."
+        ],
+        "reject": [
+            "Am Endsegment ging's für dich ins Exil. Du hattest bis zu meinem nächsten Zug.",
+            "Todesberührung. Eine Berührung, und es war vorbei, bevor es anfing."
+        ],
+        "comeback": "Na gut. Ich spiele dich aus dem Exil. Meine liebste Art, Chancen zu geben."
+    },
+    "Purphoros, God of the Forge": {
+        "tagline": "jemanden, der neue Freunde mitbringt und nichts dagegen hat, wenn's heiß wird",
+        "match": [
+            "Jeder Neuzugang macht deinen Gegnern 2 Schaden. So mag ich Familienzuwachs.",
+            "Unzerstörbar, handwerklich begabt und immer heiß. Gern geschehen."
+        ],
+        "reject": [
+            "Zeig mir erst genug Rot. Bis dahin bin ich nicht mal eine Kreatur.",
+            "Ich schmiede Waffen für Götter. Eine Beziehung mit dir schmiede ich nicht."
+        ],
+        "comeback": "Na gut. Das Eisen ist noch heiß. Schmieden wir es."
+    },
+    "Queen Marchesa": {
+        "tagline": "jemanden, der weiß, dass die Krone mir gehört, und nicht danach greift",
+        "match": [
+            "Du darfst dich dem Thron nähern. Bring ein Geschenk mit und werd bloß nicht Monarch.",
+            "Wer eine Königin datet, zieht im Endsegment eine Extrakarte. Adel hat Vorteile."
+        ],
+        "reject": [
+            "Die Krone sagt nein. Die Krone irrt sich nie.",
+            "Ein Auge auf meine Krone? Dafür hab ich Assassinen mit Todesberührung, Schätzchen."
+        ],
+        "comeback": "Na gut. Die Königin ist gnädig. Einmal. Die Assassinen bleiben in Bereitschaft."
+    },
+    "Raffine, Scheming Seer": {
+        "tagline": "jemanden, der meine Geheimnisse bewahrt, seine kenne ich schon",
+        "match": [
+            "Ich habe das kommen sehen. Ich plane, du intrigierst. Perfekt.",
+            "Ziehen, abwerfen, wachsen. Unsere Beziehung hat einen Plan, und ich schrieb ihn."
+        ],
+        "reject": [
+            "Ich habe intrigiert und abgeworfen. Du warst die Nichtland-Karte.",
+            "Abwehr 1, Schatz. Nicht mal den Eintritt konntest du zahlen."
+        ],
+        "comeback": "Ich wusste, dass du zurückkommst. Das war Schritt vier des Plans."
+    },
+    "Rhys the Redeemed": {
+        "tagline": "jemanden, der eine große Familie will, und die dann verdoppelt, und nochmal",
+        "match": [
+            "Ein Mana und ich gehöre dir. Ein paar Züge später haben wir hundert Kinder.",
+            "Jeden Token, den du machst, kopiere ich. Unser Stammbaum wächst exponentiell."
+        ],
+        "reject": [
+            "Ich bin ein Elf für ein Mana mit Dynastie-Plänen. Du passt da nicht rein.",
+            "Ich verdopple, was ich liebe. Bei dir gibt's nichts zu verdoppeln."
+        ],
+        "comeback": "Erlösung steht in meinem Namen. Zweite Chancen sind quasi mein Ding."
+    },
+    "Rocco, Street Chef": {
+        "tagline": "jemanden, den es nicht stört, dass ich für den ganzen Tisch koche",
+        "match": [
+            "Ich koche für alle, aber du kriegst die +1/+1-Marke. Heißt: Du bist was Besonderes.",
+            "Das Essen geht auf mich, und auf alle anderen am Tisch. Group Hug, Baby."
+        ],
+        "reject": [
+            "Sorry, die Küche hat zu. Auch Group Hug hat Grenzen.",
+            "Ich mach den ganzen Tisch satt, aber du isst heute woanders."
+        ],
+        "comeback": "Na gut, setz dich. Bei Rocco geht keiner hungrig nach Hause."
+    },
+    "Satya, Aetherflux Genius": {
+        "tagline": "jemanden mit genug Energie, um mitzuhalten, ich kopiere nur die Besten",
+        "match": [
+            "Beim Angriff kopiere ich dich. Bleib, wenn du die Energie hast.",
+            "Genie im Kopf, Energie im Überfluss. Und du bist meine liebste Kopie."
+        ],
+        "reject": [
+            "Ich würde dich kopieren, aber ich habe nicht die Energie, dich zu behalten.",
+            "Mein Genie hat nachgerechnet. Du lohnst dich nicht."
+        ],
+        "comeback": "Na gut, hier ist Energie. Lass mich dich am Zugende nicht opfern."
+    },
+    "Sauron, the Dark Lord": {
+        "tagline": "jemanden, mit dem ich sie alle knechten und ewig binden kann",
+        "match": [
+            "Match! Ich sehe dich. Ich sehe dich immer. Nicht creepy, das ist so ein Augen-Ding.",
+            "Ein Ring, uns zu binden. Keine Sorge, er versucht dich nur ein bisschen."
+        ],
+        "reject": [
+            "Du kommst nicht vorbei... Moment, das war der andere. Egal: Nein.",
+            "Wirkst du einen Zauberspruch, wächst meine Armee. Redest du, schrumpft mein Interesse."
+        ],
+        "comeback": "Nun gut. Der Ring versucht dich noch einmal. Lass es mich nicht bereuen."
+    },
+    "Sefris of the Hidden Ways": {
+        "tagline": "jemanden, der sich ins Gewölbe wagt, gern auch dreimal",
+        "match": [
+            "Mein Gewölbe sehen? Jede Kreatur, die du verlierst, führt uns einen Raum tiefer.",
+            "Schließ mit mir ein Gewölbe ab, dann hol ich deine Lieblingskreatur von den Toten zurück."
+        ],
+        "reject": [
+            "Du bist kein Gewölbe-Material. Nicht mal für den ersten Raum.",
+            "Ich hab mich schon an schlimmere Orte gewagt als dieses Date. Aber an nicht viele."
+        ],
+        "comeback": "Na gut. Jedes Gewölbe hat eine Geheimtür. Du hast sie gefunden."
+    },
+    "Selvala, Heart of the Wilds": {
+        "tagline": "jemanden, der weiß, dass Größe zählt, zumindest die größte Stärke am Tisch",
+        "match": [
+            "Größte Kreatur im Raum? Zieh eine Karte, Schatz. Ich bin halt großzügig.",
+            "Du bringst die Muskeln, ich bringe X Mana. Das nenne ich Chemie."
+        ],
+        "reject": [
+            "Ich teile Karten mit dem ganzen Tisch. Mein Herz aber nicht mit dir.",
+            "Ich messe beruflich Stärke. Deine reicht nicht."
+        ],
+        "comeback": "Na gut. Wenn jemand Großes kommt, kriegt jeder eine Karte. Sogar du."
+    },
+    "Shorikai, Genesis Engine": {
+        "tagline": "jemanden mit eigenen Piloten, um mich zu bemannen, braucht's Stärke 8",
+        "match": [
+            "Zwei ziehen, eine abwerfen, ein Pilot. Unser erstes Date läuft wie ein Uhrwerk.",
+            "Ich bin Mech, Karten-Engine und Artefakt. Deine Eltern werden mich lieben."
+        ],
+        "reject": [
+            "Bemannen 8, Schatz. Du kommst mit einer 1/1.",
+            "Meine Engine zieht zwei und wirft eine ab. Die eine warst du."
+        ],
+        "comeback": "Na gut, ich mache dich zum Piloten, und du fährst mich nach Hause."
+    },
+    "Sigarda, Host of Herons": {
+        "tagline": "jemanden, der meine Grenzen respektiert und nie verlangt, dass ich etwas opfere",
+        "match": [
+            "Ich bin fluchsicher, und trotzdem bist du durchgekommen. Respekt.",
+            "Fluchsicheres Herz, hoch in der Luft, und du fliegst einfach mit."
+        ],
+        "reject": [
+            "Deine Zauber bringen mich nicht zum Opfern. Dein Charme auch nicht.",
+            "Gegen schlechte Dates bin ich fluchsicher. Das hier prallt ab."
+        ],
+        "comeback": "Na gut, du darfst mich als Ziel wählen. Nur dieses eine Mal."
+    },
+    "Sliver Gravemother": {
+        "tagline": "jemanden, der eine Mutter aushält, die die Kinder ständig aus dem Grab holt",
+        "match": [
+            "Lern meine Kinder kennen. Und dann nochmal. Tot bleibt hier keiner.",
+            "Ich habe einen ganzen Schwarm allein großgezogen. Einer mehr? Kein Problem."
+        ],
+        "reject": [
+            "Tote erwecken ist mein Job. Meine Ansprüche zu heben war leichter.",
+            "Mama weiß es am besten, Schätzchen. Und Mama sagt nein."
+        ],
+        "comeback": "In meinem Friedhof kriegt alles eine Zugabe. Du meinetwegen auch."
+    },
+    "Sram, Senior Edificer": {
+        "tagline": "jemanden, der sich ausrüstet, verzaubert und ins Fahrzeug steigt",
+        "match": [
+            "Match! Für jede Aura, Ausrüstung oder jedes Fahrzeug ziehe ich eine Karte.",
+            "Es passt. Ich bin Oberbaumeister. Ich baue Dinge, die halten."
+        ],
+        "reject": [
+            "Sorry, nichts in deiner Hand bringt mich zum Ziehen.",
+            "Nein. Auf Schrottplätzen in Kaladesh hab ich stabilere Bauten gesehen."
+        ],
+        "comeback": "Na gut. Ich rüste dich aus, dann sehen wir weiter."
+    },
+    "Sythis, Harvest's Hand": {
+        "tagline": "jemanden, der immer neue Verzauberungen mitbringt",
+        "match": [
+            "Match! Jede Verzauberung von dir: eine Karte, ein Leben, ein Herz.",
+            "Es passt. Kissenburg für zwei? Ich bring die Auren mit."
+        ],
+        "reject": [
+            "Sorry, der Funke ist einfach nicht bezaubernd genug.",
+            "Nein. Für eine Nymphe reicht das nicht. Da ziehe ich lieber Karten."
+        ],
+        "comeback": "Na gut. Wirk noch eine Verzauberung, dann sehen wir weiter."
+    },
+    "Tatyova, Benthic Druid": {
+        "tagline": "jemanden Beständigen: ein Land, eine Karte, ein Leben, jedes Mal",
+        "match": [
+            "Match! Bei jedem Land, das du spielst, ziehe ich eine Karte und lächle.",
+            "Es passt. Ich bin der erste Commander, den der halbe Tisch geliebt hat."
+        ],
+        "reject": [
+            "Sorry, ich bin eine einfache Druidin. Das war mir zu kompliziert.",
+            "Nein. Auch ein langsames Landfall-Deck braucht ein bisschen Chemie."
+        ],
+        "comeback": "Okay. Spiel ein Land, und ich kriege einen Lebenspunkt. Kleine Schritte."
+    },
+    "Tergrid, God of Fright": {
+        "tagline": "jemanden, der seine Sachen bei mir lässt, und zwar für immer",
+        "match": [
+            "Match! Was deins ist, ist meins. Direkt aus deinem Friedhof.",
+            "Du hast deine Zweifel abgeworfen? Super. Die kontrolliere jetzt ich."
+        ],
+        "reject": [
+            "Nein. Aber lass deine Sachen da, die behalte ich.",
+            "Bedrohlich. Du bräuchtest mindestens zwei, um mich umzustimmen."
+        ],
+        "comeback": "Na gut. Opfere deinen Stolz, und ich bringe ihn unter meiner Kontrolle ins Spiel."
+    },
+    "Teysa Karlov": {
+        "tagline": "jemanden, der den Ehevertrag zweimal liest, wie jeden Todes-Trigger",
+        "match": [
+            "Match! Der Vertrag ist aufgesetzt. Jede Klausel löst doppelt aus.",
+            "Deine Token kriegen Wachsamkeit und Lebensverknüpfung. Nenn es Antrittsprämie."
+        ],
+        "reject": [
+            "Meine Anwälte haben dich geprüft. Ich bin die Anwälte. Abgelehnt.",
+            "Dein Antrag ist gestorben. Die Absage löst ein weiteres Mal aus: Nein, und nein."
+        ],
+        "comeback": "Na gut. Berufung stattgegeben. Unterschreib hier, hier und hier. Dreifach."
+    },
+    "The First Sliver": {
+        "tagline": "jemanden, der große Familien liebt und mit dem Schwarmbewusstsein klarkommt",
+        "match": [
+            "Jeder Sliver kaskadiert in den nächsten. Willkommen in der Familie. Der ganzen.",
+            "Ich war der Erste. Du wirst der Eine. Dann der Nächste, dann der Nächste..."
+        ],
+        "reject": [
+            "Fünf Farben, ein Schwarm, ein einstimmiges Nein.",
+            "Mein Cascade findet was Besseres. Du landest unten in der Bibliothek."
+        ],
+        "comeback": "Der Schwarm hat neu abgestimmt. Einstimmig, wie immer."
+    },
+    "The Gitrog Monster": {
+        "tagline": "jemanden, der mir jedes Versorgungssegment ein Land zum Opfern bringt",
+        "match": [
+            "Match! Du hast mir ein Land gefüttert. Quak. Das heißt Hingabe auf Frosch.",
+            "Es passt. Jedes Land auf meinem Friedhof heißt: noch eine Karte für uns."
+        ],
+        "reject": [
+            "Sorry, du hast meinen Snack vergessen. Also hab ich die Beziehung gefressen.",
+            "Nein. Ich bin ein Frosch mit Todesberührung. Küssen macht mich nicht zum Prinzen."
+        ],
+        "comeback": "Okay. Opfere ein Land, und wir sind quitt."
+    },
+    "The Ur-Dragon": {
+        "tagline": "jemanden, der sich einen Neun-Drop mit fünf Farben Ansprüchen leisten kann",
+        "match": [
+            "Match! Dank meiner Eminenz kostet dich jeder Drache in meinem Leben eins weniger.",
+            "Ich bin das Original. Jeder andere Drache war nur eine Übergangsbeziehung."
+        ],
+        "reject": [
+            "Ich bin ein Neun-Drop. Mich wirkst du nicht mal eben nebenbei.",
+            "Sorry, ich date nur Drachen. Das ist so ein Lore-Ding."
+        ],
+        "comeback": "Na gut, für dich koste ich eins weniger. Sag's nicht den anderen Drachen."
+    },
+    "Tiamat": {
+        "tagline": "jemanden, der fünf Köpfe aushält und fünf Drachen-Exes mit verschiedenen Namen",
+        "match": [
+            "Fünf Köpfe, und alle sind sich bei dir einig. Das passiert nie.",
+            "Wirk mich, und ich hole dir fünf Drachen zum Kennenlernen. Keine Doppelten."
+        ],
+        "reject": [
+            "Ich habe fünf Drachen aus der Bibliothek gesucht. Du warst nicht dabei.",
+            "Sieben Mana für mich, und du dachtest, das wird so leicht?"
+        ],
+        "comeback": "Na gut. Vier Köpfe sagen noch nein, aber der fünfte ist sehr überzeugend."
+    },
+    "Toxrill, the Corrosive": {
+        "tagline": "jemanden, den ein bisschen Schleim auf allem nicht stört",
+        "match": [
+            "Match! Jedes Endsegment lege ich eine Schleimmarke auf dein Herz.",
+            "Es passt. Die Kreaturen deiner Ex? Mach ich zu Schnecken-Token."
+        ],
+        "reject": [
+            "Sorry, ich zersetze alles, was ich berühre. Du wärst bald eine Schnecke.",
+            "Nein. Sieben Mana wie ich verdienen einen Tisch, der nicht sofort aufgibt."
+        ],
+        "comeback": "Na gut. Noch ein Endsegment. Aber ich hinterlasse Schleim."
+    },
+    "Ulalek, Fused Atrocity": {
+        "tagline": "jemanden, der damit klarkommt, dass ich mehrere Eldrazi bin",
+        "match": [
+            "Match! Ich bin ein paar Eldrazi in einem. Das wird also ein Gruppendate.",
+            "Es passt. Ich bin jede Farbe und keine, ich passe in jedes Deck."
+        ],
+        "reject": [
+            "Sorry, innen bin ich farblos. Es liegt nicht an dir, sondern an der Leere.",
+            "Nein. In dieser Beziehung sind schon zu viele von mir."
+        ],
+        "comeback": "Na gut. Wir, äh, ich geb dir noch eine Chance."
+    },
+    "Urza, Lord High Artificer": {
+        "tagline": "jemanden, der mit einem Genie mithält oder zumindest für Blau tappt",
+        "match": [
+            "Match! Ich hab dir ein Konstrukt gebaut. Es wächst mit jedem Artefakt. Romantisch.",
+            "Ich habe mit meinem eigenen Bruder Krieg geführt. Du wirst dagegen leicht."
+        ],
+        "reject": [
+            "Ich bin Lord High Artificer. Ohne meine Artefakte bist du ein 0/0.",
+            "Fünf zahlen, mischen, oberste Karte ins Exil. Klingt immer noch besser als das hier."
+        ],
+        "comeback": "Na gut. Ich zahle fünf und wirke dich kostenlos. Frag nicht nach der Mathematik."
+    },
+    "Valgavoth, Terror Eater": {
+        "tagline": "jemanden, von dessen Ängsten ich mich ernähren kann, am liebsten für immer",
+        "match": [
+            "Willkommen in meinem Haus. Auschecken kannst du jederzeit, gehen niemals.",
+            "Die Karten deiner Gegner sterben bei mir nicht. Sie ziehen bei mir ein."
+        ],
+        "reject": [
+            "Um an mich ranzukommen, musst du drei Dinge opfern. Du warst nicht mal eins wert.",
+            "Das Haus will dich nicht. Und das Haus nimmt sonst jeden."
+        ],
+        "comeback": "Na gut. Bleib. Die Türen waren eh abgeschlossen."
+    },
+    "Vivi Ornitier": {
+        "tagline": "jemanden, der nicht fragt, was unter dem Hut ist",
+        "match": [
+            "Match! Ich mache jede Hauptphase Gratis-Mana. Das Essen geht auf mich.",
+            "Es passt. Jeder Zauber von dir macht mich ein Stück größer. Weiter so."
+        ],
+        "reject": [
+            "Sorry, der cEDH-Tisch will mich. Die sind sehr besitzergreifend.",
+            "Nein. Auch ein 0/3 muss auf sich aufpassen."
+        ],
+        "comeback": "Okay... ich weiß noch nicht, was ich bin. Vielleicht hilfst du mir."
+    },
+    "Volo, Guide to Monsters": {
+        "tagline": "jemanden, der völlig anders ist als alle, mit denen ich je aus war",
+        "match": [
+            "Ein neuer Kreaturentyp? Faszinierend. Ich kopiere dich fürs nächste Kapitel.",
+            "Ich habe ein ganzes Buch über Monster geschrieben. Du wirst mein Lieblingseintrag."
+        ],
+        "reject": [
+            "Deinen Typ hab ich schon in der Sammlung. Nächste Spezies, bitte.",
+            "Ich schreibe einfach, das Date lief super. Meine Leser erwarten eh Fiktion."
+        ],
+        "comeback": "Na gut. Jeder Ratgeber verdient eine überarbeitete Auflage."
+    },
+    "Wilhelt, the Rotcleaver": {
+        "tagline": "jemanden, den ein bisschen Verwesung nicht stört",
+        "match": [
+            "Match! Man sagt, ich sehe gut aus für jemanden, der auseinanderfällt.",
+            "Jedes Mal, wenn mich ein Zombie verlässt, kommt ein neuer. Du passt perfekt rein."
+        ],
+        "reject": [
+            "Sorry, ich steh auf Zombies mit Ablaufdatum. Die bleiben nie lange.",
+            "Am Endsegment hab ich einen Zombie geopfert und eine Karte gezogen. Da stand Nein."
+        ],
+        "comeback": "Na gut. Du bist ein bisschen gestorben und wieder da. Das ist meine Liebessprache."
+    },
+    "Winota, Joiner of Forces": {
+        "tagline": "einen Nicht-Menschen, der mir Menschen vorstellt, ich bin die perfekte Kupplerin",
+        "match": [
+            "Dein Nicht-Mensch greift an, und ich verkupple dich mit einem Menschen!",
+            "Ich habe mir die obersten sechs angesehen und dich gefunden. Unzerstörbar, heute."
+        ],
+        "reject": [
+            "Ich habe mich mit sechs anderen verbündet. Du warst nicht dabei.",
+            "Ich verkupple Nicht-Menschen mit Menschen. Dich verkupple ich mit dem Ausgang."
+        ],
+        "comeback": "Na gut, ich bringe dich getappt und angreifend ins Spiel. Schon wieder."
+    },
+    "Wyleth, Soul of Steel": {
+        "tagline": "jemanden, der mich gern mit Auren und Ausrüstung herausputzt",
+        "match": [
+            "Für jedes Accessoire an mir ziehe ich eine Karte. Verwöhn mich, ich verwöhn dich.",
+            "Stählerne Seele, weiches Herz. Schnall mir ein Schwert um und los."
+        ],
+        "reject": [
+            "Zu wenig Ausrüstung, um bei dir zu bleiben. Ich brauche mehr Halt.",
+            "Meine Seele ist aus Stahl. Meine Antwort auch: nein."
+        ],
+        "comeback": "Leg eine kleine Aura drauf und ich denk nochmal drüber nach. Okay, erledigt."
+    },
+    "Xenagos, God of Revels": {
+        "tagline": "jemanden, der so hart feiert, dass sich meine Stärke jeden Kampf verdoppelt",
+        "match": [
+            "Eile, doppelte Stärke und ein Satyr-Gott als Begleitung. Beste Nacht ever.",
+            "Zeig mir etwas Ergebenheit, dann bin ich sogar mehr als eine Verzauberung."
+        ],
+        "reject": [
+            "Du bist mir nicht ergeben genug, um mich zur Kreatur zu machen. Party vorbei.",
+            "Ich bin der Gott der Feiern. Du bist der Gott des Früh-Gehens."
+        ],
+        "comeback": "Na gut, noch eine Runde. Eile für alle, sogar für die Mauerblümchen."
+    },
+    "Y'shtola, Night's Blessed": {
+        "tagline": "jemanden, dessen Zaubersprüche mindestens drei kosten, ich hab Ansprüche",
+        "match": [
+            "Match! Wirk was Großes, und ich sauge für uns den ganzen Tisch aus.",
+            "Es passt. Verliert heute wer vier Lebenspunkte, ziehe ich eine Karte."
+        ],
+        "reject": [
+            "Sorry, der Segen der Nacht reicht nicht bis zu dir.",
+            "Nein. Dein Manabetrag liegt unter drei, und ich bin sehr wachsam."
+        ],
+        "comeback": "Nun gut. Noch ein Zauberspruch. Aber bitte ein großer."
+    },
+    "Yarok, the Desecrated": {
+        "tagline": "jemanden, bei dessen Auftritt alles doppelt triggert",
+        "match": [
+            "Match! Wenn du reinkommst, spür ich es doppelt. So bin ich gebaut.",
+            "Es passt. Todesberührung und Lebensverknüpfung: Ich töte für dich und heile dich."
+        ],
+        "reject": [
+            "Sorry, dein Auftritt hat nur einmal getriggert. Ich brauche mehr.",
+            "Nein. Entweihte Herzen öffnen sich nicht für jeden."
+        ],
+        "comeback": "Na gut. Komm noch mal rein. Mal sehen, ob es diesmal doppelt triggert."
+    },
+    "Yawgmoth, Thran Physician": {
+        "tagline": "jemanden, der dafür 1 Lebenspunkt zahlt, und eine Kreatur, und vielleicht noch eine",
+        "match": [
+            "Der Doktor hat jetzt Zeit für dich. Bitte opfere am Eingang eine Kreatur.",
+            "Traumpatient. Für jeden Freund, den du verlierst, ziehe ich eine Karte."
+        ],
+        "reject": [
+            "Schutz vor Menschen. Nichts Persönliches. Na gut, ein bisschen.",
+            "Meine Diagnose: unverträglich. Und leider unheilbar."
+        ],
+        "comeback": "Na gut. Noch ein Termin. Bring eine Kreatur mit, ich rechne pro Besuch ab."
+    },
+    "Ygra, Eater of All": {
+        "tagline": "jemanden, der lecker aussieht, also eigentlich jeden",
+        "match": [
+            "Für mich ist jede Kreatur eine Speise. Du bist nur die leckerste am Tisch.",
+            "Jede Speise, die stirbt, macht mich größer. Wir wachsen zusammen."
+        ],
+        "reject": [
+            "Ich hab dich angesehen und nicht mal Hunger bekommen.",
+            "Abwehr: Opfere eine Speise. Du hast keine Snacks mitgebracht."
+        ],
+        "comeback": "Na gut. Du darfst bleiben. Aber ich sitze neben den Snacks."
+    },
+    "Yuriko, the Tiger's Shadow": {
+        "tagline": "jemanden, bei dem ich nie geblockt werde",
+        "match": [
+            "Match! Ich tauche auf, wenn du's am wenigsten erwartest. Ist so mein Ding.",
+            "Lass uns die oberste Karte unserer Zukunft aufdecken. Hoffentlich mit kleinem MV."
+        ],
+        "reject": [
+            "Das hier ist mein Ninjutsu aus diesem Gespräch. Tschüss.",
+            "Ich bin nicht bereit für was Festes. Bei der ersten Chance geh ich zurück auf die Hand."
+        ],
+        "comeback": "Na gut, ich tausche mich wieder rein. Ninjutsu bleibt aber mein Notausgang."
+    },
+    "Zada, Hedron Grinder": {
+        "tagline": "jemanden, der mir einen Drink ausgibt, den ich mit allen Freunden teilen darf",
+        "match": [
+            "Ein Giant Growth auf mich und jeder Goblin hier kriegt auch einen. Romantisch, oder?",
+            "Ein Pump-Zauber, zwanzig Kopien. Großzügiger wird's in Rot nicht."
+        ],
+        "reject": [
+            "Ich reagiere nur auf Zaubersprüche, die nur mich als Ziel haben. Das war keiner.",
+            "Du müsstest nur mich ins Ziel nehmen, aber du schaust dich ja noch um."
+        ],
+        "comeback": "Na gut. Richte den Zauberspruch auf mich, nur auf mich, dann sehen wir weiter."
+    },
+    "Zur the Enchanter": {
+        "tagline": "jemanden Bezaubernden, Manabetrag drei oder weniger",
+        "match": [
+            "Match! Wenn ich angreife, finde ich immer was Bezauberndes. Heute dich.",
+            "Es passt. Ich bin seit Coldsnap dabei. Ich weiß, was ich will."
+        ],
+        "reject": [
+            "Sorry, dein Manabetrag ist über drei. Dich kann ich nicht suchen.",
+            "Nein. Ein alter Zauberer erkennt eine schlechte Verzauberung sofort."
+        ],
+        "comeback": "Hm. Ich greife noch einmal an und schau, was ich finde."
+    }
+}

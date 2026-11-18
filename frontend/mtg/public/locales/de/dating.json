@@ -47,6 +47,7 @@
         "empty": "Du hast jeden Commander in Reichweite geswipet.",
         "how-much": "Wie viel {{theme}}?",
         "loading": "Commander werden gemischt",
+        "looking-for": "Sucht {{tagline}}",
         "match-1": "{{name}} mag dich auch.",
         "match-2": "{{name}} hat auf jemanden wie dich gewartet.",
         "match-3": "{{name}} hat die Kommandozone für dich freigeräumt.",

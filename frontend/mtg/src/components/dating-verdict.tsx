@@ -6,6 +6,8 @@ import type { RejectReason } from "src/api/generated";
 import { ManaCost } from "src/components/mana-cost";
 import { PrimaryButton } from "src/components/primary-button";
 import { manaSymbols, matchKey, rejectionKey } from "src/utils/dating";
+import { pickLine } from "src/utils/dating-lines";
+import type { CommanderLines } from "src/utils/dating-lines";
 import type { StartMode } from "src/utils/use-start-deck";
 
 /** How a match came about */
@@ -35,6 +37,8 @@ export type DatingVerdictProps = {
     onStartDeck: (mode: StartMode) => void;
     /** "No, come back" */
     onComeBack: () => void;
+    /** The Commander's own lines, if it has any */
+    lines?: CommanderLines | null;
 };
 
 /**
@@ -43,7 +47,7 @@ export type DatingVerdictProps = {
  * @returns the overlay
  */
 export function DatingVerdict(props: DatingVerdictProps) {
-    const { commander, name, art, verdict, busy, onKeepSwiping, onStartDeck, onComeBack } = props;
+    const { commander, name, art, verdict, busy, onKeepSwiping, onStartDeck, onComeBack, lines } = props;
     const [t] = useTranslation("dating");
     const match = verdict.kind === "match";
 
@@ -56,13 +60,17 @@ export function DatingVerdict(props: DatingVerdictProps) {
                 : verdict.how === "comeback"
                   ? t("heading.second-chance")
                   : t("heading.match");
-        line = verdict.how === "comeback" ? t("description.second-chance", { name }) : t(matchKey(commander), { name });
+        line =
+            verdict.how === "comeback"
+                ? (lines?.comeback ?? t("description.second-chance", { name }))
+                : (pickLine(lines?.match, commander) ?? t(matchKey(commander), { name }));
     } else {
         title = t("heading.passed", { name });
         line =
-            verdict.reason === null
+            pickLine(lines?.reject, commander) ??
+            (verdict.reason === null
                 ? ""
-                : t(rejectionKey(verdict.reason, commander), { detail: verdict.reason.detail ?? "" });
+                : t(rejectionKey(verdict.reason, commander), { detail: verdict.reason.detail ?? "" }));
     }
 
     return (

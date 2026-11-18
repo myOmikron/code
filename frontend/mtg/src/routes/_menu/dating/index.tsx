@@ -20,6 +20,7 @@ import i18n from "src/i18n";
 import { REFILL_AT, colorFilter } from "src/utils/dating";
 import type { Color, SwipeDirection } from "src/utils/dating";
 import { useShortcuts } from "src/utils/use-shortcuts";
+import { useDatingLines } from "src/utils/dating-lines";
 import { useStartDeck } from "src/utils/use-start-deck";
 
 export const Route = createFileRoute("/_menu/dating/")({
@@ -44,6 +45,7 @@ const QUIET = "bg-white ring-zinc-950/10 dark:bg-zinc-900 dark:ring-white/10";
 function RouteComponent() {
     const [t] = useTranslation("dating");
     const startDeck = useStartDeck();
+    const lines = useDatingLines();
     const [stack, setStack] = useState<DatingCardResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [exhausted, setExhausted] = useState(false);
@@ -284,7 +286,11 @@ function RouteComponent() {
                 )}
             </div>
 
-            <DatingBioDialog card={bio} onClose={() => setBio(null)} />
+            <DatingBioDialog
+                card={bio}
+                tagline={bio === null ? null : (lines?.[bio.name]?.tagline ?? null)}
+                onClose={() => setBio(null)}
+            />
 
             <AnimatePresence>
                 {date !== null && (
@@ -293,6 +299,7 @@ function RouteComponent() {
                         name={date.card.name}
                         art={date.card.image_art_crop ?? date.card.image_normal ?? null}
                         verdict={date.verdict}
+                        lines={lines?.[date.card.name] ?? null}
                         busy={busy}
                         onKeepSwiping={() => setDate(null)}
                         onStartDeck={async (mode) => {

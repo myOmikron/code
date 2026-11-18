@@ -7,7 +7,6 @@ Builds on `feat/advisor-unified` (move gallery, card profiles).
 Design settled in a grilling session on 2026-11-17. Phase 1 is built on
 `feat/command-zone-dating`. Still open in phase 1:
 
-- the pre-written lines for the top ~100 Commanders (generic lines ship, three per situation)
 - tuning `MATCH_THRESHOLD` (`services/mtg-graph/src/deck_lab/dating.py`) to about 30% rejections
   from stored scores:
   `SELECT avg((status = 'Rejected')::int) FROM dating_swipe WHERE status IN ('Matched', 'Rejected') AND NOT super_like`
@@ -60,7 +59,8 @@ without decks fill a 3-question dating profile (colors, bracket, budget); deck
 signals override it. "My dating profile" shows the player how Commanders see them.
 It is private.
 
-**Lines.** Generated offline with an LLM for the top ~100 Commanders by EDHREC rank,
+**Lines.** `frontend/mtg/src/assets/dating-lines/{en,de}.json`, keyed by card name, loaded lazily per
+language: tagline, two match, two rejection and one comeback line per Commander. Written offline with an LLM for about the top 100 Commanders,
 reviewed, committed as de and en locale files. Several variants per situation:
 match, rejection per dimension (themes, salt, bracket, budget, colors), unmatch,
 "No, come back". Every other Commander uses generic templates. No runtime LLM. German
