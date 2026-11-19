@@ -22,7 +22,7 @@ export type DeckPhysical = {
     exists: boolean;
     /** The Deviation as the deck loader read it, `null` where the reader may not see it */
     deviation: DeckDeviationResponse | null;
-    /** The Deviation lines by Deck entry the cards are marked with, empty while the switch is off or there is no Physical deck */
+    /** The Deviation by Deck entry the cards are marked with, empty while the switch is off or there is no Physical deck */
     lines: Map<string, LineDeviationResponse>;
     /** List value, Physical value and Proxy replacement cost as the deck loader read them, `null` where not shown */
     values: DeckValuesResponse | null;

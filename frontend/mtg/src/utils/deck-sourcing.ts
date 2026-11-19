@@ -14,6 +14,7 @@
  */
 
 import type { DeckZone, DeviationCopiesResponse, LineDeviationResponse } from "src/api/generated";
+import { copiesOf } from "src/utils/deck-deviation";
 
 /** What the two switches over the list are set to */
 export type SourcingMatch = {
@@ -150,37 +151,21 @@ export type PricedCard = {
  *
  * @returns the price in cents, `null` without one
  */
-function unitPrice(card: PricedCard | undefined, foil: boolean): number | null {
+export function unitPrice(card: PricedCard | undefined, foil: boolean): number | null {
     const price = foil ? (card?.price_eur_foil_cents ?? card?.price_eur_cents) : card?.price_eur_cents;
     return price ?? null;
 }
 
 /**
- * What buying every copy still missing from the deck would cost
+ * The stacks in the Physical deck whose card no Deck entry names
  *
- * Each line at the price of the printing and finish the list asks for; a line
- * the catalog has no price for adds nothing.
- *
- * @param rows every line of the list with its count under the current match
- *
- * @returns the cost in cents
- */
-export function missingCost(
-    rows: Array<{ slot: SourcingSlotLike & { card?: PricedCard }; count: Pick<SourcingCount, "missing"> }>,
-): number {
-    return rows.reduce((sum, { slot, count }) => sum + (unitPrice(slot.card, slot.foil) ?? 0) * count.missing, 0);
-}
-
-/**
- * The stacks in the Physical deck whose card no line of the list names
- *
- * Any printing or finish of a listed card belongs to its line, as another
+ * Any printing or finish of a listed card belongs to its Deck entry, as another
  * printing standing in; what is left over is what a swap forgot to sort back.
  * The slots never hold the maybe board, so a card only considered there is off
  * the list too.
  *
  * @param filed every stack lying in the Physical deck
- * @param slots every line of the list the Physical deck answers
+ * @param slots every Deck entry the Physical deck answers
  *
  * @returns the stacks off the list, real cards and Proxies alike, in the order they were filed
  */
@@ -321,18 +306,18 @@ export type StackShare<S> = {
     quantity: number;
 };
 
-/** What `X` does to a line */
+/** What `X` does to a Deck entry */
 export type ProxyToggle<F> =
-    /** Put Proxies in for the line's missing copies, creating the Physical deck if there is none */
+    /** Put Proxies in for the Deck entry's missing copies, creating the Physical deck if there is none */
     | { kind: "put"; quantity: number }
-    /** Throw the line's Proxies away again, out of the given stacks */
+    /** Throw the Deck entry's Proxies away again, out of the given stacks */
     | { kind: "discard"; quantity: number; stacks: Array<StackShare<F>> };
 
 /**
- * What `X` does to a line: fill its gap with Proxies, or throw its Proxies away again
+ * What `X` does to a Deck entry: fill its gap with Proxies, or throw its Proxies away again
  *
- * A line held only by real copies is left alone, so `X` can never throw a real
- * card away, and the maybe board never gets into the box.
+ * A Deck entry held only by real copies is left alone, so `X` can never throw a
+ * real card away, and the maybe board never gets into the Physical deck.
  *
  * @param entry the Deck entry
  * @param line what the Physical deck holds for it, `undefined` for a deck without a Physical deck
@@ -346,45 +331,59 @@ export function proxyToggle<F extends FiledStackLike>(
     filed: Array<F>,
 ): ProxyToggle<F> | null {
     if (entry.zone === "Maybe") return null;
-    const missing = line === undefined ? entry.quantity : line.missing;
+    const missing = missingCopies(entry, line);
     if (missing > 0) return { kind: "put", quantity: missing };
-    const stacks = lineProxies(entry, line, filed);
+    const stacks = lineCopies(entry, line, filed, true);
     if (stacks.length === 0) return null;
     return { kind: "discard", quantity: sumOf(stacks), stacks };
 }
 
 /**
- * The Proxies answering a line, out of the stacks they lie in
+ * The Proxies or the real copies answering a Deck entry, out of the stacks they lie in
  *
- * The line's own printing first, then Proxies of another printing standing in
- * for it; a stack shared with another line gives only this line's share.
+ * The Deck entry's own printing first, then copies of another printing standing
+ * in for it; a stack shared with another Deck entry gives only this one's share.
  *
  * @param entry the Deck entry
  * @param line what the Physical deck holds for it
  * @param filed every stack lying in the Physical deck
+ * @param proxy whether to look for Proxies rather than real copies
  *
- * @returns the line's Proxies, empty without any
+ * @returns the copies, empty without any
  */
-function lineProxies<F extends FiledStackLike>(
+function lineCopies<F extends FiledStackLike>(
     entry: DeckEntryLike,
     line: LineDeviationResponse | undefined,
     filed: Array<F>,
+    proxy: boolean,
 ): Array<StackShare<F>> {
     if (line === undefined) return [];
-    const proxies = filed.filter((stack) => stack.proxy);
+    const kind = filed.filter((stack) => stack.proxy === proxy);
     const exact = share(
-        proxies.filter((stack) => fills(entry, stack, EXACT_MATCH)),
-        line.proxies,
+        kind.filter((stack) => fills(entry, stack, EXACT_MATCH)),
+        proxy ? line.proxies : line.in_deck - line.proxies,
     );
     const other = line.other_printing
-        .filter((copies) => copies.proxy)
+        .filter((copies) => copies.proxy === proxy)
         .flatMap((copies) =>
             share(
-                proxies.filter((stack) => sameCopies(stack, copies)),
+                kind.filter((stack) => sameCopies(stack, copies)),
                 copies.quantity,
             ),
         );
     return [...exact, ...other];
+}
+
+/**
+ * How many copies a Deck entry is missing
+ *
+ * @param entry the Deck entry
+ * @param line what the Physical deck holds for it, `undefined` for a deck without a Physical deck
+ *
+ * @returns every copy it asks for without a Physical deck, else what the Deviation counts missing
+ */
+function missingCopies(entry: DeckEntryLike, line: LineDeviationResponse | undefined): number {
+    return line === undefined ? entry.quantity : line.missing;
 }
 
 /**
@@ -437,26 +436,37 @@ export type CandidateStackLike = SourcingStackLike & {
     collection_deck?: string | null;
 };
 
-/** One thing "Besorgen" offers for a line, carrying what its call needs */
+/**
+ * The stacks that may be taken: none lying in another deck's Physical deck
+ *
+ * @param candidates every stack in the owner's collections
+ *
+ * @returns the ones on the shelf
+ */
+function onTheShelf<C extends CandidateStackLike>(candidates: Array<C>): Array<C> {
+    return candidates.filter((stack) => stack.collection_deck == null);
+}
+
+/** One thing "Besorgen" offers for a Deck entry, carrying what its call needs */
 export type SourcingOffer<C, F> =
     /** Take copies out of a stack on the shelf; one of another printing or finish counts as a Deviation */
     | { kind: "take"; candidate: C; quantity: number; exact: boolean }
-    /** Record the line's missing copies as bought straight into the deck */
+    /** Record the Deck entry's missing copies as bought straight into the deck */
     | { kind: "bought"; quantity: number }
     /** What `X` does: put Proxies in, or throw them away again */
     | { kind: "proxy"; toggle: ProxyToggle<F> }
     /** Replace Proxies with real copies out of a stack on the shelf */
     | { kind: "replace"; proxy: F; candidate: C; quantity: number; exact: boolean }
-    /** Return the line's real copies in a stack to where they came from */
+    /** Return the Deck entry's real copies in a stack to where they came from */
     | { kind: "return"; stack: F; quantity: number };
 
 /**
- * What "Besorgen" offers for a line, in the order the menu lists it
+ * What "Besorgen" offers for a Deck entry, in the order the menu lists it
  *
- * For a line missing copies: the stacks of its printing and finish, then those
+ * For a Deck entry missing copies: the stacks of its printing and finish, then those
  * of another printing or finish, then recording them as bought. Then the Proxy
- * toggle `X` has too. For a line holding Proxies: replacing them out of a stack,
- * exact ones first. Last, returning the line's real copies. Stacks lying in
+ * toggle `X` has too. For a Deck entry holding Proxies: replacing them out of a stack,
+ * exact ones first. Last, returning the Deck entry's real copies. Stacks lying in
  * another deck's Physical deck are never offered, and the maybe board is
  * offered nothing.
  *
@@ -475,14 +485,14 @@ export function sourcingOffers<C extends CandidateStackLike, F extends FiledStac
 ): Array<SourcingOffer<C, F>> {
     if (entry.zone === "Maybe") return [];
 
-    const shelf = candidates.filter((stack) => stack.collection_deck == null && fills(entry, stack, ANY_MATCH));
+    const shelf = onTheShelf(candidates).filter((stack) => fills(entry, stack, ANY_MATCH));
     const exactFirst = [
         ...shelf.filter((stack) => fills(entry, stack, EXACT_MATCH)).map((candidate) => ({ candidate, exact: true })),
         ...shelf.filter((stack) => !fills(entry, stack, EXACT_MATCH)).map((candidate) => ({ candidate, exact: false })),
     ];
     const offers: Array<SourcingOffer<C, F>> = [];
 
-    const missing = line === undefined ? entry.quantity : line.missing;
+    const missing = missingCopies(entry, line);
     if (missing > 0) {
         for (const { candidate, exact } of exactFirst) {
             offers.push({ kind: "take", candidate, quantity: Math.min(missing, candidate.quantity), exact });
@@ -493,48 +503,80 @@ export function sourcingOffers<C extends CandidateStackLike, F extends FiledStac
     const toggle = proxyToggle(entry, line, filed);
     if (toggle !== null) offers.push({ kind: "proxy", toggle });
 
-    for (const { stack: proxy, quantity } of lineProxies(entry, line, filed)) {
+    for (const { stack: proxy, quantity } of lineCopies(entry, line, filed, true)) {
         for (const { candidate, exact } of exactFirst) {
             offers.push({ kind: "replace", proxy, candidate, quantity: Math.min(quantity, candidate.quantity), exact });
         }
     }
 
-    for (const { stack, quantity } of lineReals(entry, line, filed)) {
+    for (const { stack, quantity } of lineCopies(entry, line, filed, false)) {
         offers.push({ kind: "return", stack, quantity });
     }
     return offers;
 }
 
+/** A Deck entry the Physical deck is still short of, counted the way its badge reads */
+export type ShortEntry<E> = {
+    /** The Deck entry */
+    entry: E;
+    /** Copies in the Physical deck answering it, another printing or finish included */
+    held: number;
+    /** Copies it asks for */
+    wanted: number;
+    /** Missing copies lying in a collection, of its printing and finish */
+    available: number;
+    /** Missing copies neither in the Physical deck nor in a collection */
+    toBuy: number;
+};
+
+/** What the Physical deck is still short of, see {@link shortEntries} */
+export type ShortSummary<E> = {
+    /** Copies the Deck entries the Physical deck answers ask for */
+    needed: number;
+    /** Of those, the copies the Physical deck holds */
+    held: number;
+    /** The Deck entries still missing copies, in the order of the list */
+    short: Array<ShortEntry<E>>;
+    /** Copies still to buy altogether */
+    toBuy: number;
+    /** What buying them costs, in cents */
+    cost: number;
+};
+
 /**
- * The real copies answering a line, out of the stacks they lie in
+ * What the Physical deck is still short of, in agreement with the Deviation
  *
- * The line's own printing first, then real copies of another printing standing
- * in for it; a stack shared with another line gives only this line's share.
+ * A Deck entry counts as short exactly when its badge says so: copies of another
+ * printing or finish standing in hold it. What is missing is to buy unless a
+ * collection holds its printing and finish; a stack in another deck's Physical
+ * deck is no source.
  *
- * @param entry the Deck entry
- * @param line what the Physical deck holds for it
- * @param filed every stack lying in the Physical deck
+ * @param entries the Deck entries
+ * @param lines the Deviation by Deck entry; an entry without one (the maybe board) is left out
+ * @param candidates every stack in the owner's collections, empty for a reader who sees none
  *
- * @returns the line's real copies, empty without any
+ * @returns the short entries and the totals
  */
-function lineReals<F extends FiledStackLike>(
-    entry: DeckEntryLike,
-    line: LineDeviationResponse | undefined,
-    filed: Array<F>,
-): Array<StackShare<F>> {
-    if (line === undefined) return [];
-    const reals = filed.filter((stack) => !stack.proxy);
-    const exact = share(
-        reals.filter((stack) => fills(entry, stack, EXACT_MATCH)),
-        line.in_deck - line.proxies,
-    );
-    const other = line.other_printing
-        .filter((copies) => !copies.proxy)
-        .flatMap((copies) =>
-            share(
-                reals.filter((stack) => sameCopies(stack, copies)),
-                copies.quantity,
-            ),
-        );
-    return [...exact, ...other];
+export function shortEntries<E extends DeckEntryLike & { uuid: string; card?: PricedCard }>(
+    entries: Array<E>,
+    lines: Map<string, LineDeviationResponse>,
+    candidates: Array<CandidateStackLike>,
+): ShortSummary<E> {
+    const shelf = onTheShelf(candidates);
+    const summary: ShortSummary<E> = { needed: 0, held: 0, short: [], toBuy: 0, cost: 0 };
+    for (const entry of entries) {
+        const line = lines.get(entry.uuid);
+        if (line === undefined) continue;
+        summary.needed += entry.quantity;
+        summary.held += Math.max(0, entry.quantity - line.missing);
+        if (line.missing <= 0) continue;
+
+        const held = line.in_deck + copiesOf(line.other_printing);
+        const available = Math.min(line.missing, countSlot(entry, [], shelf, EXACT_MATCH).available);
+        const toBuy = line.missing - available;
+        summary.short.push({ entry, held, wanted: held + line.missing, available, toBuy });
+        summary.toBuy += toBuy;
+        summary.cost += (unitPrice(entry.card, entry.foil) ?? 0) * toBuy;
+    }
+    return summary;
 }

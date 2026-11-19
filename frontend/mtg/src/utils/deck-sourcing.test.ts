@@ -4,8 +4,8 @@ import {
     countSlot,
     fills,
     groupByOrigin,
-    missingCost,
     proxyToggle,
+    shortEntries,
     sourcingOffers,
     stacksOffTheList,
 } from "src/utils/deck-sourcing";
@@ -182,35 +182,6 @@ describe("stacks off the list", () => {
 
     it("lists everything for a deck whose list names nothing", () => {
         expect(stacksOffTheList([stack()], [])).toEqual([stack()]);
-    });
-});
-
-describe("pricing the missing copies", () => {
-    const priced = { oracle_id: "sol-ring", price_eur_cents: 150, price_eur_foil_cents: 900 };
-
-    it("prices every copy still to buy at the price of the printing and finish the line asks for", () => {
-        const rows = [
-            { slot: slot({ card: priced }), count: { missing: 2 } },
-            { slot: slot({ foil: true, card: priced }), count: { missing: 1 } },
-        ];
-
-        expect(missingCost(rows)).toBe(1200);
-    });
-
-    it("counts nothing for a line with nothing missing or without a price", () => {
-        const rows = [
-            { slot: slot({ card: priced }), count: { missing: 0 } },
-            { slot: slot({ card: { oracle_id: "mana-crypt" } }), count: { missing: 3 } },
-        ];
-
-        expect(missingCost(rows)).toBe(0);
-    });
-
-    it("falls back to the plain price for a foil line without a foil price", () => {
-        const plain = { oracle_id: "sol-ring", price_eur_cents: 150 };
-        const rows = [{ slot: slot({ foil: true, card: plain }), count: { missing: 2 } }];
-
-        expect(missingCost(rows)).toBe(300);
     });
 });
 
@@ -403,5 +374,54 @@ describe("what Besorgen offers for a line", () => {
             { kind: "return", stack: real, quantity: 1 },
             { kind: "return", stack: other, quantity: 1 },
         ]);
+    });
+});
+
+describe("what the Physical deck is still short of", () => {
+    const priced = { oracle_id: "sol-ring", price_eur_cents: 150, price_eur_foil_cents: 900 };
+
+    it("leaves out a Deck entry held by another printing, as its badge does", () => {
+        const held = { ...entry(), uuid: "held" };
+        const other = { printing: "print-b", finish: "Nonfoil", quantity: 2, proxy: false } as const;
+        const lines = new Map([["held", line({ other_printing: [other] })]]);
+
+        expect(shortEntries([held], lines, []).short).toEqual([]);
+    });
+
+    it("counts a short Deck entry like its badge, buying what no collection holds in its printing and finish", () => {
+        const short = { ...entry({ quantity: 4, card: priced }), uuid: "short" };
+        const other = { printing: "print-b", finish: "Nonfoil", quantity: 1, proxy: false } as const;
+        const lines = new Map([["short", line({ in_deck: 1, other_printing: [other], missing: 2 })]]);
+        const candidates = [
+            shelf("exact", { quantity: 1 }),
+            shelf("foil", { finish: "Foil" }),
+            shelf("elsewhere", { collection_deck: "other-deck" }),
+        ];
+
+        expect(shortEntries([short], lines, candidates)).toEqual({
+            needed: 4,
+            held: 2,
+            short: [{ entry: short, held: 2, wanted: 4, available: 1, toBuy: 1 }],
+            toBuy: 1,
+            cost: 150,
+        });
+    });
+
+    it("counts the copies of every covered Deck entry and leaves one without a Deviation out", () => {
+        const full = { ...entry({ quantity: 2, card: priced }), uuid: "full" };
+        const foil = { ...entry({ quantity: 2, foil: true, card: priced }), uuid: "foil" };
+        const maybe = { ...entry({ zone: "Maybe" }), uuid: "maybe" };
+        const lines = new Map([
+            ["full", line({ in_deck: 2 })],
+            ["foil", line({ missing: 2 })],
+        ]);
+
+        const summary = shortEntries([full, foil, maybe], lines, []);
+
+        expect(summary.needed).toBe(4);
+        expect(summary.held).toBe(2);
+        expect(summary.short.map((row) => row.entry.uuid)).toEqual(["foil"]);
+        expect(summary.toBuy).toBe(2);
+        expect(summary.cost).toBe(1800);
     });
 });

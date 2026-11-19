@@ -46,16 +46,16 @@ export function lineMarks(line: LineDeviationResponse | undefined): Array<LineMa
 }
 
 /**
- * Whether a line is drawn greyed out: every copy it asks for is a Proxy
+ * Whether a Deck entry is drawn greyed out: every copy it asks for is a Proxy
  *
- * A line with one real copy beside a Proxy keeps its artwork and only says so
- * with its Proxy badge; one still missing copies is not all Proxies either.
+ * A Deck entry with one real copy beside a Proxy keeps its artwork and only says
+ * so with its Proxy badge; one still missing copies is not all Proxies either.
  * Proxies of another printing standing in count as Proxies.
  *
  * @param line what the Physical deck holds for the Deck entry, `undefined` for
- *   a line the Deviation does not cover (the maybe board, or no Physical deck)
+ *   a Deck entry the Deviation does not cover (the maybe board, or no Physical deck)
  *
- * @returns whether the line is a stand-in through and through
+ * @returns whether the Deck entry is a stand-in through and through
  */
 export function isAllProxies(line: LineDeviationResponse | undefined): boolean {
     if (line === undefined || line.missing > 0) return false;
@@ -100,6 +100,6 @@ export function linesByEntry(deviation: DeckDeviationResponse | null): Map<strin
  *
  * @returns their sum
  */
-function copiesOf(copies: Array<DeviationCopiesResponse>): number {
+export function copiesOf(copies: Array<DeviationCopiesResponse>): number {
     return copies.reduce((sum, entry) => sum + entry.quantity, 0);
 }

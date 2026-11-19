@@ -192,7 +192,10 @@
         "visibility-private": "Only you can see the deck.",
         "visibility-public": "Stands in your public profile.",
         "visibility-unlisted": "Anyone with the link can see it, nobody else.",
-        "not-on-list": "These cards are in the Physical deck, but no card of the main deck, Commander, Companion or sideboard names them. Sort them back into a collection or put them on the list."
+        "not-on-list": "These cards are in the Physical deck, but no card of the main deck, Commander, Companion or sideboard names them. Sort them back into a collection or put them on the list.",
+        "physical-deck-dialog": "What the deck is worth, what is still to buy, and the cards in the Physical deck the list does not name. A single card is sourced from its card menu.",
+        "physical-deck-read-only": "What the deck is worth, what is still to buy, and the cards in the Physical deck the list does not name. Only the deck's owner changes the Physical deck.",
+        "off-the-list": "These cards lie in the Physical deck, but the list does not name them. Sort the real cards back, throw the Proxies away."
     },
     "error": {
         "collaborator-is-owner": "That is you.",
@@ -251,7 +254,8 @@
         "thin-support": "Short on colors",
         "types": "Card types",
         "unfiled-decks": "No folder",
-        "not-on-list": "In the deck, not on the list"
+        "not-on-list": "In the deck, not on the list",
+        "off-the-list": "Not on the list"
     },
     "label": {
         "add-to": "File into {{zone}}",
