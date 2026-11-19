@@ -358,7 +358,6 @@ export const Api = {
         setFolder: async (uuid: UUID, folder: UUID | null) =>
             handleError(defaultApi.setDeckFolder({ deck: uuid, SetDeckFolderRequest: { folder } })),
         deviation: async (deck: UUID) => orGone(defaultApi.getDeckDeviation({ deck })),
-        physicalDeck: async (deck: UUID) => handleError(defaultApi.getPhysicalDeck({ deck })),
         values: async (deck: UUID) => handleError(defaultApi.getDeckValues({ deck })),
         valuesIfShown: async (deck: UUID) => orGone(defaultApi.getDeckValues({ deck })),
         sourcing: {

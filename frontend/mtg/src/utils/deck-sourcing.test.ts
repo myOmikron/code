@@ -5,9 +5,9 @@ import {
     fills,
     groupByOrigin,
     missingCost,
-    proxyReplacements,
     proxyToggle,
     sourcingOffers,
+    stacksOffTheList,
 } from "src/utils/deck-sourcing";
 import type {
     CandidateStackLike,
@@ -100,28 +100,11 @@ describe("counting a slot", () => {
         expect(count.missing).toBe(0);
     });
 
-    it("reports copies the printing switch is turning away", () => {
-        const elsewhere = [stack({ printing: "print-b", quantity: 2 })];
-        const count = countSlot(slot({ quantity: 4 }), [], elsewhere, STRICT);
-
-        expect(count.available).toBe(0);
-        expect(count.otherPrinting).toBe(2);
-        expect(count.missing).toBe(4);
-    });
-
-    it("reports copies the finish switch is turning away", () => {
-        const elsewhere = [stack({ finish: "Foil", quantity: 3 })];
-        const count = countSlot(slot({ quantity: 2 }), [], elsewhere, STRICT);
-
-        expect(count.available).toBe(0);
-        expect(count.otherFinish).toBe(3);
-    });
-
-    it("says nothing is being turned away once the switches are off", () => {
+    it("counts another printing and finish as available once the switches are off", () => {
         const elsewhere = [stack({ printing: "print-b", finish: "Foil", quantity: 2 })];
-        const count = countSlot(slot({ quantity: 2 }), [], elsewhere, WIDE);
 
-        expect(count).toMatchObject({ available: 2, otherPrinting: 0, otherFinish: 0, missing: 0 });
+        expect(countSlot(slot({ quantity: 2 }), [], elsewhere, STRICT)).toMatchObject({ available: 0, missing: 2 });
+        expect(countSlot(slot({ quantity: 2 }), [], elsewhere, WIDE)).toMatchObject({ available: 2, missing: 0 });
     });
 });
 
@@ -176,52 +159,29 @@ describe("grouping what is in a deck", () => {
     });
 });
 
-describe("replacing Proxies", () => {
-    const proxy = {
-        uuid: "proxy-a",
-        printing: "print-a",
-        quantity: 2,
-        finish: "Nonfoil",
-        proxy: true,
-        card: { oracle_id: "sol-ring", price_eur_cents: 150, price_eur_foil_cents: 900 },
-    };
+describe("stacks off the list", () => {
+    it("keeps out every stack a line asks for, in any printing or finish, Proxies too", () => {
+        const filed = [stack(), stack({ printing: "print-b", finish: "Foil" }), { ...stack(), proxy: true }];
 
-    it("lists only the Proxies, each with what buying its printing would cost", () => {
-        const real = { ...proxy, uuid: "real-a", proxy: false };
-
-        const rows = proxyReplacements([real, proxy], []);
-
-        expect(rows.map((row) => row.proxy.uuid)).toEqual(["proxy-a"]);
-        expect(rows[0].cost).toBe(300);
+        expect(stacksOffTheList(filed, [slot()])).toEqual([]);
     });
 
-    it("prices a foil Proxy at the foil price", () => {
-        const rows = proxyReplacements([{ ...proxy, finish: "Foil" }], []);
+    it("lists the real cards and the Proxies of a card no line names", () => {
+        const crypt = stack({ printing: "print-c", card: { oracle_id: "mana-crypt" } });
+        const proxy = { ...crypt, proxy: true };
 
-        expect(rows[0].cost).toBe(1800);
+        expect(stacksOffTheList([stack(), crypt, proxy], [slot()])).toEqual([crypt, proxy]);
     });
 
-    it("prices an etched Proxy at the foil price", () => {
-        const rows = proxyReplacements([{ ...proxy, finish: "Etched" }], []);
+    it("falls back to the printing when the catalog does not know the card", () => {
+        const known = stack({ card: null });
+        const unknown = stack({ printing: "print-b", card: null });
 
-        expect(rows[0].cost).toBe(1800);
+        expect(stacksOffTheList([known, unknown], [slot({ card: null })])).toEqual([unknown]);
     });
 
-    it("has no cost for a printing without a price", () => {
-        const rows = proxyReplacements([{ ...proxy, card: { oracle_id: "sol-ring" } }], []);
-
-        expect(rows[0].cost).toBeNull();
-    });
-
-    it("offers every owned copy of the card, whatever printing or finish", () => {
-        const copies = [
-            stack({ printing: "print-b", finish: "Foil" }),
-            stack({ card: { oracle_id: "mana-crypt" }, printing: "print-c" }),
-        ];
-
-        const rows = proxyReplacements([proxy], copies);
-
-        expect(rows[0].candidates).toEqual([copies[0]]);
+    it("lists everything for a deck whose list names nothing", () => {
+        expect(stacksOffTheList([stack()], [])).toEqual([stack()]);
     });
 });
 

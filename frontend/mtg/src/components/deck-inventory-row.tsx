@@ -1,4 +1,4 @@
-import { ArrowUturnLeftIcon, ExclamationTriangleIcon, TrashIcon } from "@heroicons/react/20/solid";
+import { ArrowUturnLeftIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { Badge, Button, Listbox, ListboxLabel, ListboxOption, StackedListFlexRow, Text } from "components";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,9 +15,7 @@ export type DeckInventoryRowProps = {
     stack: SourcedStackResponse;
     /** The collections a stack without an origin could be sorted into */
     collections: Array<CollectionOverviewResponse>;
-    /** Whether the deck list still asks for this card */
-    wanted: boolean;
-    /** Sorts the copies out of the deck and into a collection */
+    /** Sorts the copies out of the deck and into a collection, or throws Proxies away */
     onReturn: (stack: SourcedStackResponse, target: string | null) => void;
     /** Takes the copies out of the account altogether */
     onDelete: (stack: SourcedStackResponse) => void;
@@ -26,22 +24,23 @@ export type DeckInventoryRowProps = {
 };
 
 /**
- * One stack lying in the deck, and the way back out of it.
+ * One stack lying in the deck that the list does not name, and the way back out of it.
  *
  * A stack that remembers where it came from needs no decision: the button puts
  * it back there. One that was bought straight into the deck has nowhere to
- * return to, so it asks for a collection first — and a stack the list no longer wants
- * says so, because that is the pile somebody forgot to sort back.
+ * return to, so it asks for a collection first. Proxies have nowhere to go and
+ * are thrown away.
  *
  * @returns the row
  */
-export function DeckInventoryRow({ stack, collections, wanted, onReturn, onDelete, busy }: DeckInventoryRowProps) {
+export function DeckInventoryRow({ stack, collections, onReturn, onDelete, busy }: DeckInventoryRowProps) {
     const [t] = useTranslation("collection");
     const [tg] = useTranslation();
-    const [target, setTarget] = useState<string>(collections[0]?.collection.uuid ?? "");
+    const [picked, setTarget] = useState<string>("");
 
     const card = stack.card;
-    const homeless = stack.origin == null;
+    const homeless = !stack.proxy && stack.origin == null;
+    const target = picked !== "" ? picked : (collections[0]?.collection.uuid ?? "");
 
     return (
         <StackedListFlexRow className={"flex-wrap items-center gap-x-4 gap-y-3"}>
@@ -64,7 +63,9 @@ export function DeckInventoryRow({ stack, collections, wanted, onReturn, onDelet
                     {conditionLabel(tg, stack.condition)} · {finishLabel(tg, stack.finish)}
                 </Text>
                 <div className={"flex flex-wrap items-center gap-1.5"}>
-                    {stack.origin_name != null ? (
+                    {stack.proxy ? (
+                        <Badge color={"purple"}>{t("label.proxy")}</Badge>
+                    ) : stack.origin_name != null ? (
                         <span className={"flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400"}>
                             <CollectionMarker
                                 color={stack.origin_color ?? ""}
@@ -75,12 +76,6 @@ export function DeckInventoryRow({ stack, collections, wanted, onReturn, onDelet
                         </span>
                     ) : (
                         <Badge color={"zinc"}>{t("label.no-origin")}</Badge>
-                    )}
-                    {!wanted && (
-                        <Badge color={"amber"}>
-                            <ExclamationTriangleIcon className={"size-3.5"} />
-                            {t("label.not-in-list")}
-                        </Badge>
                     )}
                 </div>
             </div>
@@ -105,22 +100,20 @@ export function DeckInventoryRow({ stack, collections, wanted, onReturn, onDelet
                     disabled={busy || (homeless && target === "")}
                     onClick={() => onReturn(stack, homeless ? target : null)}
                 >
-                    <ArrowUturnLeftIcon />
-                    {t("button.return-card")}
+                    {stack.proxy ? <TrashIcon /> : <ArrowUturnLeftIcon />}
+                    {stack.proxy ? t("button.discard-proxies") : t("button.return-card")}
                 </Button>
-                {/* Beside the way back rather than behind a menu: a card that
-                    was sold, traded or lost leaves the account here, and it is
-                    the only place that says so. Plain, so the button that puts
-                    a card away stays the louder of the two. */}
-                <Button
-                    plain={true}
-                    disabled={busy}
-                    aria-label={t("button.delete-card")}
-                    title={t("button.delete-card")}
-                    onClick={() => onDelete(stack)}
-                >
-                    <TrashIcon />
-                </Button>
+                {!stack.proxy && (
+                    <Button
+                        plain={true}
+                        disabled={busy}
+                        aria-label={t("button.delete-card")}
+                        title={t("button.delete-card")}
+                        onClick={() => onDelete(stack)}
+                    >
+                        <TrashIcon />
+                    </Button>
+                )}
             </div>
         </StackedListFlexRow>
     );
