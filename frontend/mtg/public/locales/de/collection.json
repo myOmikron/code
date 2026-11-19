@@ -17,7 +17,6 @@
         "add-cards": "Karten einräumen",
         "add-one": "Eine mehr",
         "back-to-collections": "Zurück zu den Sammlungen",
-        "bought-it": "{{count}} gekauft, ins Deck",
         "change-printing": "Anderes Printing wählen",
         "collection-actions": "Aktionen",
         "copy-wants": "Liste kopieren",
@@ -41,17 +40,13 @@
         "open-on-cardmarket": "Auf Cardmarket öffnen",
         "open-on-scryfall": "Auf Scryfall öffnen",
         "previous-page": "Zurück",
-        "put-in-proxies_one": "1 Proxy hineinlegen",
-        "put-in-proxies_other": "{{count}} Proxies hineinlegen",
         "remove-one": "Eine weniger",
-        "replace-proxy": "Ersetzen",
         "return-card": "Zurücksortieren",
         "save-collection": "Speichern",
         "scan-into": "Karten hineinscannen",
         "share-collection": "Teilen",
         "split-entry": "Abtrennen",
-        "take-apart": "Auflösen",
-        "take-card": "{{count}} holen"
+        "take-apart": "Auflösen"
     },
     "description": {
         "all-sourced": "Alles beschafft. Was im Deck liegt, steht unten.",
