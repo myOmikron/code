@@ -1,28 +1,32 @@
 /**
  * Mounts Command Zone Dating's components with mock Commanders, so each state can be
- * screenshotted without a login. `?state=stack|flip|match|reject|super|bio|profile|date-answer|date-pick|date-done|date-left|swipe`,
+ * screenshotted without a login. `?state=stack|flip|match|reject|super|bio|profile|date-answer|date-pick|date-done|date-left|swipe|swipe-package`,
  * `?lng=de`.
  */
-import { Heading } from "components";
+import { Button, Heading, Navbar, NavbarItem, NavbarLabel, NavbarSection, StackedLayout } from "components";
 import { AnimatePresence } from "motion/react";
 import { Suspense, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../src/index.css";
 import i18n from "../src/i18n";
 import type { DateSessionResponse, DatingCardResponse } from "src/api/generated";
+import type { Suggestion } from "src/api/graph-generated";
 import { DatingBlindView } from "src/components/dating-blind-view";
 import { DatingDateView } from "src/components/dating-date-view";
 import { DeckAdvisorSwipe } from "src/components/deck-advisor-swipe";
 import type { Badge } from "src/utils/advisor-impact";
 import type { Move } from "src/utils/advisor-moves";
 import type { Printing } from "src/utils/scryfall";
+import { DatingActions } from "src/components/dating-actions";
 import { DatingBioDialog } from "src/components/dating-bio-dialog";
 import { DatingCard } from "src/components/dating-card";
 import { DatingColorFilter } from "src/components/dating-color-filter";
+import { DatingSetFilter } from "src/components/dating-set-filter";
 import { DatingProfileForm } from "src/components/dating-profile-form";
 import { DatingVerdict } from "src/components/dating-verdict";
 import type { Verdict } from "src/components/dating-verdict";
-import type { Color, SwipeDirection } from "src/utils/dating";
+import { nextColorChoice } from "src/utils/dating";
+import type { Color, ColorChoice, SwipeDirection } from "src/utils/dating";
 
 const art = (name: string, version = "art_crop") =>
     `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=${version}`;
@@ -47,6 +51,17 @@ const STACK = [
     card("Toxrill, the Corrosive", "UB", ["Control", "Removal", "Tokens"]),
     card("Krenko, Mob Boss", "R", ["Goblins", "Tokens", "Aggro"]),
 ];
+
+const realFetch = window.fetch.bind(window);
+window.fetch = (input, init) =>
+    String(input instanceof Request ? input.url : input).includes("/dating/sets")
+        ? Promise.resolve(
+              Response.json([
+                  { code: "BLB", name: "Bloomburrow", legends: 31 },
+                  { code: "FDN", name: "Foundations", legends: 42 },
+              ]),
+          )
+        : realFetch(input, init);
 
 const params = new URLSearchParams(location.search);
 const state = params.get("state") ?? "stack";
@@ -127,12 +142,35 @@ const MOVES = ADDS.map(
         }) as unknown as Move,
 );
 
+/** A Goblin tokens package for the package state */
+const PACKAGE = [
+    "Goblin Chieftain",
+    "Impact Tremors",
+    "Goblin Bombardment",
+    "Skirk Prospector",
+    "Beetleback Chief",
+    "Siege-Gang Commander",
+    "Goblin Matron",
+].map((name) => ({ name, type: "Creature — Goblin", fact: "", badges: [badge("tokens", "theme", "good", 1)] }));
+
+const PACKAGE_MOVES = PACKAGE.map(
+    (add) =>
+        ({
+            kind: "add",
+            oracle_id: add.name,
+            name: add.name,
+            fact: add.fact,
+            badges: add.badges,
+            suggestion: { oracle_id: add.name, name: add.name, type_line: add.type },
+        }) as unknown as Move,
+);
+
 const PRINTINGS = new Map<string, Printing>(
-    ADDS.map((add) => [
+    [...ADDS, ...PACKAGE].map((add) => [
         add.name,
         {
             id: add.name,
-            imageUrl: null,
+            imageUrl: `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(add.name)}&format=image&version=small`,
             largeImageUrl: `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(add.name)}&format=image&version=normal`,
             priceEur: 3.5,
         } as unknown as Printing,
@@ -143,7 +181,13 @@ function Probe() {
     const [stack, setStack] = useState(STACK);
     const [exit, setExit] = useState<SwipeDirection | null>(null);
     const [flipped, setFlipped] = useState(state === "flip");
-    const [colors, setColors] = useState<Set<Color>>(new Set(["U", "B"]));
+    const [colors, setColors] = useState<Map<Color, ColorChoice>>(
+        new Map([
+            ["U", "required"],
+            ["R", "excluded"],
+        ]),
+    );
+    const [sets, setSets] = useState<string[]>(params.get("sets")?.split(",") ?? []);
     const top = stack[0];
     const verdict: Verdict | null =
         state === "match"
@@ -198,10 +242,24 @@ function Probe() {
         );
     }
 
-    if (state === "swipe") {
+    if (state === "swipe" || state === "swipe-package") {
         return (
             <DeckAdvisorSwipe
-                moves={MOVES}
+                moves={state === "swipe-package" ? [...PACKAGE_MOVES, ...MOVES] : MOVES}
+                groups={
+                    state === "swipe-package"
+                        ? [
+                              {
+                                  key: "typal:Goblin",
+                                  label: "Goblin",
+                                  reason: "",
+                                  suggestions: PACKAGE_MOVES.map(
+                                      (move) => (move as { suggestion: unknown }).suggestion as Suggestion,
+                                  ),
+                              },
+                          ]
+                        : []
+                }
                 cards={PRINTINGS}
                 count={64}
                 target={100}
@@ -211,6 +269,7 @@ function Probe() {
                 canUndo={true}
                 onAdd={async () => {}}
                 onNever={() => {}}
+                onAddPackage={async () => {}}
                 onUndo={async () => {}}
                 onClose={() => {}}
             />
@@ -225,57 +284,99 @@ function Probe() {
         );
     }
 
+    const swipe = (direction: SwipeDirection) => {
+        setExit(direction);
+        setFlipped(false);
+        setStack((current) => current.slice(1));
+    };
+
     return (
-        <div className={"mx-auto flex h-dvh w-full max-w-md flex-col gap-2 px-4 pt-2 pb-4"}>
-            <Heading>{"Command Zone Dating"}</Heading>
-            <DatingColorFilter
-                selected={colors}
-                onToggle={(color) =>
-                    setColors((current) => {
-                        const next = new Set(current);
-                        if (next.has(color)) next.delete(color);
-                        else next.add(color);
-                        return next;
-                    })
-                }
-            />
-            <div className={"relative isolate min-h-0 flex-1"}>
-                <AnimatePresence custom={exit}>
-                    {stack
-                        .slice(0, 2)
-                        .reverse()
-                        .map((item) => (
-                            <DatingCard
-                                key={item.commander}
-                                card={item}
-                                top={item.commander === top?.commander}
-                                flipped={flipped}
-                                onSwipe={(direction) => {
-                                    setExit(direction);
-                                    setFlipped(false);
-                                    setStack((current) => current.slice(1));
-                                }}
-                                onFlip={() => setFlipped((turned) => !turned)}
-                                onOpenBio={() => {}}
-                            />
+        <StackedLayout
+            navCollapseBelow={"sm"}
+            contentWidth={"wide"}
+            footer={<div className={"h-12"} />}
+            navbar={
+                <Navbar>
+                    <NavbarSection className={"max-sm:hidden"}>
+                        {["Start", "Decks", "Turniere", "Game-Tools", "Scannen", "Dating"].map((label) => (
+                            <NavbarItem key={label} current={label === "Dating"}>
+                                <NavbarLabel>{label}</NavbarLabel>
+                            </NavbarItem>
                         ))}
-                </AnimatePresence>
-            </div>
-            <div className={"h-20"} />
-            <DatingBioDialog card={state === "bio" ? STACK[0] : null} onClose={() => {}} />
-            {verdict !== null && (
-                <DatingVerdict
-                    commander={STACK[1].commander}
-                    name={state === "reject" ? "Toxrill, the Corrosive" : "Krenko, Mob Boss"}
-                    art={art(state === "reject" ? "Toxrill, the Corrosive" : "Krenko, Mob Boss")}
-                    verdict={verdict}
-                    busy={false}
-                    onKeepSwiping={() => {}}
-                    onStartDeck={() => {}}
-                    onComeBack={() => {}}
+                    </NavbarSection>
+                </Navbar>
+            }
+        >
+            <div
+                className={
+                    "mx-auto flex h-[calc(100dvh-5rem)] min-h-[34rem] w-full max-w-md flex-col gap-2 px-4 pt-2 pb-4 lg:h-[calc(100dvh-9rem)] lg:min-h-[30rem] lg:max-w-none lg:gap-5 lg:p-0"
+                }
+            >
+                <header className={"flex flex-wrap items-center gap-x-2 gap-y-2 lg:flex-nowrap lg:gap-x-5"}>
+                    <Heading className={"min-w-0 flex-1"}>{"Command Zone Dating"}</Heading>
+                    <div className={"order-last w-full lg:order-none lg:w-auto"}>
+                        <DatingColorFilter
+                            choices={colors}
+                            onToggle={(color) =>
+                                setColors((current) => {
+                                    const next = new Map(current);
+                                    const choice = nextColorChoice(current.get(color));
+                                    if (choice === undefined) next.delete(color);
+                                    else next.set(color, choice);
+                                    return next;
+                                })
+                            }
+                        />
+                    </div>
+                    <span aria-hidden={true} className={"hidden h-6 w-px bg-zinc-950/10 lg:block dark:bg-white/10"} />
+                    <DatingSetFilter sets={sets} onSets={setSets} />
+                    <span aria-hidden={true} className={"hidden h-6 w-px bg-zinc-950/10 lg:block dark:bg-white/10"} />
+                    <div className={"flex items-center"}>
+                        <Button plain={true}>{"P"}</Button>
+                        <Button plain={true}>{"M"}</Button>
+                    </div>
+                </header>
+                <div className={"relative isolate min-h-0 flex-1 lg:mx-auto lg:w-full lg:max-w-5xl"}>
+                    <AnimatePresence custom={exit}>
+                        {stack
+                            .slice(0, 2)
+                            .reverse()
+                            .map((item) => (
+                                <DatingCard
+                                    key={item.commander}
+                                    card={item}
+                                    tagline={"jemanden, der jede Beziehung um eine Marke wachsen lässt"}
+                                    top={item.commander === top?.commander}
+                                    flipped={flipped}
+                                    onSwipe={swipe}
+                                    onFlip={() => setFlipped((turned) => !turned)}
+                                    onOpenBio={() => {}}
+                                />
+                            ))}
+                    </AnimatePresence>
+                </div>
+                <DatingActions
+                    canSwipe={top !== undefined}
+                    canRewind={true}
+                    supers={1}
+                    onSwipe={swipe}
+                    onRewind={() => {}}
                 />
-            )}
-        </div>
+                <DatingBioDialog card={state === "bio" ? STACK[0] : null} onClose={() => {}} />
+                {verdict !== null && (
+                    <DatingVerdict
+                        commander={STACK[1].commander}
+                        name={state === "reject" ? "Toxrill, the Corrosive" : "Krenko, Mob Boss"}
+                        art={art(state === "reject" ? "Toxrill, the Corrosive" : "Krenko, Mob Boss")}
+                        verdict={verdict}
+                        busy={false}
+                        onKeepSwiping={() => {}}
+                        onStartDeck={() => {}}
+                        onComeBack={() => {}}
+                    />
+                )}
+            </div>
+        </StackedLayout>
     );
 }
 
