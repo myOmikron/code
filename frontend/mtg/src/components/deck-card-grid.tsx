@@ -22,7 +22,7 @@ import { useDeckLabels } from "src/components/deck-labels";
 import { DeckLineDeviation } from "src/components/deck-line-deviation";
 import { DeckTagDots, DeckTagPicker } from "src/components/deck-tag-picker";
 import { useLineDeviation } from "src/context/deck-deviation-context";
-import { lineMarks } from "src/utils/deck-deviation";
+import { isAllProxies, lineMarks } from "src/utils/deck-deviation";
 import { ManaCost } from "src/components/mana-cost";
 import type { DeckTileSize } from "src/components/deck-view-controls";
 import { GameChangerMarker } from "src/components/game-changer-marker";
@@ -450,7 +450,8 @@ export function Tile({
     const printing = card.card;
     const finish = finishOf(card);
     const gameChanger = printing?.game_changer === true;
-    const deviates = lineMarks(useLineDeviation(card.uuid)).length > 0;
+    const line = useLineDeviation(card.uuid);
+    const deviates = lineMarks(line).length > 0;
     const back = artworkOf(printing, "back");
     // The flip is a single tap, so the other side is fetched while this one
     // is being looked at rather than after the tap.
@@ -496,6 +497,7 @@ export function Tile({
                         sizes={width}
                         finish={finish}
                         className={"w-full rounded-xl"}
+                        muted={isAllProxies(line)}
                     />
                 </button>
 

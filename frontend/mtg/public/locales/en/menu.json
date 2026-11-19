@@ -25,6 +25,7 @@
     },
     "description": {
         "quick-tag": "Tag the card under the pointer",
+        "shortcut-proxy": "Proxies in for the card under the pointer, or out again",
         "shortcut-quantity": "Raise or lower the count",
         "shortcut-sort": "Reverse the sort order",
         "shortcut-tabs": "Switch between the tabs"
