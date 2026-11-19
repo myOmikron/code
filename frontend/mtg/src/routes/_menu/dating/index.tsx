@@ -1,30 +1,24 @@
-import {
-    AdjustmentsHorizontalIcon,
-    ArrowUturnLeftIcon,
-    ChatBubbleLeftRightIcon,
-    UserCircleIcon,
-} from "@heroicons/react/20/solid";
-import { HeartIcon, StarIcon, XMarkIcon } from "@heroicons/react/24/solid";
+import { ChatBubbleLeftRightIcon, UserCircleIcon } from "@heroicons/react/20/solid";
 import { createFileRoute } from "@tanstack/react-router";
-import clsx from "clsx";
 import { Button, EmptyState, Heading, Text, notify } from "components";
 import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { DateStatus, SwipeKind } from "src/api/generated";
-import type { CardRarity, DatingCardResponse } from "src/api/generated";
+import type { DatingCardResponse } from "src/api/generated";
+import { DatingActions } from "src/components/dating-actions";
 import { DatingBioDialog } from "src/components/dating-bio-dialog";
 import { DatingCard } from "src/components/dating-card";
 import { DatingColorFilter } from "src/components/dating-color-filter";
-import { DatingFilterDialog } from "src/components/dating-filter-dialog";
+import { DatingSetFilter } from "src/components/dating-set-filter";
 import { DatingVerdict } from "src/components/dating-verdict";
 import type { Verdict } from "src/components/dating-verdict";
 import { PrimaryButton } from "src/components/primary-button";
 import { RequireAccount } from "src/components/require-account";
 import i18n from "src/i18n";
-import { REFILL_AT, colorFilter } from "src/utils/dating";
-import type { Color, SwipeDirection } from "src/utils/dating";
+import { REFILL_AT, colorFilter, nextColorChoice } from "src/utils/dating";
+import type { Color, ColorChoice, SwipeDirection } from "src/utils/dating";
 import { useShortcuts } from "src/utils/use-shortcuts";
 import { useDatingLines } from "src/utils/dating-lines";
 import { useStartDeck } from "src/utils/use-start-deck";
@@ -35,13 +29,6 @@ export const Route = createFileRoute("/_menu/dating/")({
     },
     component: RouteComponent,
 });
-
-/** A round action button under the stack */
-const ROUND =
-    "flex items-center justify-center rounded-full ring-1 shadow-(--shadow-card-sm) transition-transform active:scale-95 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-500";
-
-/** A quiet round button */
-const QUIET = "bg-white ring-zinc-950/10 dark:bg-zinc-900 dark:ring-white/10";
 
 /**
  * Command Zone Dating: swipe through Commanders, and they swipe back.
@@ -57,8 +44,7 @@ function RouteComponent() {
     const [exhausted, setExhausted] = useState(false);
     const [supers, setSupers] = useState(1);
     const [profileNeeded, setProfileNeeded] = useState(false);
-    const [colors, setColors] = useState<Set<Color>>(new Set());
-    const [rarities, setRarities] = useState<Set<CardRarity>>(new Set());
+    const [colors, setColors] = useState<Map<Color, ColorChoice>>(new Map());
     const [sets, setSets] = useState<string[]>([]);
     const [filtering, setFiltering] = useState(false);
     const [exit, setExit] = useState<SwipeDirection | null>(null);
@@ -70,21 +56,21 @@ function RouteComponent() {
     const refilling = useRef(false);
     const gone = useRef(new Set<string>());
     const saving = useRef(new Set<string>());
-    const filter = colorFilter(colors);
+    const { colors: allowed, required } = colorFilter(colors);
 
     const load = useCallback(
         async (pending: DatingCardResponse[]) => {
             const response = await Api.dating.stack({
-                colors: filter,
+                colors: allowed,
+                required_colors: required,
                 sets,
-                rarities: [...rarities],
                 pending: [...pending.map((card) => card.commander), ...saving.current],
             });
             setProfileNeeded(response.profile_needed);
             setSupers(response.super_likes_left);
             return response.commanders;
         },
-        [filter, sets, rarities],
+        [allowed, required, sets],
     );
 
     useEffect(() => {
@@ -186,9 +172,10 @@ function RouteComponent() {
 
     const toggleColor = (color: Color) =>
         setColors((current) => {
-            const next = new Set(current);
-            if (next.has(color)) next.delete(color);
-            else next.add(color);
+            const next = new Map(current);
+            const choice = nextColorChoice(current.get(color));
+            if (choice === undefined) next.delete(color);
+            else next.set(color, choice);
             return next;
         });
 
@@ -204,34 +191,34 @@ function RouteComponent() {
     );
 
     const top = stack[0];
-    const filtered = rarities.size > 0 || sets.length > 0;
+    const filtered = sets.length > 0;
 
     return (
         <RequireAccount>
             <div
                 className={
-                    "mx-auto flex h-[calc(100dvh-5rem)] min-h-[34rem] w-full max-w-md flex-col gap-2 px-4 pt-2 pb-4"
+                    "mx-auto flex h-[calc(100dvh-5rem)] min-h-[34rem] w-full max-w-md flex-col gap-2 px-4 pt-2 pb-4 lg:h-[calc(100dvh-9rem)] lg:min-h-[30rem] lg:max-w-none lg:gap-5 lg:p-0"
                 }
             >
-                <header className={"flex items-center justify-between gap-2"}>
-                    <Heading>{t("heading.title")}</Heading>
+                <header className={"flex flex-wrap items-center gap-x-2 gap-y-2 lg:flex-nowrap lg:gap-x-5"}>
+                    <Heading className={"min-w-0 flex-1"}>{t("heading.title")}</Heading>
+                    {!profileNeeded && (
+                        <>
+                            <div className={"order-last w-full lg:order-none lg:w-auto"}>
+                                <DatingColorFilter choices={colors} onToggle={toggleColor} />
+                            </div>
+                            <span
+                                aria-hidden={true}
+                                className={"hidden h-6 w-px bg-zinc-950/10 lg:block dark:bg-white/10"}
+                            />
+                            <DatingSetFilter sets={sets} onSets={setSets} onPicking={setFiltering} />
+                            <span
+                                aria-hidden={true}
+                                className={"hidden h-6 w-px bg-zinc-950/10 lg:block dark:bg-white/10"}
+                            />
+                        </>
+                    )}
                     <div className={"flex items-center"}>
-                        {!profileNeeded && (
-                            <Button
-                                plain={true}
-                                className={"relative"}
-                                aria-label={t("button.filter")}
-                                onClick={() => setFiltering(true)}
-                            >
-                                <AdjustmentsHorizontalIcon />
-                                {filtered && (
-                                    <span
-                                        aria-hidden={true}
-                                        className={"absolute top-1.5 right-1.5 size-2 rounded-full bg-lime-500"}
-                                    />
-                                )}
-                            </Button>
-                        )}
                         <Button plain={true} href={"/dating/profile"} aria-label={t("button.profile")}>
                             <UserCircleIcon />
                         </Button>
@@ -241,9 +228,7 @@ function RouteComponent() {
                     </div>
                 </header>
 
-                {!profileNeeded && <DatingColorFilter selected={colors} onToggle={toggleColor} />}
-
-                <div className={"relative isolate min-h-0 flex-1"}>
+                <div className={"relative isolate min-h-0 flex-1 lg:mx-auto lg:w-full lg:max-w-5xl"}>
                     {loading ? (
                         <Text className={"pt-10 text-center"}>{t("description.loading")}</Text>
                     ) : profileNeeded ? (
@@ -259,14 +244,7 @@ function RouteComponent() {
                             title={t("heading.title")}
                             description={t("description.empty-filtered")}
                             action={
-                                <PrimaryButton
-                                    onClick={() => {
-                                        setRarities(new Set());
-                                        setSets([]);
-                                    }}
-                                >
-                                    {t("button.clear-filters")}
-                                </PrimaryButton>
+                                <PrimaryButton onClick={() => setSets([])}>{t("button.clear-filters")}</PrimaryButton>
                             }
                         />
                     ) : top === undefined ? (
@@ -279,7 +257,7 @@ function RouteComponent() {
                                         await Api.dating.resetPasses();
                                         gone.current.clear();
                                         notify.success(t("toast.passes-reset"));
-                                        setColors(new Set());
+                                        setColors(new Map());
                                         setStack(await load([]));
                                         setExhausted(false);
                                     }}
@@ -297,6 +275,7 @@ function RouteComponent() {
                                     <DatingCard
                                         key={card.commander}
                                         card={card}
+                                        tagline={lines?.[card.name]?.tagline ?? null}
                                         top={card.commander === top.commander}
                                         flipped={flipped === card.commander}
                                         onSwipe={swipe}
@@ -309,62 +288,16 @@ function RouteComponent() {
                 </div>
 
                 {!profileNeeded && (
-                    <div className={"flex items-center justify-center gap-4 pt-2"}>
-                        <button
-                            type={"button"}
-                            onClick={rewind}
-                            disabled={last === null || busy}
-                            aria-label={t("button.rewind")}
-                            className={clsx(ROUND, QUIET, "size-12 text-amber-500")}
-                        >
-                            <ArrowUturnLeftIcon className={"size-5"} />
-                        </button>
-                        <button
-                            type={"button"}
-                            onClick={() => swipe("left")}
-                            disabled={top === undefined}
-                            aria-label={t("button.pass")}
-                            className={clsx(ROUND, QUIET, "size-16 text-zinc-700 dark:text-zinc-200")}
-                        >
-                            <XMarkIcon className={"size-8"} />
-                        </button>
-                        <button
-                            type={"button"}
-                            onClick={() => swipe("up")}
-                            disabled={top === undefined || supers <= 0}
-                            aria-label={t("button.super-like")}
-                            className={clsx(ROUND, QUIET, "relative size-12 text-sky-500")}
-                        >
-                            <StarIcon className={"size-5"} />
-                            <span
-                                className={
-                                    "absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-sky-500 text-[0.65rem] font-bold text-white"
-                                }
-                            >
-                                {supers}
-                            </span>
-                        </button>
-                        <button
-                            type={"button"}
-                            onClick={() => swipe("right")}
-                            disabled={top === undefined}
-                            aria-label={t("button.like")}
-                            className={clsx(ROUND, "size-16 bg-lime-400 text-lime-950 ring-lime-500")}
-                        >
-                            <HeartIcon className={"size-8"} />
-                        </button>
-                    </div>
+                    <DatingActions
+                        canSwipe={top !== undefined}
+                        canRewind={last !== null && !busy}
+                        supers={supers}
+                        onSwipe={swipe}
+                        onRewind={rewind}
+                    />
                 )}
             </div>
 
-            <DatingFilterDialog
-                open={filtering}
-                onClose={() => setFiltering(false)}
-                rarities={rarities}
-                onRarities={setRarities}
-                sets={sets}
-                onSets={setSets}
-            />
             <DatingBioDialog
                 card={bio}
                 tagline={bio === null ? null : (lines?.[bio.name]?.tagline ?? null)}

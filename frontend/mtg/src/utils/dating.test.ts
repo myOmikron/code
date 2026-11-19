@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+    COLORS,
     LINE_VARIANTS,
     colorFilter,
     lineVariant,
+    nextColorChoice,
     manaSymbols,
     matchKey,
     rejectionKey,
@@ -56,12 +58,27 @@ describe("colors", () => {
         expect(manaSymbols("RB")).toBe("{R}{B}");
     });
 
-    it("sends no filter for none or all colors", () => {
-        expect(colorFilter(new Set())).toBeNull();
-        expect(colorFilter(new Set(["W", "U", "B", "R", "G"] as const))).toBeNull();
+    it("sends no filter while every color is allowed", () => {
+        expect(colorFilter(new Map())).toEqual({ colors: null, required: null });
     });
 
-    it("sends the chosen colors in WUBRG order", () => {
-        expect(colorFilter(new Set(["G", "W"] as const))).toBe("WG");
+    it("sends the allowed and required colors in WUBRG order", () => {
+        const choices = new Map([
+            ["U", "excluded"],
+            ["G", "required"],
+            ["W", "required"],
+        ] as const);
+        expect(colorFilter(choices)).toEqual({ colors: "WBRG", required: "WG" });
+    });
+
+    it("sends no allowed colors when all are excluded", () => {
+        const choices = new Map(COLORS.map((color) => [color, "excluded"] as const));
+        expect(colorFilter(choices)).toEqual({ colors: "", required: null });
+    });
+
+    it("cycles allowed, excluded, required", () => {
+        expect(nextColorChoice(undefined)).toBe("excluded");
+        expect(nextColorChoice("excluded")).toBe("required");
+        expect(nextColorChoice("required")).toBeUndefined();
     });
 });

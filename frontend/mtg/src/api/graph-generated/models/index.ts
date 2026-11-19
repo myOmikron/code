@@ -762,6 +762,10 @@ export interface DatingStackRequest {
     /**
      * 
      */
+    required?: Array<DatingStackRequestRequiredEnum>;
+    /**
+     * 
+     */
     only?: Array<string> | null;
     /**
      * 
@@ -785,6 +789,18 @@ export const DatingStackRequestColorsEnum = {
     G: 'G',
 } as const;
 export type DatingStackRequestColorsEnum = typeof DatingStackRequestColorsEnum[keyof typeof DatingStackRequestColorsEnum];
+
+/**
+ * @export
+ */
+export const DatingStackRequestRequiredEnum = {
+    W: 'W',
+    U: 'U',
+    B: 'B',
+    R: 'R',
+    G: 'G',
+} as const;
+export type DatingStackRequestRequiredEnum = typeof DatingStackRequestRequiredEnum[keyof typeof DatingStackRequestRequiredEnum];
 
 /**
  * A slice of the swipe stack.

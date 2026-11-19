@@ -440,11 +440,16 @@ def _popularity(row: dict) -> float:
     return 1 / math.sqrt((row.get("edhrec_rank") or 20_000) + 25)
 
 
-def in_filter(row: dict, colors: set[str] | None, only: set[str] | None) -> bool:
-    """Whether a pool row passes the color filter and the `only` list."""
+def in_filter(
+    row: dict, colors: set[str] | None, only: set[str] | None, required: set[str] | None = None
+) -> bool:
+    """Whether a pool row is within `colors`, has all `required` colors and is on `only`."""
     if only is not None and row["oracle_id"] not in only:
         return False
-    return colors is None or set(row.get("color_identity") or []) <= colors
+    identity = set(row.get("color_identity") or [])
+    if required and not required <= identity:
+        return False
+    return colors is None or identity <= colors
 
 
 def stack(
@@ -456,6 +461,7 @@ def stack(
     count: int,
     seed: int,
     only: set[str] | None = None,
+    required: set[str] | None = None,
 ) -> list[DatingCommander]:
     """The pool in one fixed popularity-weighted order per seed, without the excluded cards.
 
@@ -463,7 +469,7 @@ def stack(
     card. Excluding cards only skips places, so a reload resumes where the player left off.
     """
     ordered = sorted(
-        (row for row in pool if in_filter(row, colors, only)),
+        (row for row in pool if in_filter(row, colors, only, required)),
         key=lambda row: _order_key(row, seed),
         reverse=True,
     )
