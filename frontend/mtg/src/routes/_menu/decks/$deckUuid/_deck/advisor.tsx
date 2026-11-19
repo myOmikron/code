@@ -4,7 +4,7 @@ import { MotionConfig } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import { DeckCardResponse } from "src/api/generated";
+import { DeckCardResponse, DeckZone } from "src/api/generated";
 import { CutCandidate, Suggestion } from "src/api/graph-generated";
 import { ChartPanel } from "src/components/charts/chart-card";
 import { DeckAdvisorCockpit, DeckAdvisorCockpitProps } from "src/components/deck-advisor-cockpit";
@@ -119,7 +119,10 @@ function RouteComponent() {
     const { swipe } = Route.useSearch();
     const navigate = useNavigate({ from: Route.fullPath });
     const [lastSwipe, setLastSwipe] = useState<
-        { kind: "add"; oracle_id: string; quantity: number } | { kind: "never"; card: IgnoredCard } | null
+        | { kind: "add"; oracle_id: string; quantity: number }
+        | { kind: "never"; card: IgnoredCard }
+        | { kind: "package"; oracle_ids: Array<string>; left: Array<IgnoredCard> }
+        | null
     >(null);
     const { deck, formats, brackets } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
     const [t] = useTranslation("advisor");
@@ -582,6 +585,41 @@ function RouteComponent() {
     }, []);
     const onIgnore = useCallback((move: Move) => ignore({ oracle_id: move.oracle_id, name: move.name }), [ignore]);
 
+    const swipeGroups = useMemo(
+        () => (swaps.data === null ? [] : (filterReport(swaps.data.suggestions, accepted).groups ?? [])),
+        [swaps.data, accepted],
+    );
+
+    /**
+     * Adds a swiped package in one import, and never suggests the cards tapped out of it again
+     *
+     * @param chosen the cards to add
+     * @param left the cards tapped away
+     */
+    async function addPackage(chosen: Array<Suggestion>, left: Array<IgnoredCard>) {
+        setLastSwipe({ kind: "package", oracle_ids: chosen.map((card) => card.oracle_id), left });
+        const fresh = left.filter((card) => !settings.ignored.some((held) => held.oracle_id === card.oracle_id));
+        if (fresh.length > 0) save({ ...settings, ignored: [...settings.ignored, ...fresh] });
+        const imports = chosen.flatMap((suggestion) => {
+            const printing = suggestionCards.get(suggestion.name);
+            if (printing === undefined) return [];
+            // The deck's own print, so the import folds into the slot it already has
+            const held = cards.find((slot) => slot.zone === "Main" && slot.card?.oracle_id === suggestion.oracle_id);
+            return [
+                {
+                    printing: held?.printing ?? printing.id,
+                    quantity: suggestionAddQuantity(suggestion.type_line, deckColors.length),
+                    zone: DeckZone.Main,
+                    foil: held?.foil ?? defaultFoil(printing.finishes),
+                },
+            ];
+        });
+        if (imports.length === 0) return;
+        await Api.decks.cards.import(deckUuid, { cards: imports, mode: "Fill" });
+        setAccepted((held) => [...held, ...chosen.map((card) => card.oracle_id).filter((id) => !held.includes(id))]);
+        await router.invalidate();
+    }
+
     const swipeMoves = useMemo(
         () => (diff < 0 ? buildMoves({ diff, adds, cuts, dims, facts, filter: null }) : []),
         [diff, adds, cuts, dims, facts],
@@ -595,6 +633,17 @@ function RouteComponent() {
         setLastSwipe(null);
         if (lastSwipe.kind === "never") {
             unignore(lastSwipe.card);
+            return;
+        }
+        if (lastSwipe.kind === "package") {
+            const left = new Set(lastSwipe.left.map((card) => card.oracle_id));
+            if (left.size > 0)
+                save({ ...settings, ignored: settings.ignored.filter((held) => !left.has(held.oracle_id)) });
+            if (lastSwipe.oracle_ids.length === 0) return;
+            // The package went in as one import, so one undo takes it back
+            await Api.decks.undo(deckUuid);
+            setAccepted((list) => list.filter((oracleId) => !lastSwipe.oracle_ids.includes(oracleId)));
+            await router.invalidate();
             return;
         }
         const held = cards.find((slot) => slot.zone === "Main" && slot.card?.oracle_id === lastSwipe.oracle_id);
@@ -915,6 +964,7 @@ function RouteComponent() {
             {swipe && target !== null && (
                 <DeckAdvisorSwipe
                     moves={swipeMoves}
+                    groups={swipeGroups}
                     cards={suggestionCards}
                     count={cardCount}
                     target={target}
@@ -935,6 +985,12 @@ function RouteComponent() {
                         setLastSwipe({ kind: "never", card });
                         ignore(card, true);
                     }}
+                    onAddPackage={(chosen, left) =>
+                        addPackage(
+                            chosen.map((move) => move.suggestion),
+                            left.map((move) => ({ oracle_id: move.oracle_id, name: move.name })),
+                        )
+                    }
                     onUndo={undoSwipe}
                     onClose={() => navigate({ search: {} })}
                 />
