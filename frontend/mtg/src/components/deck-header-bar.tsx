@@ -82,6 +82,10 @@ export type DeckHeaderBarProps = {
     onChangeGrouping: (grouping: DeckGrouping) => void;
     /** Records a different order */
     onChangeSort: (sort: DeckSort) => void;
+    /** Whether the cards carry the Physical deck's marks */
+    physical?: boolean;
+    /** Turns the Physical deck's marks on or off, absent where the reader may not see the Physical deck */
+    onChangePhysical?: (physical: boolean) => void;
     /** Opens the card search */
     onAdd: () => void;
     /** Opens the house rules, colours included */
@@ -140,6 +144,8 @@ export function DeckHeaderBar({
     onChangeSize,
     onChangeGrouping,
     onChangeSort,
+    physical,
+    onChangePhysical,
     onAdd,
     onEditRuleZero,
     focus,
@@ -416,6 +422,8 @@ export function DeckHeaderBar({
                         onChangeSize={onChangeSize}
                         onChangeGrouping={onChangeGrouping}
                         onChangeSort={onChangeSort}
+                        physical={physical}
+                        onChangePhysical={onChangePhysical}
                     />
                     <PrimaryButton onClick={onAdd} className={"max-sm:flex-1"}>
                         <PlusIcon />

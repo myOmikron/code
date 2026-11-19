@@ -424,6 +424,7 @@ function shortcutsFor(
             { keys: "Ctrl/⌘ F", description: t("label.search-cards") },
             { keys: "V", description: t("label.view") },
             { keys: "G", description: t("label.grouping") },
+            { keys: "B", description: t("label.physical-marks") },
             { keys: "T", description: t("button.manage-tags") },
             { keys: "1-9", description: t("description.quick-tag") },
             { keys: "P", description: t("button.change-printing") },
