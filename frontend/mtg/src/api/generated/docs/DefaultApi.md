@@ -4776,7 +4776,7 @@ No authorization required
 
 Throw a stack out of the Physical deck, and so out of the account
 
-Throw a stack out of the Physical deck, and so out of the account  For cards that are gone: sold, traded away, lost. A Proxy stack is simply thrown away.
+Throw a stack out of the Physical deck, and so out of the account  For cards that are gone: sold, traded away, lost. A Proxy stack is simply thrown away. The last stack going removes the Physical deck with it.
 
 ### Example
 
@@ -13196,7 +13196,7 @@ No authorization required
 
 Sort copies out of the Physical deck back into a collection
 
-Sort copies out of the Physical deck back into a collection  Proxies have nowhere to go back to: returning them throws them away, and &#x60;target&#x60; is not read for them.
+Sort copies out of the Physical deck back into a collection  Proxies have nowhere to go back to: returning them throws them away, and &#x60;target&#x60; is not read for them. Whatever leaves the Physical deck empty removes it, as taking it apart does.
 
 ### Example
 
