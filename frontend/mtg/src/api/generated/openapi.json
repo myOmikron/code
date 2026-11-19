@@ -6547,7 +6547,7 @@
         "/api/frontend/v1/decks/{deck}/sourcing/return": {
             "post": {
                 "summary": "Sort copies out of the Physical deck back into a collection",
-                "description": "Sort copies out of the Physical deck back into a collection\n\nProxies have nowhere to go back to: returning them throws them away, and\n`target` is not read for them.",
+                "description": "Sort copies out of the Physical deck back into a collection\n\nProxies have nowhere to go back to: returning them throws them away, and\n`target` is not read for them. Whatever leaves the Physical deck empty\nremoves it, as taking it apart does.",
                 "operationId": "return_deck_cards",
                 "parameters": [
                     {
@@ -6689,7 +6689,7 @@
         "/api/frontend/v1/decks/{deck}/sourcing/discard": {
             "post": {
                 "summary": "Throw a stack out of the Physical deck, and so out of the account",
-                "description": "Throw a stack out of the Physical deck, and so out of the account\n\nFor cards that are gone: sold, traded away, lost. A Proxy stack is simply\nthrown away.",
+                "description": "Throw a stack out of the Physical deck, and so out of the account\n\nFor cards that are gone: sold, traded away, lost. A Proxy stack is simply\nthrown away. The last stack going removes the Physical deck with it.",
                 "operationId": "discard_deck_cards",
                 "parameters": [
                     {

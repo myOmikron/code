@@ -5712,7 +5712,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Throw a stack out of the Physical deck, and so out of the account  For cards that are gone: sold, traded away, lost. A Proxy stack is simply thrown away.
+     * Throw a stack out of the Physical deck, and so out of the account  For cards that are gone: sold, traded away, lost. A Proxy stack is simply thrown away. The last stack going removes the Physical deck with it.
      * Throw a stack out of the Physical deck, and so out of the account
      */
     async discardDeckCardsRaw(requestParameters: DiscardDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
@@ -5727,7 +5727,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Throw a stack out of the Physical deck, and so out of the account  For cards that are gone: sold, traded away, lost. A Proxy stack is simply thrown away.
+     * Throw a stack out of the Physical deck, and so out of the account  For cards that are gone: sold, traded away, lost. A Proxy stack is simply thrown away. The last stack going removes the Physical deck with it.
      * Throw a stack out of the Physical deck, and so out of the account
      */
     async discardDeckCards(requestParameters: DiscardDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
@@ -11502,7 +11502,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Sort copies out of the Physical deck back into a collection  Proxies have nowhere to go back to: returning them throws them away, and `target` is not read for them.
+     * Sort copies out of the Physical deck back into a collection  Proxies have nowhere to go back to: returning them throws them away, and `target` is not read for them. Whatever leaves the Physical deck empty removes it, as taking it apart does.
      * Sort copies out of the Physical deck back into a collection
      */
     async returnDeckCardsRaw(requestParameters: ReturnDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
@@ -11517,7 +11517,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Sort copies out of the Physical deck back into a collection  Proxies have nowhere to go back to: returning them throws them away, and `target` is not read for them.
+     * Sort copies out of the Physical deck back into a collection  Proxies have nowhere to go back to: returning them throws them away, and `target` is not read for them. Whatever leaves the Physical deck empty removes it, as taking it apart does.
      * Sort copies out of the Physical deck back into a collection
      */
     async returnDeckCards(requestParameters: ReturnDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
