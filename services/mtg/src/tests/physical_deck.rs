@@ -1758,3 +1758,145 @@ fn discarding_a_stack_takes_it_out_of_the_physical_deck_and_the_account() {
         assert_eq!(fixture.held(&binder, printing).await, 0);
     });
 }
+
+impl Fixture {
+    /// Sends copies of a Physical deck stack back, or throws Proxies away
+    async fn give_back(&mut self, stack: &Value, quantity: i32) {
+        self.send(
+            Method::POST,
+            "sourcing/return",
+            json!({ "entry": stack, "quantity": quantity, "target": null }),
+        )
+        .await
+        .ok_json();
+    }
+
+    /// Asserts the deck has no Physical deck, in sourcing and in its Deviation
+    async fn assert_no_physical_deck(&mut self) {
+        let sourcing = self.sourcing().await;
+        assert_eq!(sourcing["physical_deck"], Value::Null, "{sourcing}");
+        let deviation = self.deviation().await;
+        assert_eq!(deviation["has_physical_deck"], false, "{deviation}");
+    }
+}
+
+#[test]
+fn returning_the_last_real_copies_removes_the_physical_deck() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        fixture.add(printing, 2).await;
+        fixture.take_fresh(printing, 2).await;
+        let in_deck = filed(&fixture.sourcing().await)[0]["uuid"].clone();
+
+        fixture.give_back(&in_deck, 2).await;
+
+        fixture.assert_no_physical_deck().await;
+    });
+}
+
+#[test]
+fn throwing_the_last_proxies_away_removes_the_physical_deck() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let entry = fixture.add(Uuid::new_v4(), 2).await;
+        fixture.proxy(&entry, 2).await.ok_json();
+        let proxies = filed(&fixture.sourcing().await)[0]["uuid"].clone();
+
+        fixture.give_back(&proxies, 2).await;
+
+        fixture.assert_no_physical_deck().await;
+    });
+}
+
+#[test]
+fn discarding_the_last_stack_removes_the_physical_deck() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        fixture.add(printing, 1).await;
+        fixture.take_fresh(printing, 1).await;
+        let in_deck = filed(&fixture.sourcing().await)[0]["uuid"].clone();
+
+        fixture
+            .send(
+                Method::POST,
+                "sourcing/discard",
+                json!({ "entry": in_deck }),
+            )
+            .await
+            .ok_json();
+
+        fixture.assert_no_physical_deck().await;
+    });
+}
+
+#[test]
+fn a_physical_deck_still_holding_a_real_card_a_proxy_or_an_unlisted_card_stays() {
+    run(async {
+        // What is left after returning everything else: a real card, a Proxy,
+        // and a card the list no longer names.
+        for left in ["real", "proxy", "unlisted"] {
+            let mut fixture = Fixture::new().await;
+            let printing = Uuid::new_v4();
+            let entry = fixture.add(printing, 2).await;
+            fixture.proxy(&entry, 1).await.ok_json();
+            fixture.take_fresh(printing, 1).await;
+            let unlisted = Uuid::new_v4();
+            let unlisted_entry = fixture.add(unlisted, 1).await;
+            fixture.take_fresh(unlisted, 1).await;
+            fixture
+                .send(
+                    Method::DELETE,
+                    &format!("cards/{unlisted_entry}"),
+                    Value::Null,
+                )
+                .await
+                .ok_json();
+            let stacks = filed(&fixture.sourcing().await);
+            let keep = match left {
+                "real" => stacks
+                    .iter()
+                    .find(|stack| stack["printing"] == json!(printing) && stack["proxy"] == false),
+                "proxy" => stacks.iter().find(|stack| stack["proxy"] == true),
+                _ => stacks
+                    .iter()
+                    .find(|stack| stack["printing"] == json!(unlisted)),
+            }
+            .expect("the stack that stays")
+            .clone();
+
+            for stack in stacks.iter().filter(|stack| stack["uuid"] != keep["uuid"]) {
+                fixture.give_back(&stack["uuid"], 1).await;
+            }
+
+            let sourcing = fixture.sourcing().await;
+            assert_ne!(sourcing["physical_deck"], Value::Null, "{left}: {sourcing}");
+            assert_eq!(filed(&sourcing), vec![keep], "{left}");
+            let deviation = fixture.deviation().await;
+            assert_eq!(deviation["has_physical_deck"], true, "{left}: {deviation}");
+        }
+    });
+}
+
+#[test]
+fn a_proxy_put_in_after_the_physical_deck_was_emptied_creates_a_fresh_one() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let entry = fixture.add(Uuid::new_v4(), 1).await;
+        fixture.proxy(&entry, 1).await.ok_json();
+        let first = fixture.sourcing().await;
+        fixture.give_back(&filed(&first)[0]["uuid"], 1).await;
+
+        fixture.proxy(&entry, 1).await.ok_json();
+
+        let sourcing = fixture.sourcing().await;
+        assert_ne!(sourcing["physical_deck"], Value::Null, "{sourcing}");
+        assert_ne!(sourcing["physical_deck"], first["physical_deck"]);
+        let filed = filed(&sourcing);
+        assert_eq!(filed.len(), 1, "{filed:?}");
+        assert_eq!(filed[0]["proxy"], true);
+        let deviation = fixture.deviation().await;
+        assert_eq!(deviation["has_physical_deck"], true, "{deviation}");
+    });
+}

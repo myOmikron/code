@@ -573,6 +573,36 @@ impl Deck {
         Ok(TakeApartOutcome::TakenApart { returned })
     }
 
+    /// Remove the deck's Physical deck once its last card or Proxy has left it
+    ///
+    /// What every call that takes something out of the Physical deck ends
+    /// with, in the same transaction: an empty box is no Physical deck, just
+    /// as before the first card went in. A card the list does not name still
+    /// counts as content.
+    #[instrument(name = "Deck::remove_physical_deck_if_empty", skip(tx))]
+    pub async fn remove_physical_deck_if_empty(
+        tx: &mut Transaction,
+        uuid: DeckUuid,
+    ) -> Result<(), rorm::Error> {
+        let Some(collection) = Self::collection(&mut *tx, uuid).await? else {
+            return Ok(());
+        };
+        let content = rorm::query(&mut *tx, CollectionEntryModel.uuid)
+            .condition(
+                CollectionEntryModel
+                    .collection
+                    .equals(collection.uuid.into_inner()),
+            )
+            .optional()
+            .await?;
+        if content.is_none() {
+            rorm::delete(&mut *tx, CollectionModel)
+                .condition(CollectionModel.uuid.equals(collection.uuid.into_inner()))
+                .await?;
+        }
+        Ok(())
+    }
+
     /// File a deck into one of the account's folders, or onto no shelf at all
     ///
     /// Filing is about the list of decks staying readable, the archive

@@ -436,6 +436,7 @@ pub async fn replace_deck_proxy(
         )
         .await?,
     )?;
+    Deck::remove_physical_deck_if_empty(&mut tx, deck_uuid).await?;
 
     tx.commit().await?;
 
@@ -445,7 +446,8 @@ pub async fn replace_deck_proxy(
 /// Sort copies out of the Physical deck back into a collection
 ///
 /// Proxies have nowhere to go back to: returning them throws them away, and
-/// `target` is not read for them.
+/// `target` is not read for them. Whatever leaves the Physical deck empty
+/// removes it, as taking it apart does.
 #[post("/{deck}/sourcing/return")]
 pub async fn return_deck_cards(
     account: Account,
@@ -468,6 +470,7 @@ pub async fn return_deck_cards(
         discarded(
             CollectionEntry::discard_proxies(&mut tx, collection.uuid, entry, quantity).await?,
         )?;
+        Deck::remove_physical_deck_if_empty(&mut tx, deck_uuid).await?;
         tx.commit().await?;
         return Ok(ApiJson(()));
     }
@@ -483,6 +486,7 @@ pub async fn return_deck_cards(
     moved(
         CollectionEntry::move_copies(&mut tx, grant.owner(), entry, quantity, into, None).await?,
     )?;
+    Deck::remove_physical_deck_if_empty(&mut tx, deck_uuid).await?;
 
     tx.commit().await?;
 
@@ -525,7 +529,7 @@ pub async fn take_apart_physical_deck(
 /// Throw a stack out of the Physical deck, and so out of the account
 ///
 /// For cards that are gone: sold, traded away, lost. A Proxy stack is simply
-/// thrown away.
+/// thrown away. The last stack going removes the Physical deck with it.
 #[post("/{deck}/sourcing/discard")]
 pub async fn discard_deck_cards(
     account: Account,
@@ -546,6 +550,7 @@ pub async fn discard_deck_cards(
         CollectionAccess::Granted(()) => {}
         CollectionAccess::Denied => return Err(denied().into()),
     }
+    Deck::remove_physical_deck_if_empty(&mut tx, deck_uuid).await?;
 
     tx.commit().await?;
 
