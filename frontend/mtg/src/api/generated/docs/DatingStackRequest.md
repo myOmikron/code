@@ -9,7 +9,7 @@ Name | Type
 ------------ | -------------
 `colors` | string
 `pending` | Array&lt;string&gt;
-`rarities` | [Array&lt;CardRarity&gt;](CardRarity.md)
+`required_colors` | string
 `sets` | Array&lt;string&gt;
 
 

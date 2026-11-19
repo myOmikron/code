@@ -100,13 +100,35 @@ export function manaSymbols(letters: string): string {
     return [...letters].map((letter) => `{${letter}}`).join("");
 }
 
+/** What the color filter says about one color; unset means the color is allowed */
+export type ColorChoice = "excluded" | "required";
+
+/**
+ * The next choice when a color is tapped: allowed, then excluded, then required.
+ *
+ * @param choice the current choice
+ * @returns the choice after one tap
+ */
+export function nextColorChoice(choice: ColorChoice | undefined): ColorChoice | undefined {
+    if (choice === undefined) return "excluded";
+    if (choice === "excluded") return "required";
+    return undefined;
+}
+
 /**
  * The colors to send with a stack request.
  *
- * @param selected the filter's colors
- * @returns letters in WUBRG order, or `null` for no filter
+ * @param choices the filter's choice per color
+ * @returns the allowed and the required letters in WUBRG order, each `null` for no filter
  */
-export function colorFilter(selected: ReadonlySet<Color>): string | null {
-    if (selected.size === 0 || selected.size === COLORS.length) return null;
-    return COLORS.filter((color) => selected.has(color)).join("");
+export function colorFilter(choices: ReadonlyMap<Color, ColorChoice>): {
+    colors: string | null;
+    required: string | null;
+} {
+    const allowed = COLORS.filter((color) => choices.get(color) !== "excluded");
+    const required = COLORS.filter((color) => choices.get(color) === "required");
+    return {
+        colors: allowed.length === COLORS.length ? null : allowed.join(""),
+        required: required.length === 0 ? null : required.join(""),
+    };
 }

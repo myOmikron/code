@@ -8,7 +8,6 @@ use serde::Deserialize;
 use serde::Serialize;
 use uuid::Uuid;
 
-use crate::models::card_attributes::rarity::CardRarity;
 use crate::models::dating::DateStatus;
 use crate::models::dating::date::DateProgress;
 use crate::models::dating::date::TurnBy;
@@ -66,12 +65,12 @@ pub struct RejectReason {
 pub struct DatingStackRequest {
     /// Only Commanders within these colors, as letters of WUBRG
     pub colors: Option<MaxStr<8>>,
+    /// Only Commanders with all of these colors, as letters of WUBRG
+    #[serde(default)]
+    pub required_colors: Option<MaxStr<8>>,
     /// Only Commanders printed in one of these sets, by code; empty means every set
     #[serde(default)]
     pub sets: Vec<MaxStr<16>>,
-    /// Only Commanders printed at one of these rarities; empty means every rarity
-    #[serde(default)]
-    pub rarities: Vec<CardRarity>,
     /// Commanders the client still holds, unswiped
     pub pending: Vec<Uuid>,
 }

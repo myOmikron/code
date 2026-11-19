@@ -179,6 +179,21 @@ def test_stack_excludes_swiped_and_off_color_commanders():
     assert sorted(card.oracle_id for card in result) == ["c", "d"]
 
 
+def test_stack_keeps_only_commanders_with_every_required_color():
+    pool = [
+        row("a"),
+        row("b", color_identity=["U"]),
+        row("c", color_identity=["U", "B"]),
+        row("d", color_identity=[]),
+    ]
+
+    result = stack(
+        pool, profile(), exclude=set(), colors={"U", "B"}, count=10, seed=1, required={"U"}
+    )
+
+    assert sorted(card.oracle_id for card in result) == ["b", "c"]
+
+
 def test_stack_keeps_only_the_listed_commanders():
     pool = [row("a"), row("b"), row("c")]
 

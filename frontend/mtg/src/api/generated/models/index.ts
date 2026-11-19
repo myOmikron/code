@@ -2567,9 +2567,9 @@ export interface DatingStackRequest {
      */
     pending: Array<string>;
     /**
-     * Only Commanders printed at one of these rarities; empty means every rarity
+     * Only Commanders with all of these colors, as letters of WUBRG
      */
-    rarities?: Array<CardRarity>;
+    required_colors?: string | null;
     /**
      * Only Commanders printed in one of these sets, by code; empty means every set
      */

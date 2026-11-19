@@ -200,16 +200,18 @@ pub async fn get_dating_stack(
         return Err(ApiError::bad_request("Too many pending Commanders"));
     }
     let colors = request.colors.map(MaxStr::into_inner);
-    if colors
-        .as_deref()
-        .is_some_and(|colors| !letters_only(colors))
+    let required = request.required_colors.map(MaxStr::into_inner);
+    if [&colors, &required]
+        .into_iter()
+        .flatten()
+        .any(|colors| !letters_only(colors))
     {
         return Err(ApiError::bad_request("Colors must be letters of WUBRG"));
     }
     if request.sets.len() > MAX_FILTER_SETS {
         return Err(ApiError::bad_request("Too many sets"));
     }
-    let only = if request.sets.is_empty() && request.rarities.is_empty() {
+    let only = if request.sets.is_empty() {
         None
     } else {
         let sets: HashSet<String> = request
@@ -217,12 +219,7 @@ pub async fn get_dating_stack(
             .iter()
             .map(|code| code.to_uppercase())
             .collect();
-        Some(
-            legends()
-                .await
-                .map_err(catalog_error)?
-                .matching(&sets, &request.rarities),
-        )
+        Some(legends().await.map_err(catalog_error)?.matching(&sets))
     };
 
     let Some(profile) = current_profile(account.uuid).await? else {
@@ -250,6 +247,7 @@ pub async fn get_dating_stack(
         &profile,
         &exclude,
         colors.as_deref(),
+        required.as_deref().unwrap_or_default(),
         only.as_deref(),
         STACK_SIZE,
         hasher.finish() >> 11,

@@ -602,6 +602,7 @@ class DatingStackRequest(BaseModel):
     profile: DatingProfile
     exclude: list[OracleId] = Field(default_factory=list, max_length=dating.MAX_EXCLUDED)
     colors: list[dating.Color] | None = Field(None, max_length=5)
+    required: list[dating.Color] = Field(default_factory=list, max_length=5)
     only: list[OracleId] | None = Field(None, max_length=dating.MAX_EXCLUDED)
     count: int = Field(10, ge=1, le=dating.MAX_STACK)
     seed: int = 0
@@ -643,6 +644,7 @@ def post_dating_stack(request: DatingStackRequest) -> DatingStackResponse:
     exclude = set(request.exclude)
     colors = set(request.colors) if request.colors is not None else None
     only = set(request.only) if request.only is not None else None
+    required = set(request.required)
     commanders = dating.stack(
         pool.values(),
         request.profile,
@@ -651,11 +653,12 @@ def post_dating_stack(request: DatingStackRequest) -> DatingStackResponse:
         count=request.count,
         seed=request.seed,
         only=only,
+        required=required,
     )
     remaining = sum(
         1
         for row in pool.values()
-        if row["oracle_id"] not in exclude and dating.in_filter(row, colors, only)
+        if row["oracle_id"] not in exclude and dating.in_filter(row, colors, only, required)
     )
     return DatingStackResponse(commanders=commanders, remaining=remaining)
 

@@ -10,6 +10,7 @@ Name | Type
 `profile` | [DatingProfile](DatingProfile.md)
 `exclude` | Array&lt;string&gt;
 `colors` | Array&lt;string&gt;
+`required` | Array&lt;string&gt;
 `only` | Array&lt;string&gt;
 `count` | number
 `seed` | number
