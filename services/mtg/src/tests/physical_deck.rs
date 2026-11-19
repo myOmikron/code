@@ -1831,12 +1831,21 @@ fn discarding_the_last_stack_removes_the_physical_deck() {
     });
 }
 
+/// The one stack a Physical deck is left holding after everything else was returned
+#[derive(Debug, Clone, Copy)]
+enum Left {
+    /// A real card of a listed printing
+    Real,
+    /// A Proxy
+    Proxy,
+    /// A card the list no longer names
+    Unlisted,
+}
+
 #[test]
 fn a_physical_deck_still_holding_a_real_card_a_proxy_or_an_unlisted_card_stays() {
     run(async {
-        // What is left after returning everything else: a real card, a Proxy,
-        // and a card the list no longer names.
-        for left in ["real", "proxy", "unlisted"] {
+        for left in [Left::Real, Left::Proxy, Left::Unlisted] {
             let mut fixture = Fixture::new().await;
             let printing = Uuid::new_v4();
             let entry = fixture.add(printing, 2).await;
@@ -1855,11 +1864,11 @@ fn a_physical_deck_still_holding_a_real_card_a_proxy_or_an_unlisted_card_stays()
                 .ok_json();
             let stacks = filed(&fixture.sourcing().await);
             let keep = match left {
-                "real" => stacks
+                Left::Real => stacks
                     .iter()
                     .find(|stack| stack["printing"] == json!(printing) && stack["proxy"] == false),
-                "proxy" => stacks.iter().find(|stack| stack["proxy"] == true),
-                _ => stacks
+                Left::Proxy => stacks.iter().find(|stack| stack["proxy"] == true),
+                Left::Unlisted => stacks
                     .iter()
                     .find(|stack| stack["printing"] == json!(unlisted)),
             }
@@ -1871,10 +1880,17 @@ fn a_physical_deck_still_holding_a_real_card_a_proxy_or_an_unlisted_card_stays()
             }
 
             let sourcing = fixture.sourcing().await;
-            assert_ne!(sourcing["physical_deck"], Value::Null, "{left}: {sourcing}");
-            assert_eq!(filed(&sourcing), vec![keep], "{left}");
+            assert_ne!(
+                sourcing["physical_deck"],
+                Value::Null,
+                "{left:?}: {sourcing}"
+            );
+            assert_eq!(filed(&sourcing), vec![keep], "{left:?}");
             let deviation = fixture.deviation().await;
-            assert_eq!(deviation["has_physical_deck"], true, "{left}: {deviation}");
+            assert_eq!(
+                deviation["has_physical_deck"], true,
+                "{left:?}: {deviation}"
+            );
         }
     });
 }

@@ -576,7 +576,7 @@ impl Deck {
     /// Remove the deck's Physical deck once its last card or Proxy has left it
     ///
     /// What every call that takes something out of the Physical deck ends
-    /// with, in the same transaction: an empty box is no Physical deck, just
+    /// with, in the same transaction: a Physical deck without cards is gone, just
     /// as before the first card went in. A card the list does not name still
     /// counts as content.
     #[instrument(name = "Deck::remove_physical_deck_if_empty", skip(tx))]
