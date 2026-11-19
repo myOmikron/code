@@ -17,7 +17,6 @@
         "add-cards": "Add cards",
         "add-one": "One more",
         "back-to-collections": "Back to collections",
-        "bought-it": "Bought {{count}}, into the deck",
         "change-printing": "Pick another printing",
         "collection-actions": "Actions",
         "copy-wants": "Copy the list",
@@ -41,17 +40,13 @@
         "open-on-cardmarket": "Open on Cardmarket",
         "open-on-scryfall": "Open on Scryfall",
         "previous-page": "Back",
-        "put-in-proxies_one": "Put in 1 Proxy",
-        "put-in-proxies_other": "Put in {{count}} Proxies",
         "remove-one": "One fewer",
-        "replace-proxy": "Replace",
         "return-card": "Sort back",
         "save-collection": "Save",
         "scan-into": "Scan cards into it",
         "share-collection": "Share",
         "split-entry": "Split off",
-        "take-apart": "Take apart",
-        "take-card": "Take {{count}}"
+        "take-apart": "Take apart"
     },
     "description": {
         "all-sourced": "Everything sourced. What is in the deck is listed below.",
