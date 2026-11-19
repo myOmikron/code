@@ -32,6 +32,9 @@ pub const COME_BACK_CHEMISTRY: i32 = 25;
 /// How many themes the account may choose from on its turn
 pub const PALETTE_SIZE: usize = 8;
 
+/// How many unsupported palette themes a pick swaps for fresh ones
+pub const ROTATE: usize = 2;
+
 /// Where a date stands
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum DateProgress {
@@ -102,6 +105,9 @@ pub struct DateState {
     pub proposals: Vec<DateTheme>,
     /// What the account may bring
     pub palette: Vec<DateTheme>,
+    /// What refills the palette after a pick, best supported first
+    #[serde(default)]
+    pub reserve: Vec<DateTheme>,
     /// The turns so far
     pub turns: Vec<DateTurn>,
 }
@@ -121,11 +127,15 @@ pub enum DateMoveError {
 
 impl DateState {
     /// A fresh date
-    pub fn new(proposals: Vec<DateTheme>, palette: Vec<DateTheme>) -> Self {
+    pub fn new(
+        proposals: Vec<DateTheme>,
+        (palette, reserve): (Vec<DateTheme>, Vec<DateTheme>),
+    ) -> Self {
         Self {
             chemistry: START_CHEMISTRY,
             proposals,
             palette,
+            reserve,
             turns: Vec::new(),
         }
     }
@@ -222,7 +232,36 @@ impl DateState {
             (Support::Low, ThemeLevel::Core) => -10,
             (Support::Low, _) => 0,
         };
-        Ok(self.take(TurnBy::Player, theme, level, delta))
+        let progress = self.take(TurnBy::Player, theme, level, delta);
+        self.restock();
+        Ok(progress)
+    }
+
+    /// Swap the last unsupported palette themes for fresh ones and refill the palette
+    fn restock(&mut self) {
+        let planned: Vec<String> = self
+            .turns
+            .iter()
+            .map(|turn| turn.theme.theme.clone())
+            .collect();
+        self.palette.retain(|theme| !planned.contains(&theme.theme));
+        self.reserve.retain(|theme| !planned.contains(&theme.theme));
+
+        let mut rotated = Vec::new();
+        for slot in (0..self.palette.len()).rev() {
+            if rotated.len() == ROTATE || self.reserve.is_empty() {
+                break;
+            }
+            if self.palette[slot].tier == Support::Low {
+                let fresh = self.reserve.remove(0);
+                rotated.push(std::mem::replace(&mut self.palette[slot], fresh));
+            }
+        }
+        let missing = PALETTE_SIZE
+            .saturating_sub(self.palette.len())
+            .min(self.reserve.len());
+        self.palette.extend(self.reserve.drain(..missing));
+        self.reserve.extend(rotated);
     }
 
     /// End the date early on the account's turn: "That's all, date night"
@@ -242,8 +281,13 @@ impl DateState {
     }
 }
 
-/// The themes the account may bring: its own strongest first, then what the Commander supports
-pub fn palette(proposals: &[DateTheme], rated: &[DateTheme], own: &[String]) -> Vec<DateTheme> {
+/// The themes the account may bring: its own strongest first, then what the Commander supports;
+/// the rest is the reserve
+pub fn palette(
+    proposals: &[DateTheme],
+    rated: &[DateTheme],
+    own: &[String],
+) -> (Vec<DateTheme>, Vec<DateTheme>) {
     let mut out: Vec<DateTheme> = Vec::new();
     let taken = |out: &Vec<DateTheme>, id: &str| {
         proposals.iter().any(|theme| theme.theme == id) || out.iter().any(|theme| theme.theme == id)
@@ -263,7 +307,12 @@ pub fn palette(proposals: &[DateTheme], rated: &[DateTheme], own: &[String]) -> 
             out.push(theme.clone());
         }
     }
-    out
+    let reserve = rated
+        .iter()
+        .filter(|theme| !taken(&out, &theme.theme))
+        .cloned()
+        .collect();
+    (out, reserve)
 }
 
 /// A date as stored
@@ -414,11 +463,14 @@ mod tests {
                 theme("tokens", Support::High),
                 theme("aggro", Support::High),
             ],
-            vec![
-                theme("treasure", Support::Mid),
-                theme("lifegain", Support::Low),
-                theme("aristocrats", Support::High),
-            ],
+            (
+                vec![
+                    theme("treasure", Support::Mid),
+                    theme("lifegain", Support::Low),
+                    theme("aristocrats", Support::High),
+                ],
+                Vec::new(),
+            ),
         )
     }
 
@@ -490,12 +542,11 @@ mod tests {
         let proposals = vec![theme("tokens", Support::High)];
         let own = vec!["mill".to_string(), "tokens".to_string()];
 
-        let ids: Vec<String> = super::palette(&proposals, &rated, &own)
-            .into_iter()
-            .map(|t| t.theme)
-            .collect();
+        let (palette, reserve) = super::palette(&proposals, &rated, &own);
+        let ids: Vec<String> = palette.into_iter().map(|t| t.theme).collect();
 
         assert_eq!(ids, ["mill", "treasure", "lifegain"]);
+        assert!(reserve.is_empty());
     }
 
     #[test]
@@ -505,5 +556,39 @@ mod tests {
         date.bring("treasure", ThemeLevel::Core).unwrap();
 
         assert!(date.open_palette().iter().all(|t| t.theme != "treasure"));
+    }
+
+    #[test]
+    fn a_pick_refills_the_palette_and_rotates_unsupported_themes() {
+        let mut date = DateState::new(
+            vec![
+                theme("tribal", Support::High),
+                theme("tokens", Support::High),
+            ],
+            (
+                vec![
+                    theme("treasure", Support::High),
+                    theme("mill", Support::Low),
+                    theme("lifegain", Support::Low),
+                    theme("voltron", Support::Low),
+                ],
+                vec![theme("blink", Support::Mid), theme("wheels", Support::Low)],
+            ),
+        );
+        date.answer(ThemeLevel::Core).unwrap();
+        date.bring("treasure", ThemeLevel::Core).unwrap();
+
+        let ids: Vec<&str> = date.palette.iter().map(|t| t.theme.as_str()).collect();
+        let reserve: Vec<&str> = date.reserve.iter().map(|t| t.theme.as_str()).collect();
+        assert_eq!(
+            ids,
+            ["mill", "wheels", "blink"],
+            "the last two unsupported swapped out"
+        );
+        assert_eq!(
+            reserve,
+            ["voltron", "lifegain"],
+            "rotated themes can come back"
+        );
     }
 }
