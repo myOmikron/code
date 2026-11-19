@@ -25,6 +25,7 @@
     },
     "description": {
         "quick-tag": "Tag auf der Karte unter dem Zeiger",
+        "shortcut-proxy": "Proxies für die Karte unter dem Zeiger hinein oder wieder heraus",
         "shortcut-quantity": "Anzahl erhöhen oder verringern",
         "shortcut-sort": "Sortierrichtung umdrehen",
         "shortcut-tabs": "Zwischen den Reitern wechseln"

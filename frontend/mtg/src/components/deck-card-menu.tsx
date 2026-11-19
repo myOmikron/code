@@ -44,6 +44,8 @@ export type DeckCardMenuProps = {
     onToggleFoil: (card: DeckCardResponse, foil: boolean) => void;
     /** Puts a tag on the card or takes it off; absent for a reader who may not */
     onToggleTag?: (card: DeckCardResponse, tag: DeckTagResponse, on: boolean) => void;
+    /** A section between the card's own lines and the zones, filled by the page; absent for none */
+    extra?: (card: DeckCardResponse) => ContextMenuSection | null;
     /** Takes the card out of the deck */
     onDelete: (card: DeckCardResponse) => void;
     /** Called when the menu should close */
@@ -71,6 +73,7 @@ export function DeckCardMenu({
     onReplace,
     onToggleFoil,
     onToggleTag,
+    extra,
     onDelete,
     onClose,
 }: DeckCardMenuProps) {
@@ -81,6 +84,7 @@ export function DeckCardMenu({
     if (card === null) return null;
 
     const name = card.card?.name ?? t("label.unknown-printing");
+    const added = extra?.(card) ?? null;
     const sections: Array<ContextMenuSection> = [
         {
             key: "card",
@@ -130,6 +134,7 @@ export function DeckCardMenu({
                 },
             ],
         },
+        ...(added === null ? [] : [added]),
         {
             key: "zone",
             heading: t("label.zone"),

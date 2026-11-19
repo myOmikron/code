@@ -57,7 +57,8 @@ import { useFlippedCards } from "src/utils/use-flipped-cards";
 import { usePointerCard } from "src/utils/use-pointer-card";
 import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 import { DeckTagWritableContext } from "src/context/deck-tag-writable-context";
-import { DeckDeviationContext } from "src/context/deck-deviation-context";
+import { DeckDeviationProvider } from "src/context/deck-deviation-context";
+import { useDeckSourcingMenu } from "src/components/deck-sourcing-menu";
 import { DeckNotOnList } from "src/components/deck-not-on-list";
 import { DeckPhysicalDialog } from "src/components/deck-physical-dialog";
 import { useDeckPhysical } from "src/utils/use-deck-physical";
@@ -143,6 +144,7 @@ function RouteComponent() {
     const [active, setActive] = useState<string | null>(null);
     const [menu, setMenu] = useState<{ card: string; at: MenuAt } | null>(null);
     const [menuPrinting, setMenuPrinting] = useState<Printing | null>(null);
+    const sourcingMenu = useDeckSourcingMenu(deckUuid, physical, rights.owner, menu !== null);
     const [printingFor, setPrintingFor] = useState<string | null>(null);
     // Every shelf the cards could be sorted onto. Read the first time somebody
     // opens the print picker rather than with the deck: a builder who never asks
@@ -379,6 +381,13 @@ function RouteComponent() {
                 const card = hovered;
                 if (card !== null) void toggleFoil(card, !card.foil);
             },
+            ...(sourcingMenu !== undefined
+                ? {
+                      x: () => {
+                          if (hovered !== null) sourcingMenu.toggleProxy(hovered);
+                      },
+                  }
+                : {}),
         },
         quiet,
     );
@@ -973,7 +982,10 @@ function RouteComponent() {
 
     return (
         <DeckTagWritableContext value={writable}>
-            <DeckDeviationContext value={physical.lines}>
+            <DeckDeviationProvider
+                lines={physical.lines}
+                openMenu={sourcingMenu && ((card, at) => setMenu({ card, at }))}
+            >
                 <div
                     className={rights.edit && tags.length > 0 ? "flex flex-col gap-6 pb-16" : "flex flex-col gap-6"}
                     style={{ "--deck-bar": `${barHeight}px` } as CSSProperties}
@@ -1256,6 +1268,7 @@ function RouteComponent() {
                         }
                         onToggleFoil={(card, foil) => void toggleFoil(card, foil)}
                         onToggleTag={tagging.onToggleTag}
+                        extra={sourcingMenu?.section}
                         onDelete={(card) => void remove(card)}
                         onClose={() => setMenu(null)}
                     />
@@ -1328,7 +1341,7 @@ function RouteComponent() {
                         physical={physical}
                     />
                 </div>
-            </DeckDeviationContext>
+            </DeckDeviationProvider>
         </DeckTagWritableContext>
     );
 }

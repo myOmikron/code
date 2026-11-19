@@ -1,7 +1,8 @@
 import { Badge } from "components";
 import { useTranslation } from "react-i18next";
 import type { DeviationCopiesResponse } from "src/api/generated";
-import { useLineDeviation } from "src/context/deck-deviation-context";
+import { useContext } from "react";
+import { DeckDeviationMenuContext, useLineDeviation } from "src/context/deck-deviation-context";
 import { lineMarks } from "src/utils/deck-deviation";
 import type { LineMark } from "src/utils/deck-deviation";
 
@@ -19,7 +20,8 @@ export type DeckLineDeviationProps = {
  * Copies missing, another printing standing in, too many copies, and how many
  * copies are Proxies, each as a badge beside the line's other marks. Nothing
  * for a line the box holds exactly in real cards, and nothing at all where the
- * Deviation is unknown.
+ * Deviation is unknown. For the owner the badges open the card's menu, which is
+ * where what they say is missing gets sourced.
  *
  * @returns the badges, or nothing
  */
@@ -27,9 +29,10 @@ export function DeckLineDeviation({ entry }: DeckLineDeviationProps) {
     const [t] = useTranslation("deck");
     const line = useLineDeviation(entry);
     const marks = lineMarks(line);
+    const openMenu = useContext(DeckDeviationMenuContext);
     if (marks.length === 0) return null;
 
-    return marks.map((mark) => (
+    const badges = marks.map((mark) => (
         <Badge
             key={mark.kind}
             color={mark.kind === "proxies" ? "purple" : "amber"}
@@ -38,6 +41,22 @@ export function DeckLineDeviation({ entry }: DeckLineDeviationProps) {
             {label(mark, t)}
         </Badge>
     ));
+    if (openMenu === undefined) return badges;
+    return (
+        <button
+            type={"button"}
+            aria-haspopup={"menu"}
+            className={
+                "inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md hover:ring-2 hover:ring-(--color-brand-500) focus-visible:ring-2 focus-visible:ring-(--color-brand-500) focus-visible:outline-none"
+            }
+            onClick={(event) => {
+                event.stopPropagation();
+                openMenu(entry, { x: event.clientX, y: event.clientY });
+            }}
+        >
+            {badges}
+        </button>
+    );
 }
 
 /**

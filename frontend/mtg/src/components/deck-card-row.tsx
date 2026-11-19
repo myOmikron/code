@@ -10,6 +10,8 @@ import { FoilMark, finishLabel } from "src/components/card-attribute-badge";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckLineDeviation } from "src/components/deck-line-deviation";
+import { useLineDeviation } from "src/context/deck-deviation-context";
+import { isAllProxies } from "src/utils/deck-deviation";
 import { DeckTagBadge, DeckTagPicker } from "src/components/deck-tag-picker";
 import { ManaCost } from "src/components/mana-cost";
 import { GameChangerMarker } from "src/components/game-changer-marker";
@@ -75,6 +77,7 @@ export function DeckCardRow({
     const printing = card.card;
     const price = priceOf(card);
     const finish = finishOf(card);
+    const line = useLineDeviation(card.uuid);
     const onSlot = tags.filter((tag) => card.tags.includes(tag.uuid));
     const back = artworkOf(printing, "back");
     usePreloadImage(back.image);
@@ -110,6 +113,7 @@ export function DeckCardRow({
                         image={artwork.image}
                         finish={finish}
                         className={"h-20 rounded-lg sm:h-24 lg:h-28 xl:h-32"}
+                        muted={isAllProxies(line)}
                     />
                 </button>
                 {back.image !== null && <CardFlipButton flipped={showBack} overlay={false} onFlip={onFlip} />}
