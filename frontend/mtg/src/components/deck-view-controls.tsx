@@ -1,5 +1,6 @@
 import {
     AdjustmentsHorizontalIcon,
+    ArchiveBoxIcon,
     BarsArrowDownIcon,
     CheckIcon,
     ListBulletIcon,
@@ -47,6 +48,10 @@ export type DeckViewControlsProps<Grouping extends string = DeckGrouping, Sort e
     onChangeGrouping: (grouping: Grouping) => void;
     /** Records a different order */
     onChangeSort: (sort: Sort) => void;
+    /** Whether the cards carry the Physical deck's marks */
+    physical?: boolean;
+    /** Turns the Physical deck's marks on or off, absent where the reader may not see the Physical deck */
+    onChangePhysical?: (physical: boolean) => void;
     /** The layouts on offer, the deck's four unless said otherwise */
     views?: Array<DeckView>;
     /** The groupings on offer with their names, the deck's unless said otherwise */
@@ -79,6 +84,8 @@ export function DeckViewControls<Grouping extends string = DeckGrouping, Sort ex
     onChangeSize,
     onChangeGrouping,
     onChangeSort,
+    physical,
+    onChangePhysical,
     views = DECK_VIEWS,
     groupings,
     sorts,
@@ -124,6 +131,27 @@ export function DeckViewControls<Grouping extends string = DeckGrouping, Sort ex
                         {option === "table" && <TableCellsIcon className={"size-4"} />}
                     </button>
                 ))}
+                {onChangePhysical !== undefined && (
+                    <>
+                        <span className={"mx-0.5 h-4 w-px bg-zinc-950/10 dark:bg-white/15"} />
+                        <button
+                            type={"button"}
+                            aria-pressed={physical === true}
+                            aria-label={t("accessibility.physical-marks")}
+                            title={t("accessibility.physical-marks")}
+                            onClick={() => onChangePhysical(physical !== true)}
+                            className={clsx(
+                                "flex items-center gap-1 rounded-[calc(var(--radius-control)-0.125rem)] p-1.5 text-xs transition",
+                                physical === true
+                                    ? "bg-(--surface-card) text-zinc-950 shadow-(--shadow-card-sm) dark:text-white"
+                                    : "text-zinc-500 hover:text-lime-700 dark:text-zinc-400 dark:hover:text-lime-300",
+                            )}
+                        >
+                            <ArchiveBoxIcon className={"size-4"} />
+                            <span className={"max-sm:sr-only"}>{t("label.physical")}</span>
+                        </button>
+                    </>
+                )}
             </span>
 
             {/* A phone has no room for the slider, and only two of its steps

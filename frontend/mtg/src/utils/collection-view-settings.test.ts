@@ -59,7 +59,7 @@ describe("collection view settings", () => {
         vi.stubGlobal("localStorage", storage(new Map()));
 
         saveCollectionViewSettings("user", { ...DEFAULT_COLLECTION_VIEW_SETTINGS, view: "table", size: "xs" });
-        saveDeckViewSettings("user", { sort: "price", size: "xl", view: "stack" });
+        saveDeckViewSettings("user", { sort: "price", size: "xl", view: "stack", physical: true });
 
         expect(loadCollectionViewSettings("user").view).toBe("table");
         expect(loadCollectionViewSettings("user").size).toBe("xs");

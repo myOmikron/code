@@ -23,11 +23,13 @@ export type DeckTileSize = "3xs" | "xxs" | "xs" | "s" | "m" | "l" | "xl";
 /** The sizes on offer, from smallest to largest */
 export const DECK_TILE_SIZES: Array<DeckTileSize> = ["3xs", "xxs", "xs", "s", "m", "l", "xl"];
 
-/** The three choices shared by every deck card view */
+/** The choices shared by every deck card view */
 export type DeckViewSettings = {
     sort: DeckSort;
     size: DeckTileSize;
     view: DeckView;
+    /** Whether the cards carry the Physical deck's marks, for owners and Editors */
+    physical: boolean;
 };
 
 /** What a user without stored preferences sees */
@@ -35,6 +37,7 @@ export const DEFAULT_DECK_VIEW_SETTINGS: DeckViewSettings = {
     sort: "name",
     size: "m",
     view: "grid",
+    physical: true,
 };
 
 const STORAGE_PREFIX = "cardlens.deck-view.v1";
@@ -66,6 +69,7 @@ export function loadDeckViewSettings(accountUuid: string | null): DeckViewSettin
             sort: DECK_SORTS.find((option) => option === stored.sort) ?? DEFAULT_DECK_VIEW_SETTINGS.sort,
             size: DECK_TILE_SIZES.find((option) => option === stored.size) ?? DEFAULT_DECK_VIEW_SETTINGS.size,
             view: DECK_VIEWS.find((option) => option === stored.view) ?? DEFAULT_DECK_VIEW_SETTINGS.view,
+            physical: typeof stored.physical === "boolean" ? stored.physical : DEFAULT_DECK_VIEW_SETTINGS.physical,
         };
     } catch {
         return DEFAULT_DECK_VIEW_SETTINGS;

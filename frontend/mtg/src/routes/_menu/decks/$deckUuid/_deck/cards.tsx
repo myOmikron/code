@@ -59,7 +59,7 @@ import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 import { DeckTagWritableContext } from "src/context/deck-tag-writable-context";
 import { DeckDeviationContext } from "src/context/deck-deviation-context";
 import { DeckNotOnList } from "src/components/deck-not-on-list";
-import { linesByEntry } from "src/utils/deck-deviation";
+import { useDeckPhysical } from "src/utils/use-deck-physical";
 import { deckRights, tagWritable } from "src/utils/deck-rights";
 import { defaultFoil } from "src/utils/default-finish";
 
@@ -112,8 +112,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/cards")({
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
     const { cards, tags } = Route.useLoaderData();
-    const { deck, formats, brackets, deviation } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
-    const deviationLines = useMemo(() => linesByEntry(deviation), [deviation]);
+    const { deck, formats, brackets } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
     const rights = useMemo(() => deckRights(deck.role), [deck.role]);
     const writable = useCallback((tag: DeckTagResponse) => tagWritable(rights, tag), [rights]);
     const search = Route.useSearch();
@@ -124,6 +123,9 @@ function RouteComponent() {
     const labels = useDeckLabels();
     const { account } = useAccount();
     const [viewSettings, setViewSettings] = useDeckViewSettings(account?.uuid ?? null);
+    const physical = useDeckPhysical(deckUuid, rights, viewSettings.physical, (on) =>
+        setViewSettings({ physical: on }),
+    );
     const flippedCards = useFlippedCards();
     const shortcutHelpOpen = useShortcutHelpOpen();
 
@@ -138,10 +140,9 @@ function RouteComponent() {
     const [menu, setMenu] = useState<{ card: string; at: MenuAt } | null>(null);
     const [menuPrinting, setMenuPrinting] = useState<Printing | null>(null);
     const [printingFor, setPrintingFor] = useState<string | null>(null);
-    // Where this deck's cards lie, and every shelf they could be sorted onto.
-    // Read the first time somebody opens the print picker rather than with the
-    // deck: a builder who never asks about editions should not pay for it.
-    const [sourcing, setSourcing] = useState<DeckSourcingResponse | null>(null);
+    // Every shelf the cards could be sorted onto. Read the first time somebody
+    // opens the print picker rather than with the deck: a builder who never asks
+    // about editions should not pay for it.
     const [shelf, setShelf] = useState<Array<CollectionOverviewResponse>>([]);
     const [switching, setSwitching] = useState<{ card: DeckCardResponse; printing: Printing } | null>(null);
     const [replacing, setReplacing] = useState<DeckCardResponse | null>(null);
@@ -354,6 +355,7 @@ function RouteComponent() {
                   )
                 : {}),
             ...(rights.edit ? { t: () => setManagingTags(true) } : {}),
+            ...(physical.setOn !== undefined ? { b: () => physical.setOn?.(!physical.on) } : {}),
             ...(rights.owner
                 ? {
                       "mod+z": undoChange,
@@ -855,8 +857,7 @@ function RouteComponent() {
      */
     function pickPrinting(card: DeckCardResponse) {
         setPrintingFor(card.uuid);
-        if (!rights.owner || sourcing !== null) return;
-        void Api.decks.sourcing.read(deckUuid).then(setSourcing);
+        if (!rights.owner || shelf.length > 0) return;
         void Api.collections
             .list()
             .then((collections) => setShelf(collections.filter((entry) => entry.collection.deck == null)));
@@ -873,7 +874,7 @@ function RouteComponent() {
      *
      * @returns the stacks under it
      */
-    function filedUnder(card: DeckCardResponse, where: DeckSourcingResponse | null = sourcing) {
+    function filedUnder(card: DeckCardResponse, where: DeckSourcingResponse | null = physical.sourcing) {
         return (where?.filed ?? []).filter((stack) => stack.printing === card.printing);
     }
 
@@ -897,11 +898,7 @@ function RouteComponent() {
 
         // Picked before the read the picker started came back: waiting on it is
         // the difference between asking the question and skipping it silently.
-        let where = sourcing;
-        if (where === null) {
-            where = await Api.decks.sourcing.read(deckUuid);
-            setSourcing(where);
-        }
+        const where = physical.sourcing ?? (await physical.readSourcing());
 
         if (filedUnder(card, where).length > 0) {
             setSwitching({ card, printing });
@@ -919,7 +916,6 @@ function RouteComponent() {
     async function writePrinting(card: DeckCardResponse, printing: Printing) {
         await Api.decks.cards.update(deckUuid, card.uuid, { printing: printing.id });
         notify.success(t("toast.printing-changed"));
-        await reloadSourcing();
         await refresh();
     }
 
@@ -937,15 +933,6 @@ function RouteComponent() {
         }
         notify.success(t("toast.printing-returned"));
         await writePrinting(card, printing);
-    }
-
-    /**
-     * Reads where the deck's cards lie again, so the next switch asks about the
-     * cardboard as it is now rather than as it was when the picker first opened
-     */
-    async function reloadSourcing() {
-        if (sourcing === null) return;
-        setSourcing(await Api.decks.sourcing.read(deckUuid));
     }
 
     /** Takes back the latest Deck change, if there is one */
@@ -982,7 +969,7 @@ function RouteComponent() {
 
     return (
         <DeckTagWritableContext value={writable}>
-            <DeckDeviationContext value={deviationLines}>
+            <DeckDeviationContext value={physical.lines}>
                 <div
                     className={rights.edit && tags.length > 0 ? "flex flex-col gap-6 pb-16" : "flex flex-col gap-6"}
                     style={{ "--deck-bar": `${barHeight}px` } as CSSProperties}
@@ -1011,6 +998,8 @@ function RouteComponent() {
                         onChangeSize={changeSize}
                         onChangeGrouping={(next) => go({ group: next === "type" ? undefined : next })}
                         onChangeSort={changeSort}
+                        physical={physical.on}
+                        onChangePhysical={physical.setOn}
                         onAdd={() => setAdding(true)}
                         onEditRuleZero={() => setEditingRuleZero(true)}
                         focus={focus}
@@ -1129,8 +1118,8 @@ function RouteComponent() {
                                     onToggleGroup={collapsedGroups.toggle}
                                 />
                             )}
-                            {deviation !== null && deviation.has_physical_deck && (
-                                <DeckNotOnList copies={deviation.not_on_list} />
+                            {physical.on && physical.exists && physical.deviation !== null && (
+                                <DeckNotOnList copies={physical.deviation.not_on_list} />
                             )}
                         </div>
                     </div>
@@ -1269,9 +1258,9 @@ function RouteComponent() {
 
                     <PrintingDialog
                         owned={
-                            sourcing === null
+                            physical.sourcing === null
                                 ? undefined
-                                : new Set(sourcing.candidates.map((candidate) => candidate.printing))
+                                : new Set(physical.sourcing.candidates.map((candidate) => candidate.printing))
                         }
                         card={printed?.card == null ? null : { name: printed.card.name, printing: printed.printing }}
                         onPick={(printing) => {

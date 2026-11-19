@@ -29,15 +29,18 @@ describe("deck view settings", () => {
         const values = new Map<string, string>();
         vi.stubGlobal("localStorage", storage(values));
 
-        saveDeckViewSettings("first", { sort: "price", size: "xl", view: "list" });
+        saveDeckViewSettings("first", { sort: "price", size: "xl", view: "list", physical: false });
 
-        expect(loadDeckViewSettings("first")).toEqual({ sort: "price", size: "xl", view: "list" });
+        expect(loadDeckViewSettings("first")).toEqual({ sort: "price", size: "xl", view: "list", physical: false });
         expect(loadDeckViewSettings("second")).toEqual(DEFAULT_DECK_VIEW_SETTINGS);
     });
 
     it("replaces invalid stored fields with defaults", () => {
         const values = new Map([
-            ["cardlens.deck-view.v1.user", JSON.stringify({ sort: "random", size: "huge", view: "album" })],
+            [
+                "cardlens.deck-view.v1.user",
+                JSON.stringify({ sort: "random", size: "huge", view: "album", physical: "yes" }),
+            ],
         ]);
         vi.stubGlobal("localStorage", storage(values));
 
@@ -48,8 +51,31 @@ describe("deck view settings", () => {
         const values = new Map<string, string>();
         vi.stubGlobal("localStorage", storage(values));
 
-        saveDeckViewSettings("user", { sort: "mana", size: "s", view: "table" });
+        saveDeckViewSettings("user", { sort: "mana", size: "s", view: "table", physical: true });
 
         expect(loadDeckViewSettings("user").view).toBe("table");
+    });
+
+    it("shows the Physical deck marks to start with", () => {
+        vi.stubGlobal("localStorage", storage(new Map()));
+
+        expect(loadDeckViewSettings("user").physical).toBe(true);
+    });
+
+    it("turns the Physical deck marks on for settings stored before the switch existed", () => {
+        const values = new Map([
+            ["cardlens.deck-view.v1.user", JSON.stringify({ sort: "mana", size: "s", view: "list" })],
+        ]);
+        vi.stubGlobal("localStorage", storage(values));
+
+        expect(loadDeckViewSettings("user")).toEqual({ sort: "mana", size: "s", view: "list", physical: true });
+    });
+
+    it("remembers the Physical deck marks switched off", () => {
+        vi.stubGlobal("localStorage", storage(new Map()));
+
+        saveDeckViewSettings("user", { sort: "name", size: "m", view: "grid", physical: false });
+
+        expect(loadDeckViewSettings("user").physical).toBe(false);
     });
 });
