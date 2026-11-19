@@ -63,10 +63,6 @@ export type SourcingCount = {
     available: number;
     /** How many are neither, and would have to be bought */
     missing: number;
-    /** Copies that only a wider printing match would let count */
-    otherPrinting: number;
-    /** Copies that only a looser finish match would let count */
-    otherFinish: number;
 };
 
 /**
@@ -87,10 +83,6 @@ export function fills(slot: SourcingSlotLike, stack: SourcingStackLike, match: S
 /**
  * Counts one slot against what is filed and what is lying around.
  *
- * The two `other*` numbers are what the hints are drawn from: they say how many
- * copies the current switches are turning away, so the view can offer to loosen
- * them instead of sending somebody shopping for a card they own.
- *
  * @param slot the slot being counted
  * @param filed every stack in the deck's own collection
  * @param candidates every stack elsewhere in the account
@@ -110,19 +102,11 @@ export function countSlot(
     const inDeck = Math.min(copies(filed, match), slot.quantity);
     const available = copies(candidates, match);
 
-    // What the switches are turning away: the same count with one of them
-    // relaxed, minus what already counts, so a hint never mentions a copy the
-    // row is showing anyway.
-    const withAnyPrinting = copies(candidates, { ...match, exactPrinting: false });
-    const withAnyFinish = copies(candidates, { ...match, matchFinish: false });
-
     return {
         needed: slot.quantity,
         filed: inDeck,
         available,
         missing: Math.max(0, slot.quantity - inDeck - available),
-        otherPrinting: match.exactPrinting ? withAnyPrinting - available : 0,
-        otherFinish: match.matchFinish ? withAnyFinish - available : 0,
     };
 }
 
@@ -187,48 +171,24 @@ export function missingCost(
     return rows.reduce((sum, { slot, count }) => sum + (unitPrice(slot.card, slot.foil) ?? 0) * count.missing, 0);
 }
 
-/** The least a stack in the Physical deck has to say to be offered for replacing */
-export type ProxyStackLike = SourcingStackLike & {
-    /** Whether the stack holds Proxies rather than real cards */
-    proxy: boolean;
-    /** What the catalog knows about the printing the Proxies stand for */
-    card?: PricedCard;
-};
-
-/** One Proxy stack and what could take its place */
-export type ProxyReplacement<P, C> = {
-    /** The Proxies */
-    proxy: P;
-    /** Copies of the card in the owner's collections, any printing or finish */
-    candidates: Array<C>;
-    /** What buying the printings the Proxies stand for would cost, in cents; `null` without a price */
-    cost: number | null;
-};
-
 /**
- * Pairs every Proxy stack in the Physical deck with the owner's copies of its card and the price
- * of buying it
+ * The stacks in the Physical deck whose card no line of the list names
+ *
+ * Any printing or finish of a listed card belongs to its line, as another
+ * printing standing in; what is left over is what a swap forgot to sort back.
+ * The slots never hold the maybe board, so a card only considered there is off
+ * the list too.
  *
  * @param filed every stack lying in the Physical deck
- * @param candidates every stack elsewhere in the account
+ * @param slots every line of the list the Physical deck answers
  *
- * @returns one entry per Proxy stack, in the order they were filed
+ * @returns the stacks off the list, real cards and Proxies alike, in the order they were filed
  */
-export function proxyReplacements<P extends ProxyStackLike, C extends SourcingStackLike>(
-    filed: Array<P>,
-    candidates: Array<C>,
-): Array<ProxyReplacement<P, C>> {
-    return filed
-        .filter((stack) => stack.proxy)
-        .map((proxy) => {
-            const slot: SourcingSlotLike = { ...proxy, foil: proxy.finish === "Foil" };
-            const price = unitPrice(proxy.card, proxy.finish !== "Nonfoil");
-            return {
-                proxy,
-                candidates: candidates.filter((candidate) => fills(slot, candidate, ANY_MATCH)),
-                cost: price == null ? null : price * proxy.quantity,
-            };
-        });
+export function stacksOffTheList<S extends SourcingStackLike>(
+    filed: Array<S>,
+    slots: Array<SourcingSlotLike>,
+): Array<S> {
+    return filed.filter((stack) => !slots.some((slot) => fills(slot, stack, ANY_MATCH)));
 }
 
 /** The least a filed stack has to say to be put in reading order */

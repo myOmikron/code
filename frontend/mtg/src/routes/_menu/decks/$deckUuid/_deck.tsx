@@ -14,6 +14,7 @@ import {
     FolderMinusIcon,
     PencilSquareIcon,
     PrinterIcon,
+    RectangleStackIcon,
     ShareIcon,
     TrashIcon,
     UserGroupIcon,
@@ -185,6 +186,11 @@ function RouteComponent() {
         await router.invalidate();
     }
 
+    /** Opens the Physical deck dialog over the card list, which turns the Physical switch on */
+    function openPhysical() {
+        void navigate({ to: "/decks/$deckUuid/cards", params: { deckUuid }, search: { physical: true } });
+    }
+
     if (bare) {
         return (
             <RequireAccount>
@@ -242,20 +248,18 @@ function RouteComponent() {
                                         ? t("label.rule-zero")
                                         : t("label.rule-zero-count", { count: deviations })}
                                 </BadgeButton>
-                                {deviated > 0 && (
-                                    <BadgeButton
-                                        color={"amber"}
-                                        className={ACTION_RING}
-                                        onClick={() =>
-                                            void navigate({
-                                                to: "/decks/$deckUuid/cards",
-                                                params: { deckUuid },
-                                            })
-                                        }
-                                    >
+                                {deviated > 0 ? (
+                                    <BadgeButton color={"amber"} className={ACTION_RING} onClick={openPhysical}>
                                         <ExclamationTriangleIcon className={"size-3.5"} />
                                         {t("label.deviation", { count: deviated })}
                                     </BadgeButton>
+                                ) : (
+                                    (rights.owner || deviation?.has_physical_deck === true) && (
+                                        <BadgeButton color={"zinc"} className={ACTION_RING} onClick={openPhysical}>
+                                            <RectangleStackIcon className={"size-3.5"} />
+                                            {t("label.physical-deck")}
+                                        </BadgeButton>
+                                    )
                                 )}
                                 <DeckProxyMarker count={values?.physical?.proxies} />
                                 {values != null && (
@@ -428,16 +432,6 @@ function RouteComponent() {
                             <Tab href={"/decks/$deckUuid/cards"} params={{ deckUuid }} data-deck-pile={true}>
                                 {t("heading.cards")}
                             </Tab>
-                            {rights.owner && (
-                                <Tab href={"/decks/$deckUuid/sourcing"} params={{ deckUuid }}>
-                                    {t("label.sourcing")}
-                                </Tab>
-                            )}
-                            {!rights.owner && deviation !== null && deviation.has_physical_deck && (
-                                <Tab href={"/decks/$deckUuid/physical-deck"} params={{ deckUuid }}>
-                                    {t("label.physical-deck")}
-                                </Tab>
-                            )}
                             <Tab href={"/decks/$deckUuid/statistics"} params={{ deckUuid }}>
                                 {t("heading.statistics")}
                             </Tab>

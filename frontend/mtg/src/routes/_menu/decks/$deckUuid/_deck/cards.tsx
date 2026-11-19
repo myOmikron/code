@@ -59,6 +59,7 @@ import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 import { DeckTagWritableContext } from "src/context/deck-tag-writable-context";
 import { DeckDeviationContext } from "src/context/deck-deviation-context";
 import { DeckNotOnList } from "src/components/deck-not-on-list";
+import { DeckPhysicalDialog } from "src/components/deck-physical-dialog";
 import { useDeckPhysical } from "src/utils/use-deck-physical";
 import { deckRights, tagWritable } from "src/utils/deck-rights";
 import { defaultFoil } from "src/utils/default-finish";
@@ -89,6 +90,8 @@ export type DeckSearch = {
     zone?: DeckZone;
     /** The slot whose dialog is open, by its id */
     card?: string;
+    /** Whether the Physical deck dialog is open */
+    physical?: true;
 };
 
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/cards")({
@@ -99,6 +102,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/cards")({
         size: DECK_TILE_SIZES.find((option) => option === search.size),
         zone: ZONE_ORDER.find((option) => option === search.zone),
         card: typeof search.card === "string" && search.card !== "" ? search.card : undefined,
+        physical: search.physical === true || search.physical === "true" ? true : undefined,
     }),
     loader: ({ params }) => Api.decks.cards.list(params.deckUuid),
     component: RouteComponent,
@@ -1314,6 +1318,14 @@ function RouteComponent() {
                         formatSize={rules?.deck_size.cards ?? null}
                         onClose={() => setEditingRuleZero(false)}
                         onSaved={() => router.invalidate()}
+                    />
+
+                    <DeckPhysicalDialog
+                        open={physical.allowed && search.physical === true}
+                        onClose={() => go({ physical: undefined })}
+                        deck={{ uuid: deckUuid, name: deck.name }}
+                        owner={rights.owner}
+                        physical={physical}
                     />
                 </div>
             </DeckDeviationContext>

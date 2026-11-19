@@ -54,8 +54,9 @@ export function CollectionOnLoan({ loans }: CollectionOnLoanProps) {
                 <section key={deck.deck} className={"flex flex-col gap-3"}>
                     <div className={"flex items-center gap-3"}>
                         <Link
-                            to={"/decks/$deckUuid/sourcing"}
+                            to={"/decks/$deckUuid/cards"}
                             params={{ deckUuid: deck.deck }}
+                            search={{ physical: true }}
                             className={
                                 "flex items-center gap-2 text-sm/6 font-semibold text-zinc-950 hover:text-(--color-accent) hover:underline dark:text-white"
                             }
