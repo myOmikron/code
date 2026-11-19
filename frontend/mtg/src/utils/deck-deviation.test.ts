@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DeckDeviationResponse, DeviationCopiesResponse, LineDeviationResponse } from "src/api/generated";
-import { deviationCount, lineMarks } from "src/utils/deck-deviation";
+import { deviationCount, isAllProxies, lineMarks } from "src/utils/deck-deviation";
 
 /**
  * Copies lying in the Physical deck
@@ -81,5 +81,33 @@ describe("deviationCount", () => {
         });
 
         expect(deviationCount(deviation)).toBe(7);
+    });
+});
+
+describe("isAllProxies", () => {
+    it("greys a line whose every copy is a Proxy", () => {
+        expect(isAllProxies(line({ in_deck: 2, proxies: 2 }))).toBe(true);
+    });
+
+    it("counts Proxies of another printing standing in as Proxies too", () => {
+        expect(isAllProxies(line({ in_deck: 1, proxies: 1, other_printing: [copies(1, true)] }))).toBe(true);
+    });
+
+    it("keeps a line with one real copy beside a Proxy in colour", () => {
+        expect(isAllProxies(line({ in_deck: 2, proxies: 1 }))).toBe(false);
+        expect(isAllProxies(line({ in_deck: 1, proxies: 1, other_printing: [copies(1)] }))).toBe(false);
+    });
+
+    it("keeps a line still missing copies in colour", () => {
+        expect(isAllProxies(line({ in_deck: 1, proxies: 1, missing: 1 }))).toBe(false);
+    });
+
+    it("keeps a line without any Proxy in colour", () => {
+        expect(isAllProxies(line({ in_deck: 2 }))).toBe(false);
+        expect(isAllProxies(line({ missing: 2 }))).toBe(false);
+    });
+
+    it("keeps a line nobody asked about in colour", () => {
+        expect(isAllProxies(undefined)).toBe(false);
     });
 });

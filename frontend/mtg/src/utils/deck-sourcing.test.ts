@@ -1,6 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { countSlot, fills, groupByOrigin, missingCost, proxyReplacements } from "src/utils/deck-sourcing";
-import type { SourcingMatch, SourcingSlotLike, SourcingStackLike } from "src/utils/deck-sourcing";
+import type { LineDeviationResponse } from "src/api/generated";
+import {
+    countSlot,
+    fills,
+    groupByOrigin,
+    missingCost,
+    proxyReplacements,
+    proxyToggle,
+    sourcingOffers,
+} from "src/utils/deck-sourcing";
+import type {
+    CandidateStackLike,
+    DeckEntryLike,
+    FiledStackLike,
+    SourcingMatch,
+    SourcingSlotLike,
+    SourcingStackLike,
+} from "src/utils/deck-sourcing";
 
 const STRICT: SourcingMatch = { exactPrinting: true, matchFinish: true };
 const WIDE: SourcingMatch = { exactPrinting: false, matchFinish: false };
@@ -235,5 +251,197 @@ describe("pricing the missing copies", () => {
         const rows = [{ slot: slot({ foil: true, card: plain }), count: { missing: 2 } }];
 
         expect(missingCost(rows)).toBe(300);
+    });
+});
+
+/**
+ * A Deck entry of the main deck asking for two plain copies
+ *
+ * @param over what to change about the usual entry
+ *
+ * @returns the entry
+ */
+function entry(over: Partial<DeckEntryLike> = {}): DeckEntryLike {
+    return { ...slot({ quantity: 2 }), zone: "Main", ...over };
+}
+
+/**
+ * What the Physical deck holds for the entry, nothing unless said
+ *
+ * @param over the fields that differ
+ *
+ * @returns the line
+ */
+function line(over: Partial<LineDeviationResponse> = {}): LineDeviationResponse {
+    return { entry: "entry", in_deck: 0, proxies: 0, other_printing: [], missing: 0, surplus: 0, ...over };
+}
+
+/**
+ * A stack lying in the Physical deck
+ *
+ * @param uuid what it is called
+ * @param over what to change about the usual stack
+ *
+ * @returns the stack
+ */
+function filed(uuid: string, over: Partial<FiledStackLike> = {}): FiledStackLike & { uuid: string } {
+    return { uuid, ...stack(), proxy: false, ...over };
+}
+
+describe("what X does to a line", () => {
+    it("puts Proxies in for every copy of a deck without a Physical deck", () => {
+        expect(proxyToggle(entry(), undefined, [])).toEqual({ kind: "put", quantity: 2 });
+    });
+
+    it("puts Proxies in for the copies a line is missing", () => {
+        const real = filed("real");
+
+        expect(proxyToggle(entry(), line({ in_deck: 1, missing: 1 }), [real])).toEqual({ kind: "put", quantity: 1 });
+    });
+
+    it("fills the gap first on a line holding Proxies and still missing copies", () => {
+        const proxies = filed("proxies", { proxy: true });
+
+        expect(proxyToggle(entry(), line({ in_deck: 1, proxies: 1, missing: 1 }), [proxies])).toEqual({
+            kind: "put",
+            quantity: 1,
+        });
+    });
+
+    it("throws the Proxies of a fully proxied line away again", () => {
+        const proxies = filed("proxies", { proxy: true, quantity: 2 });
+
+        expect(proxyToggle(entry(), line({ in_deck: 2, proxies: 2 }), [proxies])).toEqual({
+            kind: "discard",
+            quantity: 2,
+            stacks: [{ stack: proxies, quantity: 2 }],
+        });
+    });
+
+    it("throws only the Proxies of a line beside real copies away, and only its share of a stack", () => {
+        const real = filed("real");
+        const elsewhere = filed("elsewhere", { proxy: true, printing: "print-b", quantity: 3 });
+        const proxies = filed("proxies", { proxy: true, quantity: 3 });
+
+        expect(proxyToggle(entry(), line({ in_deck: 2, proxies: 1 }), [real, elsewhere, proxies])).toEqual({
+            kind: "discard",
+            quantity: 1,
+            stacks: [{ stack: proxies, quantity: 1 }],
+        });
+    });
+
+    it("throws Proxies of another printing standing in for the line away too", () => {
+        const other = filed("other", { proxy: true, printing: "print-b", finish: "Foil" });
+        const deviation = line({
+            in_deck: 1,
+            proxies: 1,
+            other_printing: [{ printing: "print-b", finish: "Foil", quantity: 1, proxy: true }],
+        });
+        const proxies = filed("proxies", { proxy: true });
+
+        expect(proxyToggle(entry(), deviation, [other, proxies])).toEqual({
+            kind: "discard",
+            quantity: 2,
+            stacks: [
+                { stack: proxies, quantity: 1 },
+                { stack: other, quantity: 1 },
+            ],
+        });
+    });
+
+    it("does nothing to a line held only by real copies", () => {
+        expect(proxyToggle(entry(), line({ in_deck: 2 }), [filed("real", { quantity: 2 })])).toBeNull();
+    });
+
+    it("does nothing on the maybe board", () => {
+        expect(proxyToggle(entry({ zone: "Maybe" }), undefined, [])).toBeNull();
+    });
+});
+
+/**
+ * A stack on the shelf of one of the owner's collections
+ *
+ * @param uuid what it is called
+ * @param over what to change about the usual stack
+ *
+ * @returns the stack
+ */
+function shelf(uuid: string, over: Partial<CandidateStackLike> = {}): CandidateStackLike & { uuid: string } {
+    return { uuid, ...stack({ quantity: 4 }), collection_deck: null, ...over };
+}
+
+describe("what Besorgen offers for a line", () => {
+    const exact = shelf("exact", { quantity: 1 });
+    const otherPrinting = shelf("other-printing", { printing: "print-b" });
+    const otherFinish = shelf("other-finish", { finish: "Foil" });
+    const otherCard = shelf("other-card", { printing: "print-c", card: { oracle_id: "mana-crypt" } });
+    const otherDeck = shelf("other-deck", { collection_deck: "deck-b" });
+    const candidates = [otherPrinting, otherCard, exact, otherDeck, otherFinish];
+
+    it("offers nothing on the maybe board", () => {
+        expect(sourcingOffers(entry({ zone: "Maybe" }), undefined, [], candidates)).toEqual([]);
+    });
+
+    it("offers the exact stacks, then the other printings and finishes, then buying, then Proxies for a missing line", () => {
+        expect(sourcingOffers(entry(), line({ missing: 2 }), [], candidates)).toEqual([
+            { kind: "take", candidate: exact, quantity: 1, exact: true },
+            { kind: "take", candidate: otherPrinting, quantity: 2, exact: false },
+            { kind: "take", candidate: otherFinish, quantity: 2, exact: false },
+            { kind: "bought", quantity: 2 },
+            { kind: "proxy", toggle: { kind: "put", quantity: 2 } },
+        ]);
+    });
+
+    it("offers every copy of a deck without a Physical deck", () => {
+        const offers = sourcingOffers(entry(), undefined, [], [exact]);
+
+        expect(offers).toEqual([
+            { kind: "take", candidate: exact, quantity: 1, exact: true },
+            { kind: "bought", quantity: 2 },
+            { kind: "proxy", toggle: { kind: "put", quantity: 2 } },
+        ]);
+    });
+
+    it("offers only to return the real copies of a line the deck holds for real", () => {
+        const real = filed("real", { quantity: 2 });
+
+        expect(sourcingOffers(entry(), line({ in_deck: 2 }), [real], candidates)).toEqual([
+            { kind: "return", stack: real, quantity: 2 },
+        ]);
+    });
+
+    it("offers to throw Proxies away, to replace them, and to return the real copies beside them", () => {
+        const real = filed("real");
+        const proxies = filed("proxies", { proxy: true });
+
+        expect(sourcingOffers(entry(), line({ in_deck: 2, proxies: 1 }), [real, proxies], candidates)).toEqual([
+            { kind: "proxy", toggle: { kind: "discard", quantity: 1, stacks: [{ stack: proxies, quantity: 1 }] } },
+            { kind: "replace", proxy: proxies, candidate: exact, quantity: 1, exact: true },
+            { kind: "replace", proxy: proxies, candidate: otherPrinting, quantity: 1, exact: false },
+            { kind: "replace", proxy: proxies, candidate: otherFinish, quantity: 1, exact: false },
+            { kind: "return", stack: real, quantity: 1 },
+        ]);
+    });
+
+    it("offers no replacement without a copy on the shelf, and no return without a real copy", () => {
+        const proxies = filed("proxies", { proxy: true, quantity: 2 });
+
+        expect(sourcingOffers(entry(), line({ in_deck: 2, proxies: 2 }), [proxies], [otherCard, otherDeck])).toEqual([
+            { kind: "proxy", toggle: { kind: "discard", quantity: 2, stacks: [{ stack: proxies, quantity: 2 }] } },
+        ]);
+    });
+
+    it("returns real copies of another printing standing in for the line too", () => {
+        const other = filed("other", { printing: "print-b" });
+        const deviation = line({
+            in_deck: 1,
+            other_printing: [{ printing: "print-b", finish: "Nonfoil", quantity: 1, proxy: false }],
+        });
+        const real = filed("real");
+
+        expect(sourcingOffers(entry(), deviation, [other, real], [])).toEqual([
+            { kind: "return", stack: real, quantity: 1 },
+            { kind: "return", stack: other, quantity: 1 },
+        ]);
     });
 });
