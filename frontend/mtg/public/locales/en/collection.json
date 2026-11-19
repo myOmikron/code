@@ -116,10 +116,7 @@
         "wants-list": "Everything the deck is still short of, as plain text. Paste it into Cardmarket's wants list import — without editions, so you get the cheapest copy.",
         "wants-with-available": "Takes in cards you own but have not sleeved into the deck yet, which turns the list into a note for the shelf.",
         "years": "By the release date of the printing, not of the card.",
-        "physical-deck-read-only": "What the deck is worth and what lies in the box that the list does not name. Only the deck's owner changes the Physical deck.",
-        "physical-deck-nothing": "There is no card in the Physical deck yet.",
-        "physical-deck-dialog": "What the deck is worth, what is still to buy, and the cards in the box the list does not name. A single card is sourced from its card menu.",
-        "off-the-list": "These cards lie in the Physical deck, but no line of the list names them. Sort the real cards back, throw the Proxies away."
+        "physical-deck-nothing": "There is no card in the Physical deck yet."
     },
     "heading": {
         "add-cards": "File cards",
@@ -150,7 +147,6 @@
         "no-statistics": "Nothing to count",
         "nothing-on-loan": "Nothing in a deck",
         "on-loan": "Sleeved up in decks",
-        "physical-deck": "Physical deck",
         "pips": "Pips",
         "price-history": "Price history",
         "purchase-vs-market": "Paid against worth",
@@ -164,7 +160,7 @@
         "value-distribution": "Value distribution",
         "wants-list": "Cardmarket wants list",
         "years": "Print years",
-        "off-the-list": "Not on the list"
+        "physical-deck": "Physical deck"
     },
     "label": {
         "acquired-at": "Acquired on",

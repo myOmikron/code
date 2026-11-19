@@ -59,9 +59,11 @@ import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 import { DeckTagWritableContext } from "src/context/deck-tag-writable-context";
 import { DeckDeviationProvider } from "src/context/deck-deviation-context";
 import { useDeckSourcingMenu } from "src/components/deck-sourcing-menu";
-import { DeckNotOnList } from "src/components/deck-not-on-list";
 import { DeckPhysicalDialog } from "src/components/deck-physical-dialog";
 import { useDeckPhysical } from "src/utils/use-deck-physical";
+import { useDeckSourcing } from "src/utils/use-deck-sourcing";
+import { useWriteQueue } from "src/utils/use-write-queue";
+import { readShelfCollections } from "src/utils/shelf-collections";
 import { deckRights, tagWritable } from "src/utils/deck-rights";
 import { defaultFoil } from "src/utils/default-finish";
 
@@ -144,11 +146,10 @@ function RouteComponent() {
     const [active, setActive] = useState<string | null>(null);
     const [menu, setMenu] = useState<{ card: string; at: MenuAt } | null>(null);
     const [menuPrinting, setMenuPrinting] = useState<Printing | null>(null);
-    const sourcingMenu = useDeckSourcingMenu(deckUuid, physical, rights.owner, menu !== null);
+    const serial = useWriteQueue();
+    const sourcing = useDeckSourcing(deckUuid, physical, rights.owner, serial);
+    const sourcingSection = useDeckSourcingMenu(sourcing);
     const [printingFor, setPrintingFor] = useState<string | null>(null);
-    // Every shelf the cards could be sorted onto. Read the first time somebody
-    // opens the print picker rather than with the deck: a builder who never asks
-    // about editions should not pay for it.
     const [shelf, setShelf] = useState<Array<CollectionOverviewResponse>>([]);
     const [switching, setSwitching] = useState<{ card: DeckCardResponse; printing: Printing } | null>(null);
     const [replacing, setReplacing] = useState<DeckCardResponse | null>(null);
@@ -171,10 +172,6 @@ function RouteComponent() {
     // is what stops a second click from deleting a slot that is already gone —
     // the answer to that is a refusal, and a refusal is the error screen.
     const [dropped, setDropped] = useState<Array<string>>([]);
-    // Writes go out one after another. Clicking minus four times in a second is
-    // four requests, and out of order they leave the deck holding whichever one
-    // the server happened to finish last.
-    const queue = useRef<Promise<void>>(Promise.resolve());
 
     const grouping = search.group ?? "type";
     const sort = search.sort ?? viewSettings.sort;
@@ -381,10 +378,10 @@ function RouteComponent() {
                 const card = hovered;
                 if (card !== null) void toggleFoil(card, !card.foil);
             },
-            ...(sourcingMenu !== undefined
+            ...(sourcing !== undefined
                 ? {
                       x: () => {
-                          if (hovered !== null) sourcingMenu.toggleProxy(hovered);
+                          if (hovered !== null) sourcing.toggleProxy(hovered);
                       },
                   }
                 : {}),
@@ -531,19 +528,6 @@ function RouteComponent() {
             dropped = true;
         };
     }, [menued]);
-
-    /**
-     * Puts a write at the end of the queue
-     *
-     * @param work the write
-     *
-     * @returns a promise resolving once it has run
-     */
-    function serial(work: () => Promise<void>): Promise<void> {
-        const next = queue.current.catch(() => undefined).then(work);
-        queue.current = next;
-        return next;
-    }
 
     /**
      * Re-runs the loader and drops the optimistic counts it has caught up with
@@ -871,9 +855,7 @@ function RouteComponent() {
     function pickPrinting(card: DeckCardResponse) {
         setPrintingFor(card.uuid);
         if (!rights.owner || shelf.length > 0) return;
-        void Api.collections
-            .list()
-            .then((collections) => setShelf(collections.filter((entry) => entry.collection.deck == null)));
+        void readShelfCollections().then(setShelf);
     }
 
     /**
@@ -982,10 +964,7 @@ function RouteComponent() {
 
     return (
         <DeckTagWritableContext value={writable}>
-            <DeckDeviationProvider
-                lines={physical.lines}
-                openMenu={sourcingMenu && ((card, at) => setMenu({ card, at }))}
-            >
+            <DeckDeviationProvider lines={physical.lines} openMenu={sourcing && ((card, at) => setMenu({ card, at }))}>
                 <div
                     className={rights.edit && tags.length > 0 ? "flex flex-col gap-6 pb-16" : "flex flex-col gap-6"}
                     style={{ "--deck-bar": `${barHeight}px` } as CSSProperties}
@@ -1134,9 +1113,6 @@ function RouteComponent() {
                                     onToggleGroup={collapsedGroups.toggle}
                                 />
                             )}
-                            {physical.on && physical.exists && physical.deviation !== null && (
-                                <DeckNotOnList copies={physical.deviation.not_on_list} />
-                            )}
                         </div>
                     </div>
 
@@ -1268,7 +1244,7 @@ function RouteComponent() {
                         }
                         onToggleFoil={(card, foil) => void toggleFoil(card, foil)}
                         onToggleTag={tagging.onToggleTag}
-                        extra={sourcingMenu?.section}
+                        extra={sourcingSection}
                         onDelete={(card) => void remove(card)}
                         onClose={() => setMenu(null)}
                     />
@@ -1337,7 +1313,15 @@ function RouteComponent() {
                         open={physical.allowed && search.physical === true}
                         onClose={() => go({ physical: undefined })}
                         deck={{ uuid: deckUuid, name: deck.name }}
+                        cards={cards}
                         owner={rights.owner}
+                        wording={{
+                            description: rights.owner
+                                ? t("description.physical-deck-dialog")
+                                : t("description.physical-deck-read-only"),
+                            offTheListHeading: t("heading.off-the-list"),
+                            offTheListDescription: t("description.off-the-list"),
+                        }}
                         physical={physical}
                     />
                 </div>

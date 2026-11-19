@@ -15,14 +15,17 @@ import {
     Text,
     notify,
 } from "components";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type {
     CollectionOverviewResponse,
+    DeckCardResponse,
+    DeckDeviationResponse,
     DeckSourcingResponse,
+    DeckValuesResponse,
     SourcedStackResponse,
-    SourcingSlotResponse,
 } from "src/api/generated";
 import { FoilMark } from "src/components/card-attribute-badge";
 import { CardThumbnail } from "src/components/card-thumbnail";
@@ -31,9 +34,11 @@ import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
 import { DeckInventoryRow } from "src/components/deck-inventory-row";
 import { DeckNotOnList } from "src/components/deck-not-on-list";
 import { DeckWantsDialog } from "src/components/deck-wants-dialog";
-import { EXACT_MATCH, countSlot, missingCost, stacksOffTheList } from "src/utils/deck-sourcing";
-import type { SourcingCount } from "src/utils/deck-sourcing";
+import { linesByEntry } from "src/utils/deck-deviation";
+import { shortEntries, stacksOffTheList, unitPrice } from "src/utils/deck-sourcing";
+import type { ShortEntry, ShortSummary } from "src/utils/deck-sourcing";
 import { formatCurrency } from "src/utils/format";
+import { readShelfCollections } from "src/utils/shelf-collections";
 import type { DeckPhysical } from "src/utils/use-deck-physical";
 
 /**
@@ -46,74 +51,63 @@ export type DeckPhysicalDialogProps = {
     onClose: () => void;
     /** The deck whose Physical deck it shows */
     deck: { uuid: string; name: string };
+    /** The Deck entries of the list */
+    cards: Array<DeckCardResponse>;
     /** Whether the reader owns the deck and acts on its Physical deck; an Editor only reads */
     owner: boolean;
+    /** The texts from the deck's own wording: what the dialog is for, and the cards off the list */
+    wording: PhysicalDialogWording;
     /** The Physical deck as the card list knows it */
     physical: DeckPhysical;
+};
+
+/** The texts {@link DeckPhysicalDialog} takes from the deck's own wording */
+export type PhysicalDialogWording = {
+    /** What the dialog is for, worded for the owner or for an Editor */
+    description: string;
+    /** Heading over the cards off the list */
+    offTheListHeading: string;
+    /** What to do with the cards off the list */
+    offTheListDescription: string;
 };
 
 /**
  * Everything about the Physical deck that concerns the deck as a whole.
  *
  * What one card needs lives in its card menu; this holds the values, what is still to
- * buy, filling the whole list at once, the cards the list does not name and taking the
- * deck apart. Opening it turns the Physical switch on, so the card list behind it
- * shows the marks it talks about.
+ * buy, filling the whole list at once, the cards no Deck entry names and taking the
+ * deck apart. An Editor sees the same without the actions. Opening it turns the
+ * Physical switch on, so the card list behind it shows the marks it talks about.
  *
  * @returns the dialog
  */
-export function DeckPhysicalDialog({ open, onClose, deck, owner, physical }: DeckPhysicalDialogProps) {
+export function DeckPhysicalDialog({ open, onClose, deck, cards, owner, wording, physical }: DeckPhysicalDialogProps) {
     const [t] = useTranslation("collection");
     const [tg] = useTranslation();
-    const { values, deviation, setOn, on } = physical;
+    const { values, deviation, sourcing, setOn, on } = physical;
 
     useEffect(() => {
         if (open && !on) setOn?.(true);
     }, [open, on, setOn]);
 
+    const summary = useMemo(
+        () => shortEntries(cards, linesByEntry(deviation), sourcing?.candidates ?? []),
+        [cards, deviation, sourcing],
+    );
+
     return (
         <Dialog open={open} onClose={onClose} size={"3xl"}>
             <DialogTitle>{t("heading.physical-deck")}</DialogTitle>
-            <DialogDescription>
-                {owner ? t("description.physical-deck-dialog") : t("description.physical-deck-read-only")}
-            </DialogDescription>
+            <DialogDescription>{wording.description}</DialogDescription>
             <DialogBody className={"flex flex-col gap-6"}>
-                {values != null && (
-                    <Text className={"flex flex-wrap items-center gap-x-2 gap-y-1"}>
-                        <span className={"tabular-nums"}>
-                            {t("label.list-value", { value: formatCurrency(values.list_value_cents / 100) })}
-                        </span>
-                        {values.physical != null && (
-                            <>
-                                <span aria-hidden={true}>·</span>
-                                <span className={"tabular-nums"}>
-                                    {t("label.physical-value", {
-                                        value: formatCurrency(values.physical.physical_value_cents / 100),
-                                    })}
-                                </span>
-                            </>
-                        )}
-                        {values.physical != null && values.physical.proxy_replacement_cents > 0 && (
-                            <>
-                                <span aria-hidden={true}>·</span>
-                                <span className={"tabular-nums"}>
-                                    {t("label.replacement-cost", {
-                                        value: formatCurrency(values.physical.proxy_replacement_cents / 100),
-                                    })}
-                                </span>
-                            </>
-                        )}
-                    </Text>
-                )}
+                {values != null && <PhysicalValues values={values} />}
 
                 {owner ? (
-                    physical.sourcing === null ? null : (
-                        <OwnerSourcing deck={deck} sourcing={physical.sourcing} />
+                    sourcing === null ? null : (
+                        <OwnerSourcing deck={deck} sourcing={sourcing} summary={summary} wording={wording} />
                     )
-                ) : deviation === null || !deviation.has_physical_deck ? (
-                    <Text>{t("description.physical-deck-nothing")}</Text>
                 ) : (
-                    <DeckNotOnList copies={deviation.not_on_list} />
+                    <EditorSourcing deviation={deviation} summary={summary} />
                 )}
             </DialogBody>
             <DialogActions>
@@ -126,6 +120,80 @@ export function DeckPhysicalDialog({ open, onClose, deck, owner, physical }: Dec
 }
 
 /**
+ * The properties for {@link PhysicalValues}
+ */
+type PhysicalValuesProps = {
+    /** List value, Physical value and Proxy replacement cost */
+    values: DeckValuesResponse;
+};
+
+/**
+ * What the list and the Physical deck are worth, and what replacing the Proxies costs.
+ *
+ * @returns the values
+ */
+function PhysicalValues({ values }: PhysicalValuesProps) {
+    const [t] = useTranslation("collection");
+
+    return (
+        <Text className={"flex flex-wrap items-center gap-x-2 gap-y-1"}>
+            <span className={"tabular-nums"}>
+                {t("label.list-value", { value: formatCurrency(values.list_value_cents / 100) })}
+            </span>
+            {values.physical != null && (
+                <>
+                    <span aria-hidden={true}>·</span>
+                    <span className={"tabular-nums"}>
+                        {t("label.physical-value", {
+                            value: formatCurrency(values.physical.physical_value_cents / 100),
+                        })}
+                    </span>
+                </>
+            )}
+            {values.physical != null && values.physical.proxy_replacement_cents > 0 && (
+                <>
+                    <span aria-hidden={true}>·</span>
+                    <span className={"tabular-nums"}>
+                        {t("label.replacement-cost", {
+                            value: formatCurrency(values.physical.proxy_replacement_cents / 100),
+                        })}
+                    </span>
+                </>
+            )}
+        </Text>
+    );
+}
+
+/**
+ * The properties for {@link EditorSourcing}
+ */
+type EditorSourcingProps = {
+    /** The Deviation as the deck loader read it */
+    deviation: DeckDeviationResponse | null;
+    /** What the Physical deck is still short of */
+    summary: ShortSummary<DeckCardResponse>;
+};
+
+/**
+ * An Editor's half of the dialog: what is still to buy and the cards off the list, to read.
+ *
+ * @returns the sections
+ */
+function EditorSourcing({ deviation, summary }: EditorSourcingProps) {
+    const [t] = useTranslation("collection");
+
+    if (deviation === null || !deviation.has_physical_deck) {
+        return <Text>{t("description.physical-deck-nothing")}</Text>;
+    }
+    return (
+        <>
+            <StillToSource summary={summary} />
+            <DeckNotOnList copies={deviation.not_on_list} />
+        </>
+    );
+}
+
+/**
  * The properties for {@link OwnerSourcing}
  */
 type OwnerSourcingProps = {
@@ -133,6 +201,10 @@ type OwnerSourcingProps = {
     deck: { uuid: string; name: string };
     /** Where the deck's cards lie and where the rest could come from */
     sourcing: DeckSourcingResponse;
+    /** What the Physical deck is still short of */
+    summary: ShortSummary<DeckCardResponse>;
+    /** The texts from the deck's own wording */
+    wording: PhysicalDialogWording;
 };
 
 /**
@@ -141,7 +213,7 @@ type OwnerSourcingProps = {
  *
  * @returns the sections
  */
-function OwnerSourcing({ deck, sourcing }: OwnerSourcingProps) {
+function OwnerSourcing({ deck, sourcing, summary, wording }: OwnerSourcingProps) {
     const [t] = useTranslation("collection");
     const router = useRouter();
     const [busy, setBusy] = useState(false);
@@ -150,21 +222,11 @@ function OwnerSourcing({ deck, sourcing }: OwnerSourcingProps) {
     const [deleting, setDeleting] = useState<SourcedStackResponse | null>(null);
     const [collections, setCollections] = useState<Array<CollectionOverviewResponse>>([]);
 
-    const counted = sourcing.slots.map((slot) => ({
-        slot,
-        count: countSlot(slot, sourcing.filed, sourcing.candidates, EXACT_MATCH),
-    }));
-    const open = counted.filter(({ count }) => count.filed < count.needed);
-    const needed = counted.reduce((sum, row) => sum + row.count.needed, 0);
-    const filed = counted.reduce((sum, row) => sum + row.count.filed, 0);
-    const missing = counted.reduce((sum, row) => sum + row.count.missing, 0);
-    const bill = missingCost(counted);
-    const wants = counted.map(({ slot, count }) => ({
-        key: slot.card?.oracle_id ?? slot.printing,
-        name: slot.card?.name ?? "",
-        setCode: slot.card?.set_code ?? "",
-        missing: count.missing,
-        available: Math.min(count.available, Math.max(0, count.needed - count.filed)),
+    const wants = summary.short.map(({ entry, available, toBuy }) => ({
+        key: entry.card?.oracle_id ?? entry.printing,
+        name: entry.card?.name ?? "",
+        missing: toBuy,
+        available,
     }));
     const offList = stacksOffTheList(sourcing.filed, sourcing.slots);
 
@@ -173,10 +235,9 @@ function OwnerSourcing({ deck, sourcing }: OwnerSourcingProps) {
     useEffect(() => {
         if (!homeless) return;
         let gone = false;
-        Api.collections
-            .list()
+        readShelfCollections()
             .then((list) => {
-                if (!gone) setCollections(list.filter((entry) => entry.collection.deck == null));
+                if (!gone) setCollections(list);
             })
             .catch(() => undefined);
         return () => {
@@ -239,31 +300,17 @@ function OwnerSourcing({ deck, sourcing }: OwnerSourcingProps) {
 
     return (
         <>
-            <section className={"flex flex-col gap-3"}>
-                <div className={"flex flex-wrap items-start justify-between gap-3"}>
-                    <div className={"flex flex-col gap-1"}>
-                        <Subheading>{t("heading.sourcing")}</Subheading>
-                        <Text className={"flex flex-wrap items-center gap-x-2 gap-y-1"}>
-                            <span className={"tabular-nums"}>{t("label.sourced", { filed, needed })}</span>
-                            {missing > 0 && (
-                                <>
-                                    <span aria-hidden={true}>·</span>
-                                    <span className={"tabular-nums"}>
-                                        {t("label.to-buy", { count: missing })}
-                                        {bill > 0 && ` · ${formatCurrency(bill / 100)}`}
-                                    </span>
-                                </>
-                            )}
-                        </Text>
-                    </div>
-                    <div className={"flex flex-wrap items-center gap-2"}>
-                        {missing > 0 && (
+            <StillToSource
+                summary={summary}
+                actions={
+                    <>
+                        {summary.toBuy > 0 && (
                             <Button outline={true} onClick={() => setShopping(true)}>
                                 <ShoppingCartIcon />
                                 {t("button.export-wants")}
                             </Button>
                         )}
-                        {open.length > 0 && (
+                        {summary.short.length > 0 && (
                             <Button outline={true} disabled={busy} onClick={fill}>
                                 <ClipboardDocumentCheckIcon />
                                 {t("button.fill-from-list")}
@@ -275,27 +322,15 @@ function OwnerSourcing({ deck, sourcing }: OwnerSourcingProps) {
                                 {t("button.take-apart")}
                             </Button>
                         )}
-                    </div>
-                </div>
-
-                {counted.length === 0 ? (
-                    <Text>{t("description.no-slots")}</Text>
-                ) : open.length === 0 ? (
-                    <Text>{t("description.all-sourced")}</Text>
-                ) : (
-                    <StackedList>
-                        {open.map(({ slot, count }) => (
-                            <MissingRow key={slot.uuid} slot={slot} count={count} />
-                        ))}
-                    </StackedList>
-                )}
-            </section>
+                    </>
+                }
+            />
 
             {offList.length > 0 && (
                 <section className={"flex flex-col gap-3"}>
                     <div className={"flex flex-col gap-1"}>
-                        <Subheading>{t("heading.off-the-list")}</Subheading>
-                        <Text>{t("description.off-the-list")}</Text>
+                        <Subheading>{wording.offTheListHeading}</Subheading>
+                        <Text>{wording.offTheListDescription}</Text>
                     </div>
                     <StackedList>
                         {offList.map((stack) => (
@@ -338,25 +373,81 @@ function OwnerSourcing({ deck, sourcing }: OwnerSourcingProps) {
 }
 
 /**
- * The properties for {@link MissingRow}
+ * The properties for {@link StillToSource}
  */
-type MissingRowProps = {
-    /** The line of the list that is short of copies */
-    slot: SourcingSlotResponse;
-    /** How it is counted against the Physical deck and the collections */
-    count: SourcingCount;
+type StillToSourceProps = {
+    /** What the Physical deck is still short of */
+    summary: ShortSummary<DeckCardResponse>;
+    /** The owner's deck-wide moves, absent for an Editor */
+    actions?: ReactNode;
 };
 
 /**
- * One line of the list the Physical deck is still short of, with what buying the rest costs.
+ * How much of the list the Physical deck holds, and every Deck entry it is still short of
+ * with what buying the rest costs.
+ *
+ * @returns the section
+ */
+function StillToSource({ summary, actions }: StillToSourceProps) {
+    const [t] = useTranslation("collection");
+
+    return (
+        <section className={"flex flex-col gap-3"}>
+            <div className={"flex flex-wrap items-start justify-between gap-3"}>
+                <div className={"flex flex-col gap-1"}>
+                    <Subheading>{t("heading.sourcing")}</Subheading>
+                    <Text className={"flex flex-wrap items-center gap-x-2 gap-y-1"}>
+                        <span className={"tabular-nums"}>
+                            {t("label.sourced", { filed: summary.held, needed: summary.needed })}
+                        </span>
+                        {summary.toBuy > 0 && (
+                            <>
+                                <span aria-hidden={true}>·</span>
+                                <span className={"tabular-nums"}>
+                                    {t("label.to-buy", { count: summary.toBuy })}
+                                    {summary.cost > 0 && ` · ${formatCurrency(summary.cost / 100)}`}
+                                </span>
+                            </>
+                        )}
+                    </Text>
+                </div>
+                {actions !== undefined && <div className={"flex flex-wrap items-center gap-2"}>{actions}</div>}
+            </div>
+
+            {summary.needed === 0 ? (
+                <Text>{t("description.no-slots")}</Text>
+            ) : summary.short.length === 0 ? (
+                <Text>{t("description.all-sourced")}</Text>
+            ) : (
+                <StackedList>
+                    {summary.short.map((row) => (
+                        <MissingRow key={row.entry.uuid} row={row} />
+                    ))}
+                </StackedList>
+            )}
+        </section>
+    );
+}
+
+/**
+ * The properties for {@link MissingRow}
+ */
+type MissingRowProps = {
+    /** The Deck entry the Physical deck is short of, with its count */
+    row: ShortEntry<DeckCardResponse>;
+};
+
+/**
+ * One Deck entry the Physical deck is still short of, with what buying the rest costs.
  *
  * @returns the row
  */
-function MissingRow({ slot, count }: MissingRowProps) {
+function MissingRow({ row }: MissingRowProps) {
     const [t] = useTranslation("collection");
-    const card = slot.card;
-    const finish = slot.foil ? "Foil" : "Nonfoil";
-    const price = slot.foil ? (card?.price_eur_foil_cents ?? card?.price_eur_cents) : card?.price_eur_cents;
+    const { entry, held, wanted, available, toBuy } = row;
+    const card = entry.card;
+    const finish = entry.foil ? "Foil" : "Nonfoil";
+    const price = unitPrice(card, entry.foil);
 
     return (
         <StackedListFlexRow className={"flex-wrap items-center gap-x-3 gap-y-2"}>
@@ -379,15 +470,13 @@ function MissingRow({ slot, count }: MissingRowProps) {
                 </span>
             </span>
             <span className={"flex shrink-0 flex-wrap items-center justify-end gap-1.5"}>
-                <Badge color={"zinc"}>{t("label.in-deck-of", { filed: count.filed, needed: count.needed })}</Badge>
-                {count.available > 0 && (
-                    <Badge color={"lime"}>{t("label.available", { count: count.available })}</Badge>
-                )}
-                {count.missing > 0 && (
+                <Badge color={"zinc"}>{t("label.in-deck-of", { filed: held, needed: wanted })}</Badge>
+                {available > 0 && <Badge color={"lime"}>{t("label.available", { count: available })}</Badge>}
+                {toBuy > 0 && (
                     <Badge color={"amber"}>
                         <ShoppingCartIcon className={"size-3.5"} />
-                        {t("label.to-buy", { count: count.missing })}
-                        {price != null && ` · ${formatCurrency((price * count.missing) / 100)}`}
+                        {t("label.to-buy", { count: toBuy })}
+                        {price != null && ` · ${formatCurrency((price * toBuy) / 100)}`}
                     </Badge>
                 )}
                 <CardmarketLink card={card} finish={finish} />

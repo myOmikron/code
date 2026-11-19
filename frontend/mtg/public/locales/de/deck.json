@@ -192,7 +192,10 @@
         "visibility-private": "Nur du siehst das Deck.",
         "visibility-public": "Steht in deinem öffentlichen Profil.",
         "visibility-unlisted": "Wer den Link hat, sieht es, sonst niemand.",
-        "not-on-list": "Diese Karten liegen im Physischen Deck, aber keine Karte im Hauptdeck, Commander, Companion oder Sideboard nennt sie. Sortiere sie zurück in eine Sammlung oder nimm sie auf die Liste."
+        "not-on-list": "Diese Karten liegen im Physischen Deck, aber keine Karte im Hauptdeck, Commander, Companion oder Sideboard nennt sie. Sortiere sie zurück in eine Sammlung oder nimm sie auf die Liste.",
+        "physical-deck-dialog": "Was das Deck wert ist, was noch zu kaufen ist und welche Karten im Physischen Deck die Liste nicht nennt. Eine einzelne Karte besorgst du über ihr Kartenmenü.",
+        "physical-deck-read-only": "Was das Deck wert ist, was noch zu kaufen ist und welche Karten im Physischen Deck die Liste nicht nennt. Ändern kann das Physische Deck nur, wem das Deck gehört.",
+        "off-the-list": "Diese Karten liegen im Physischen Deck, aber die Liste nennt sie nicht. Sortiere die echten Karten zurück, wirf die Proxies weg."
     },
     "error": {
         "collaborator-is-owner": "Das bist du selbst.",
@@ -251,7 +254,8 @@
         "thin-support": "Farblich knapp",
         "types": "Kartentypen",
         "unfiled-decks": "Ohne Ordner",
-        "not-on-list": "Im Deck, nicht auf der Liste"
+        "not-on-list": "Im Deck, nicht auf der Liste",
+        "off-the-list": "Nicht auf der Liste"
     },
     "label": {
         "add-to": "Ablegen in {{zone}}",
