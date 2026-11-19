@@ -85,7 +85,7 @@ One line of a deck: a printing in a zone, foil or not, with a quantity of at lea
 _Avoid_: slot, deck card, line
 
 **Physical deck**:
-The cardboard that is really in a deck: real cards and Proxies. Part of the deck, never a collection on the shelf. The deck list is what the deck should be, the Physical deck what it is; where they disagree is the deck's **Deviation**. A deck has a Physical deck from the first card put into it, and none while it is not built; taking it apart sorts its real cards back and throws its Proxies away. Its real cards stay the Account's cards and remember the collection they came from, if any. Only the main deck, Commander, Companion and sideboard are in it, never the maybe board.
+The cardboard that is really in a deck: real cards and Proxies. Part of the deck, never a collection on the shelf. The deck list is what the deck should be, the Physical deck what it is; where they disagree is the deck's **Deviation**. A deck has a Physical deck from the first card or Proxy put into it, and none while it is not built; one whose last card or Proxy leaves it is gone again; taking it apart sorts its real cards back and throws its Proxies away. Its real cards stay the Account's cards and remember the collection they came from, if any. Only the main deck, Commander, Companion and sideboard are in it, never the maybe board.
 _Avoid_: deck collection, deck's collection, sleeved cards
 
 **Proxy**:
