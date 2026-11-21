@@ -22,7 +22,7 @@ service-bootstrap = { workspace = true }
 # webauthn-rs = { version = "~0.5", features = ["danger-allow-state-serialisation"] } # The feature is necessary as we want to save the state to a database
 bcrypt = { version = "~0.19" }
 rand = { version = "~0.10.0" }
-jsonwebtoken = { version = "~11", features = ["rust_crypto"] }
+jsonwebtoken = { version = "~12.0.0", features = ["rust_crypto"] }
 rsa = { version = "~0.9", features = ["pem"] }
 sha2 = { workspace = true }
 base64ct = { version = "~1", features = ["std"] }
