@@ -1787,9 +1787,9 @@ dependencies = [
 
 [[package]]
 name = "galvyn"
-version = "0.7.0"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d942124fe7db36366fb62c20df88bd1f3cf9d52ee782ccaae6649d7495bf91d0"
+checksum = "1aa478f1f861e564a174cefea41c2b02e41429424aa4c4e746182b623044b04e"
 dependencies = [
  "axum",
  "futures-lite",
@@ -3324,7 +3324,7 @@ version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51e219e79014df21a225b1860a479e2dcd7cbd9130f4defd4bd0e191ea31d67d"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.21.7",
  "chrono",
  "getrandom 0.2.17",
  "http",
