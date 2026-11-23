@@ -101,7 +101,7 @@ services:
       - "127.0.0.1:8080:8080"
 
   postgres:
-    image: postgres:18.7
+    image: postgres:19.0
     env_file: [ common/env.common ]
     # set shared memory limit when using docker-compose
     shm_size: 128mb
