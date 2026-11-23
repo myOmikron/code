@@ -208,10 +208,10 @@ catalogs:
       version: 26.7.2
     i18next-browser-languagedetector:
       specifier: ^8.2.1
-      version: 8.3.0
+      version: 8.3.1
     i18next-http-backend:
       specifier: ^4.0.0
-      version: 4.0.10
+      version: 4.1.0
     jsqr:
       specifier: ^1.4.0
       version: 1.4.0
@@ -504,10 +504,10 @@ importers:
         version: 26.7.2(typescript@6.0.3)
       i18next-browser-languagedetector:
         specifier: catalog:dependencies
-        version: 8.3.0
+        version: 8.3.1
       i18next-http-backend:
         specifier: catalog:dependencies
-        version: 4.0.10
+        version: 4.1.0
       motion:
         specifier: catalog:dependencies
         version: 14.10.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -601,10 +601,10 @@ importers:
         version: 26.7.2(typescript@6.0.3)
       i18next-browser-languagedetector:
         specifier: catalog:dependencies
-        version: 8.3.0
+        version: 8.3.1
       i18next-http-backend:
         specifier: catalog:dependencies
-        version: 4.0.10
+        version: 4.1.0
       motion:
         specifier: catalog:dependencies
         version: 14.10.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -722,10 +722,10 @@ importers:
         version: 26.7.2(typescript@6.0.3)
       i18next-browser-languagedetector:
         specifier: catalog:dependencies
-        version: 8.3.0
+        version: 8.3.1
       i18next-http-backend:
         specifier: catalog:dependencies
-        version: 4.0.10
+        version: 4.1.0
       motion:
         specifier: catalog:dependencies
         version: 14.10.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -861,10 +861,10 @@ importers:
         version: 26.7.2(typescript@6.0.3)
       i18next-browser-languagedetector:
         specifier: catalog:dependencies
-        version: 8.3.0
+        version: 8.3.1
       i18next-http-backend:
         specifier: catalog:dependencies
-        version: 4.0.10
+        version: 4.1.0
       jsqr:
         specifier: catalog:dependencies
         version: 1.4.0
@@ -4028,11 +4028,11 @@ packages:
     resolution: {integrity: sha512-ag87y7cJJ9/3+GxFr8Oy4O5faDsGRGnBGsJj/YjOSsSx/5eadKLYTMPlzuR6obgoCDDm0abAAZitXXQkMOPSpA==}
     engines: {node: '>= 20'}
 
-  i18next-browser-languagedetector@8.3.0:
-    resolution: {integrity: sha512-t7FtF+VyQ+XSy+GI1O9TXWsMzP4U2u0m27yxJcCbG4LaAbTQa3CXFXgG3LvRivS+ZoYah8yPv5NhMl+Wg6I8Fg==}
+  i18next-browser-languagedetector@8.3.1:
+    resolution: {integrity: sha512-W7dfKWlmaxuy5zsKsu8vKm7SQ0R6T1Tw7XRMKCh3bt98q9m5Q73GKF1PiqtvcwzC+AZvfUCugbfcIYQkDfHeAg==}
 
-  i18next-http-backend@4.0.10:
-    resolution: {integrity: sha512-CfdQuwIVijbrS/fmiTAQYcYyje4nMbH9aIjKYhhm5bgVmWKWLOM1F7qrA1o63Jl1JxQcRjdtWhKlvDzyqV9aPg==}
+  i18next-http-backend@4.1.0:
+    resolution: {integrity: sha512-OY3KA8s6WUfUCviw+6VA79148bYaws+FEOZD6MNeZ8Tw1ocfu1j1Qp3ROYNMikzNv1gyTBgzHbWMP/rfZDSp1g==}
     engines: {node: '>=18'}
 
   i18next@26.7.2:
@@ -8933,11 +8933,11 @@ snapshots:
       - kerberos
       - supports-color
 
-  i18next-browser-languagedetector@8.3.0:
+  i18next-browser-languagedetector@8.3.1:
     dependencies:
       '@babel/runtime': 7.29.10
 
-  i18next-http-backend@4.0.10: {}
+  i18next-http-backend@4.1.0: {}
 
   i18next@26.7.2(typescript@6.0.3):
     optionalDependencies:
