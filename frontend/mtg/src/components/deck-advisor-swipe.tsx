@@ -13,6 +13,7 @@ import { PrimaryButton } from "src/components/primary-button";
 import type { Move } from "src/utils/advisor-moves";
 import { AddMove, SwipePackage, swipePackages } from "src/utils/advisor-packages";
 import { SWIPE_DISTANCE, swipeDirection } from "src/utils/dating";
+import { isBasicLand } from "src/utils/card-types";
 import { suggestionAddQuantity } from "src/utils/deck-advisor";
 import { formatCurrency } from "src/utils/format";
 import type { Printing } from "src/utils/scryfall";
@@ -26,7 +27,8 @@ type ShownPackage = { pack: SwipePackage; printings: Map<string, Printing> };
 
 /** One swipe, as undo takes it back */
 type Swiped =
-    { kind: "card"; shown: Shown } | { kind: "package"; shown: ShownPackage; left: Set<string>; added: boolean };
+    | { kind: "card"; shown: Shown; added: boolean }
+    | { kind: "package"; shown: ShownPackage; left: Set<string>; added: boolean };
 
 /** Where a card flies: right into the deck, left away */
 const LEAVE: Variants = {
@@ -112,12 +114,16 @@ export function DeckAdvisorSwipe(props: DeckAdvisorSwipeProps) {
     const [swiped, setSwiped] = useState<Array<Swiped>>([]);
 
     const full = count >= target;
+    // A basic swiped in comes back while the advisor still asks for lands
+    const again = (move: AddMove) => isBasicLand(move.suggestion.type_line);
     const handled = new Set(
         swiped.flatMap((entry) =>
             entry.kind === "card"
-                ? [entry.shown.move.oracle_id]
+                ? entry.added && again(entry.shown.move)
+                    ? []
+                    : [entry.shown.move.oracle_id]
                 : entry.added
-                  ? entry.shown.pack.moves.map((move) => move.oracle_id)
+                  ? entry.shown.pack.moves.filter((move) => !again(move)).map((move) => move.oracle_id)
                   : [],
         ),
     );
@@ -175,7 +181,7 @@ export function DeckAdvisorSwipe(props: DeckAdvisorSwipeProps) {
     const decide = async (direction: "left" | "right") => {
         if (current === undefined || top === undefined || busy) return;
         setExit(direction);
-        setSwiped((held) => [...held, { kind: "card", shown: current }]);
+        setSwiped((held) => [...held, { kind: "card", shown: current, added: direction === "right" }]);
         setShown(null);
         setBusy(true);
         try {

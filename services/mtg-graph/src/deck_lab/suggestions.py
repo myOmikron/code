@@ -314,6 +314,16 @@ PAGE_OVERLAP_MIN_DECK = 20
 # survives with the demotion on display.
 WEIGHT_TYPE_SATURATION = 1.5
 TYPE_SATURATION_RAMP = 6.0  # cards over target at which the demotion saturates
+# A land past the high edge is wrong at once, so its demotion is full from there.
+LAND_SATURATION_RAMP = 1.0
+
+# The other side: a type the deck is short on lifts the cards of that type
+# that already have a reason, by up to half their score. A multiplier, so it
+# never invents a reason for a bad instant. Relative to how short the other
+# types are, lands included: a deck short on everything gets no lift, and a
+# reanimator date swiped to 15 creatures gets nearly all of it.
+TYPE_GAP_BOOST = 0.5
+TYPE_GAP_RAMP = 6.0  # cards short at which the boost saturates
 
 # The same idea one axis over: a card that joins a bucket the deck is already
 # past the top of. Types answer "too many creatures"; buckets answer "too much
@@ -1211,7 +1221,10 @@ class _Candidate:
         # Agreement across independent channels is the strong signal — and only
         # channels arguing *for* the card count. A theme_excluded entry is a
         # demotion; letting it earn the bonus would refund half of it.
-        distinct = len({p.channel for p in self.provenance if p.score > 0})
+        # `type_gap` scales the other reasons; it is not one of its own.
+        distinct = len(
+            {p.channel for p in self.provenance if p.score > 0 and p.channel != "type_gap"}
+        )
         return total + MULTI_CHANNEL_BONUS * max(distinct - 1, 0)
 
 
@@ -2209,6 +2222,55 @@ def _apply_bucket_saturation(
     return candidates, demoted
 
 
+def _apply_type_gap(candidates: list[_Candidate], type_rows: list) -> tuple[list[_Candidate], int]:
+    """Lift candidates of a type the deck is shorter on than on its other types.
+
+    Land counts toward the comparison but is never lifted: the basics channel
+    already argues the land count.
+    """
+    from .composition import primary_type
+
+    def gap(row) -> float:
+        return min(1.0, max(0.0, row.low - row.count) / TYPE_GAP_RAMP)
+
+    rows = [row for row in type_rows if row.low > 0]
+    if not rows:
+        return candidates, 0
+    mean = sum(gap(row) for row in rows) / len(rows)
+    lifts = {row.type: (row, gap(row) - mean) for row in rows if row.type != "Land"}
+    short = {name: pair for name, pair in lifts.items() if pair[1] > 0}
+    if not short:
+        return candidates, 0
+
+    lifted = 0
+    for candidate in candidates:
+        row, lift = short.get(primary_type(candidate.type_line), (None, 0.0))
+        base = sum(p.score for p in candidate.provenance)
+        if row is None or base <= 0:
+            continue
+        candidate.provenance.append(
+            Provenance(
+                channel="type_gap",
+                detail=(
+                    f"deck holds {row.count:.0f} {row.type.lower()} cards "
+                    f"against a target of {row.low:.0f}–{row.high:.0f}"
+                ),
+                code="type-gap",
+                params={
+                    "amount": f"{row.count:.0f}",
+                    "type": row.type,
+                    "low": f"{row.low:.0f}",
+                    "high": f"{row.high:.0f}",
+                },
+                score=base * TYPE_GAP_BOOST * lift,
+                key=row.type,
+            )
+        )
+        lifted += 1
+
+    return candidates, lifted
+
+
 def _apply_type_saturation(
     candidates: list[_Candidate], type_rows: list
 ) -> tuple[list[_Candidate], int]:
@@ -2217,9 +2279,9 @@ def _apply_type_saturation(
     `_apply_theme_exclusions`' shape: a visible negative provenance entry,
     never a ban. Penalty-only by design — under-representation is served by
     the positive channels, and a bonus for "is an instant" would recommend
-    bad instants, the original defect inverted. Land is never demoted:
-    "you have too many lands" is a cut question, not an adds question, and
-    the basics channel is the one place lands are ever added from.
+    bad instants, the original defect inverted. Land is demoted from its
+    high edge on, one card early: a land added there is already one too many,
+    and lands come from the fixing, EDHREC and theme channels too.
 
     Negative entries are excluded from the multi-channel bonus by `score()`,
     so the demotion can never refund half of itself.
@@ -2227,6 +2289,7 @@ def _apply_type_saturation(
     from .composition import primary_type
 
     over = {row.type: row for row in type_rows if row.status == "high" and row.type != "Land"}
+    over |= {row.type: row for row in type_rows if row.type == "Land" and row.count >= row.high}
     if not over:
         return candidates, 0
 
@@ -2235,7 +2298,7 @@ def _apply_type_saturation(
         row = over.get(primary_type(candidate.type_line))
         if row is None:
             continue
-        overage = row.count - row.high
+        overage = row.count - row.high + (1 if row.type == "Land" else 0)
         candidate.provenance.append(
             Provenance(
                 channel="type_saturation",
@@ -2250,7 +2313,12 @@ def _apply_type_saturation(
                     "low": f"{row.low:.0f}",
                     "high": f"{row.high:.0f}",
                 },
-                score=-WEIGHT_TYPE_SATURATION * min(1.0, overage / TYPE_SATURATION_RAMP),
+                score=-WEIGHT_TYPE_SATURATION
+                * min(
+                    1.0,
+                    overage
+                    / (LAND_SATURATION_RAMP if row.type == "Land" else TYPE_SATURATION_RAMP),
+                ),
                 key=row.type,
             )
         )
@@ -3210,6 +3278,7 @@ def suggest(
         # lists automatically run without them and stay comparable to their
         # recorded history.
         "type_saturation",
+        "type_gap",
         "bucket_saturation",
         # The asymmetry demotion (Task C3, cEDH Pro round) — gated the same
         # way, and only ever fires at `is_cedh(speed)` regardless of this
@@ -3490,8 +3559,13 @@ def suggest(
             lambda: deck_tutor_count(held),
             lambda: channel_tutors(retrieval_deck, identity, pool_filter=pool_filter),
         )
+    # From the Land row's high edge on, a mana-source gap is ramp's to close,
+    # and a better land is a swap, not an add: 43-land decks came from here.
+    land_row = next((r for r in report.types if r.type == "Land"), None)
+    land_full = land_row is not None and land_row.count >= land_row.high
+
     fixing_read: Future | None = None
-    if "fixing_lands" in enabled and len(identity) >= 2:
+    if "fixing_lands" in enabled and len(identity) >= 2 and not land_full:
         fetch_types = _basic_names(identity)
         # Per-99 tuning like every quota, resized to the deck's target size.
         fixing_target = round(FIXING_LANDS_PER_COLOR * len(identity) * deck_size / 99)
@@ -3713,6 +3787,8 @@ def suggest(
         )
 
         rows = role_read.result()
+        if land_full:
+            rows = [row for row in rows if "Land" not in (row.get("type_line") or "")]
         # Gated to synergy_wincon — every other bucket is scored exactly as
         # before. Within it, a deck with no tribe and no qualifying theme
         # contributes nothing either, which keeps a Morophon-style pile
@@ -3790,9 +3866,15 @@ def suggest(
                 if payoffs
                 else provenance
             )
+            # The colour the deck holds fewest basics of goes first; equal
+            # scores put the same Plains on top of every swipe.
+            held = {oid: counts.get(oid, 0) for oid in basic_ids.values()}
+            fewest = min(held.values(), default=0)
             for row in fetch_deck(dict.fromkeys(basic_ids.values(), 1)):
                 is_snow = row["name"].startswith("Snow-Covered ")
-                _merge(pool, row, snow_provenance if is_snow else provenance)
+                chosen = snow_provenance if is_snow else provenance
+                share = (1 + fewest) / (1 + held.get(row["oracle_id"], 0))
+                _merge(pool, row, chosen.model_copy(update={"score": chosen.score * share}))
             bucket_reasons.setdefault(
                 "bucket:mana sources",
                 f"{land_row.count:.0f} lands against {land_row.low:.0f}-{land_row.high:.0f}",
@@ -4110,6 +4192,9 @@ def suggest(
                         buckets=told,
                     )
                 )
+
+    if "type_gap" in enabled and report.types:
+        candidates, _ = _apply_type_gap(candidates, report.types)
 
     if "type_saturation" in enabled and report.types:
         candidates, saturated = _apply_type_saturation(candidates, report.types)

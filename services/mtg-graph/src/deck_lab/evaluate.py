@@ -60,6 +60,8 @@ ALL_CHANNELS = MECHANICAL_ONLY | {"edhrec_synergy"}
 # exactly where it costs hits; `creature_share_at_k` is the number this arm
 # exists to move.
 SHAPED = ALL_CHANNELS | {"type_saturation"}
+# `shaped` plus the lift for a short type, its own arm for the same reason.
+BALANCED = SHAPED | {"type_gap"}
 
 
 @dataclass(slots=True)
@@ -257,6 +259,7 @@ def evaluate(
         "mechanical_only": MECHANICAL_ONLY,
         "all_channels": ALL_CHANNELS,
         "shaped": SHAPED,
+        "balanced": BALANCED,
     }
 
     totals = {

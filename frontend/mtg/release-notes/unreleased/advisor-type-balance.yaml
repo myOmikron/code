@@ -1,0 +1,3 @@
+kind: improved
+de: Der Deck-Berater schlägt keine Länder mehr vor, sobald dein Deck genug hat, bevorzugt Kartentypen, die deinem Deck fehlen, und bietet Standardländer beim Swipen erneut an, solange Länder fehlen.
+en: The deck advisor stops suggesting lands once your deck has enough, favors card types your deck is short on, and offers basic lands again while swiping as long as lands are missing.
