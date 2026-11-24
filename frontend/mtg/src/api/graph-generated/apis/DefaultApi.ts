@@ -20,8 +20,11 @@ import type {
     DatePlan,
     DatingBlindRequest,
     DatingDateRequest,
+    DatingPartnersRequest,
+    DatingPartnersResponse,
     DatingProfile,
     DatingProfileRequest,
+    DatingSeeksRequest,
     DatingStackRequest,
     DatingStackResponse,
     DatingVerdict,
@@ -67,11 +70,25 @@ export interface PostDatingDateRequest {
     DatingDateRequest: DatingDateRequest;
 }
 
+export interface PostDatingPartnersRequest {
+    /**
+     * 
+     */
+    DatingPartnersRequest: DatingPartnersRequest;
+}
+
 export interface PostDatingProfileRequest {
     /**
      * 
      */
     DatingProfileRequest: DatingProfileRequest;
+}
+
+export interface PostDatingSeeksRequest {
+    /**
+     * 
+     */
+    DatingSeeksRequest: DatingSeeksRequest;
 }
 
 export interface PostDatingStackRequest {
@@ -380,6 +397,55 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for postDatingPartners without sending the request
+     */
+    async postDatingPartnersRequestOpts(requestParameters: PostDatingPartnersRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['DatingPartnersRequest'] == null) {
+            throw new runtime.RequiredError(
+                'DatingPartnersRequest',
+                'Required parameter "DatingPartnersRequest" was null or undefined when calling postDatingPartners().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/dating/partners`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['DatingPartnersRequest'],
+        };
+    }
+
+    /**
+     * The next second commanders a lead can share the command zone with.
+     * Post Dating Partners
+     */
+    async postDatingPartnersRaw(requestParameters: PostDatingPartnersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DatingPartnersResponse>> {
+        const requestOptions = await this.postDatingPartnersRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The next second commanders a lead can share the command zone with.
+     * Post Dating Partners
+     */
+    async postDatingPartners(requestParameters: PostDatingPartnersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DatingPartnersResponse> {
+        const response = await this.postDatingPartnersRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for postDatingProfile without sending the request
      */
     async postDatingProfileRequestOpts(requestParameters: PostDatingProfileRequest): Promise<runtime.RequestOpts> {
@@ -425,6 +491,55 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async postDatingProfile(requestParameters: PostDatingProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DatingProfile> {
         const response = await this.postDatingProfileRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for postDatingSeeks without sending the request
+     */
+    async postDatingSeeksRequestOpts(requestParameters: PostDatingSeeksRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['DatingSeeksRequest'] == null) {
+            throw new runtime.RequiredError(
+                'DatingSeeksRequest',
+                'Required parameter "DatingSeeksRequest" was null or undefined when calling postDatingSeeks().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/dating/seeks`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['DatingSeeksRequest'],
+        };
+    }
+
+    /**
+     * What second commander each of them looks for; ones that look for none are left out.
+     * Post Dating Seeks
+     */
+    async postDatingSeeksRaw(requestParameters: PostDatingSeeksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<{ [key: string]: string | undefined; }>> {
+        const requestOptions = await this.postDatingSeeksRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse<any>(response);
+    }
+
+    /**
+     * What second commander each of them looks for; ones that look for none are left out.
+     * Post Dating Seeks
+     */
+    async postDatingSeeks(requestParameters: PostDatingSeeksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<{ [key: string]: string | undefined; }> {
+        const response = await this.postDatingSeeksRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -164,6 +164,8 @@ import type {
     NameAccountRequest,
     OfferTournamentHandover200Response,
     PairTournamentRound200Response,
+    PartnerStackRequest,
+    PartnerStackResponse,
     PhysicalDeckResponse,
     PriceHistoryResponse,
     PrintingLanguagesResponse,
@@ -658,6 +660,10 @@ export interface ComeBackDateRequest {
      * 
      */
     commander: string;
+    /**
+     * 
+     */
+    partner?: string | null;
 }
 
 export interface ComeBackToDateRequest {
@@ -1127,6 +1133,13 @@ export interface GetMyTournamentMatchRequest {
      * 
      */
     tournament: string;
+}
+
+export interface GetPartnerStackRequest {
+    /**
+     * 
+     */
+    PartnerStackRequest?: PartnerStackRequest;
 }
 
 export interface GetPhysicalDeckRequest {
@@ -2321,6 +2334,10 @@ export interface UnmatchDateRequest {
      * 
      */
     commander: string;
+    /**
+     * 
+     */
+    partner?: string | null;
 }
 
 export interface UnstarMpcfillImageRequest {
@@ -4424,6 +4441,10 @@ export class DefaultApi extends runtime.BaseAPI {
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['partner'] != null) {
+            queryParameters['partner'] = requestParameters['partner'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -7767,6 +7788,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getMyTournaments(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyTournamentsResponse> {
         const response = await this.getMyTournamentsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getPartnerStack without sending the request
+     */
+    async getPartnerStackRequestOpts(requestParameters: GetPartnerStackRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/dating/partners`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['PartnerStackRequest'],
+        };
+    }
+
+    /**
+     * The next second Commanders a lead can share the command zone with
+     * The next second Commanders a lead can share the command zone with
+     */
+    async getPartnerStackRaw(requestParameters: GetPartnerStackRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PartnerStackResponse>> {
+        const requestOptions = await this.getPartnerStackRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The next second Commanders a lead can share the command zone with
+     * The next second Commanders a lead can share the command zone with
+     */
+    async getPartnerStack(requestParameters: GetPartnerStackRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PartnerStackResponse> {
+        const response = await this.getPartnerStackRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -13876,6 +13939,10 @@ export class DefaultApi extends runtime.BaseAPI {
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['partner'] != null) {
+            queryParameters['partner'] = requestParameters['partner'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 

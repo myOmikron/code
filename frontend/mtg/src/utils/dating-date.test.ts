@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DateSessionResponse } from "src/api/generated";
-import { bringReactionKey, dateMessages } from "src/utils/dating-date";
+import { bringReactionKey, dateMessages, levelSwipe, swipeLevel } from "src/utils/dating-date";
 
 const session = (overrides: Partial<DateSessionResponse>): DateSessionResponse => ({
     deck: "deck",
@@ -69,5 +69,25 @@ describe("bringReactionKey", () => {
         expect(bringReactionKey(0)).toBe("description.bring-meh");
         expect(bringReactionKey(-10)).toBe("description.bring-bad");
         expect(bringReactionKey(-25)).toBe("description.bring-worst");
+    });
+});
+
+describe("swipeLevel", () => {
+    it("reads right as core, up as all in and left as not my thing", () => {
+        expect(swipeLevel("right")).toBe("core");
+        expect(swipeLevel("up")).toBe("allin");
+        expect(swipeLevel("left")).toBe("avoid");
+    });
+});
+
+describe("levelSwipe", () => {
+    it("sends an answer off the way its swipe goes", () => {
+        for (const direction of ["left", "right", "up"] as const) {
+            expect(levelSwipe(swipeLevel(direction))).toBe(direction);
+        }
+    });
+
+    it("has no swipe for a little", () => {
+        expect(levelSwipe("light")).toBeNull();
     });
 });

@@ -15,6 +15,13 @@ export type QuietButtonProps = {
     className?: string;
 };
 
+/** The look of a {@link QuietButton}, for triggers that must be another element */
+export const QUIET_BUTTON_CLASSES = clsx(
+    "flex items-center gap-1 rounded-(--radius-pill) px-2 py-1 text-xs/5 font-medium text-zinc-500",
+    "ring-1 ring-zinc-950/10 transition hover:bg-lime-400/15 hover:text-lime-700",
+    "dark:text-zinc-400 dark:ring-white/15 dark:hover:bg-lime-400/15 dark:hover:text-lime-300",
+);
+
 /**
  * A small secondary action that sits beside a heading without competing with it.
  *
@@ -29,17 +36,7 @@ export type QuietButtonProps = {
  */
 export function QuietButton({ children, onClick, title, className }: QuietButtonProps) {
     return (
-        <button
-            type={"button"}
-            onClick={onClick}
-            title={title}
-            className={clsx(
-                "flex items-center gap-1 rounded-(--radius-pill) px-2 py-1 text-xs/5 font-medium text-zinc-500",
-                "ring-1 ring-zinc-950/10 transition hover:bg-lime-400/15 hover:text-lime-700",
-                "dark:text-zinc-400 dark:ring-white/15 dark:hover:bg-lime-400/15 dark:hover:text-lime-300",
-                className,
-            )}
-        >
+        <button type={"button"} onClick={onClick} title={title} className={clsx(QUIET_BUTTON_CLASSES, className)}>
             {children}
         </button>
     );

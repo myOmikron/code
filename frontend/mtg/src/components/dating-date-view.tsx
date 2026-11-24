@@ -6,8 +6,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DateProgress, ThemeLevel } from "src/api/generated";
 import type { DateSessionResponse, DateThemeResponse } from "src/api/generated";
+import { DatingProposalCard } from "src/components/dating-proposal-card";
 import { PrimaryButton } from "src/components/primary-button";
-import { dateMessages, levelKey } from "src/utils/dating-date";
+import type { SwipeDirection } from "src/utils/dating";
+import { dateMessages, levelKey, levelSwipe, swipeLevel } from "src/utils/dating-date";
+import { useShortcuts } from "src/utils/use-shortcuts";
 
 /** What the player can answer a proposal with, best first */
 const ANSWERS: Array<ThemeLevel> = [ThemeLevel.allin, ThemeLevel.core, ThemeLevel.light, ThemeLevel.avoid];
@@ -59,6 +62,7 @@ export function DatingDateView(props: DatingDateViewProps) {
         props;
     const [t] = useTranslation("dating");
     const [mine, setMine] = useState<DateThemeResponse | null>(null);
+    const [exit, setExit] = useState<SwipeDirection | null>(null);
 
     const messages = dateMessages(session);
     const meter = session.chemistry >= 60 ? "bg-lime-500" : session.chemistry >= 30 ? "bg-amber-500" : "bg-red-500";
@@ -70,6 +74,21 @@ export function DatingDateView(props: DatingDateViewProps) {
               : "text-red-600 dark:text-red-400";
     const answering = session.next === "Commander" && session.proposal != null;
     const picking = session.next === "Player";
+
+    const answer = (level: ThemeLevel) => {
+        if (busy) return;
+        setExit(levelSwipe(level));
+        onAnswer(level);
+    };
+
+    useShortcuts(
+        {
+            arrowleft: () => answer(swipeLevel("left")),
+            arrowright: () => answer(swipeLevel("right")),
+            arrowup: () => answer(swipeLevel("up")),
+        },
+        answering && !busy && session.status === DateProgress.Active,
+    );
 
     return (
         <>
@@ -173,16 +192,25 @@ export function DatingDateView(props: DatingDateViewProps) {
                 <div className={"flex flex-col gap-2.5 border-t border-zinc-950/5 px-4 pt-3 pb-5 dark:border-white/5"}>
                     {answering && (
                         <>
-                            <p className={"text-xs text-zinc-500 dark:text-zinc-400"}>
-                                {t("description.how-much", { theme: session.proposal?.label })}
-                            </p>
+                            <div className={"relative h-28"}>
+                                <AnimatePresence custom={exit}>
+                                    {!busy && session.proposal && (
+                                        <DatingProposalCard
+                                            key={`${session.round}-${session.proposal.theme}`}
+                                            label={session.proposal.label}
+                                            art={session.image_art_crop ?? null}
+                                            onSwipe={(direction) => answer(swipeLevel(direction))}
+                                        />
+                                    )}
+                                </AnimatePresence>
+                            </div>
                             <div className={"grid grid-cols-2 gap-2"}>
                                 {ANSWERS.map((level) => (
                                     <button
                                         key={level}
                                         type={"button"}
                                         disabled={busy}
-                                        onClick={() => onAnswer(level)}
+                                        onClick={() => answer(level)}
                                         className={clsx(
                                             CHOICE,
                                             level === ThemeLevel.allin

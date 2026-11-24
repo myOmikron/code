@@ -113,6 +113,7 @@ All URIs are relative to *http://localhost*
 | [**getMyTournamentDeck**](DefaultApi.md#getmytournamentdeck) | **GET** /api/frontend/v1/tournaments/{tournament}/deck | The logged-in Account\&#39;s own Registered deck in a Tournament it plays in |
 | [**getMyTournamentMatch**](DefaultApi.md#getmytournamentmatch) | **GET** /api/frontend/v1/tournaments/{tournament}/my-match | The reader\&#39;s Match in the running Round of a Tournament, with the round timer |
 | [**getMyTournaments**](DefaultApi.md#getmytournaments) | **GET** /api/frontend/v1/tournaments/mine | The Tournaments the logged-in Account organizes and the ones it plays in |
+| [**getPartnerStack**](DefaultApi.md#getpartnerstack) | **POST** /api/frontend/v1/dating/partners | The next second Commanders a lead can share the command zone with |
 | [**getPendingOidcLogin**](DefaultApi.md#getpendingoidclogin) | **GET** /api/frontend/v1/auth/oidc/pending | The session\&#39;s OIDC login waiting for its username step |
 | [**getPhysicalDeck**](DefaultApi.md#getphysicaldeck) | **GET** /api/frontend/v1/decks/{deck}/physical-deck | What lies in the Physical deck: real cards and Proxies |
 | [**getPriceHistory**](DefaultApi.md#getpricehistory) | **GET** /api/frontend/v1/printings/{printing}/price-history | What a card has cost over time |
@@ -2938,7 +2939,7 @@ No authorization required
 
 ## comeBackDate
 
-> DateResponse comeBackDate(commander)
+> DateResponse comeBackDate(commander, partner)
 
 \&quot;No, come back\&quot;: a rejection or unmatch becomes a match
 
@@ -2960,6 +2961,8 @@ async function example() {
   const body = {
     // string
     commander: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string (optional)
+    partner: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
   } satisfies ComeBackDateRequest;
 
   try {
@@ -2980,6 +2983,7 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **commander** | `string` |  | [Defaults to `undefined`] |
+| **partner** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 
@@ -7891,6 +7895,76 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getPartnerStack
+
+> PartnerStackResponse getPartnerStack(PartnerStackRequest)
+
+The next second Commanders a lead can share the command zone with
+
+The next second Commanders a lead can share the command zone with
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetPartnerStackRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // PartnerStackRequest (optional)
+    PartnerStackRequest: ...,
+  } satisfies GetPartnerStackRequest;
+
+  try {
+    const data = await api.getPartnerStack(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **PartnerStackRequest** | [PartnerStackRequest](PartnerStackRequest.md) |  | [Optional] |
+
+### Return type
+
+[**PartnerStackResponse**](PartnerStackResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
 - **Accept**: `application/json`
 
 
@@ -16534,7 +16608,7 @@ No authorization required
 
 ## unmatchDate
 
-> DateResponse unmatchDate(commander)
+> DateResponse unmatchDate(commander, partner)
 
 End a match
 
@@ -16556,6 +16630,8 @@ async function example() {
   const body = {
     // string
     commander: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string (optional)
+    partner: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
   } satisfies UnmatchDateRequest;
 
   try {
@@ -16576,6 +16652,7 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **commander** | `string` |  | [Defaults to `undefined`] |
+| **partner** | `string` |  | [Optional] [Defaults to `undefined`] |
 
 ### Return type
 

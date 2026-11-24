@@ -1388,7 +1388,7 @@ def has_commander_facts(oracle_id: str) -> bool:
 
 DATING_POOL = """
 MATCH (c:Card)
-WHERE c.can_be_commander AND c.edhrec_tags IS NOT NULL AND c.edhrec_decks > 0
+WHERE c.can_be_commander AND c.edhrec_tags IS NOT NULL AND c.edhrec_decks >= $min_decks
 RETURN c.oracle_id AS oracle_id, c.name AS name, c.color_identity AS color_identity,
        c.edhrec_rank AS edhrec_rank, c.price_eur AS price_eur, c.oracle_text AS oracle_text,
        c.type_line AS type_line, c.edhrec_salt AS salt, c.edhrec_decks AS decks,
@@ -1398,9 +1398,32 @@ RETURN c.oracle_id AS oracle_id, c.name AS name, c.color_identity AS color_ident
 
 
 def dating_pool() -> list[dict[str, Any]]:
-    """Every commander with stored page facts."""
+    """Every commander with stored page facts and at least `POOL_MIN_DECKS` decks."""
+    from .dating import POOL_MIN_DECKS
+
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
-        return [dict(r) for r in session.run(DATING_POOL)]
+        return [dict(r) for r in session.run(DATING_POOL, min_decks=POOL_MIN_DECKS)]
+
+
+# Page facts are null for commanders not warmed yet; Backgrounds rarely are.
+DATING_PAIRABLE = """
+MATCH (c:Card)
+WHERE c.can_be_commander
+  AND (c.oracle_text CONTAINS 'Partner' OR c.oracle_text CONTAINS 'Choose a Background'
+       OR c.oracle_text CONTAINS 'companion' OR c.oracle_text CONTAINS 'Friends forever'
+       OR c.type_line CONTAINS 'Background' OR c.type_line CONTAINS 'Time Lord Doctor')
+RETURN c.oracle_id AS oracle_id, c.name AS name, c.color_identity AS color_identity,
+       c.edhrec_rank AS edhrec_rank, c.price_eur AS price_eur, c.oracle_text AS oracle_text,
+       c.type_line AS type_line, c.edhrec_salt AS salt, c.edhrec_decks AS decks,
+       c.edhrec_budget AS budget, c.edhrec_brackets AS brackets, c.edhrec_tags AS tags,
+       c.edhrec_tag_labels AS tag_labels, c.edhrec_tag_counts AS tag_counts
+"""
+
+
+def dating_pairable() -> list[dict[str, Any]]:
+    """Every commander that could share the command zone, warmed or not."""
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [dict(r) for r in session.run(DATING_PAIRABLE)]
 
 
 def commander_salts(oracle_ids: list[str]) -> dict[str, float]:
@@ -2844,6 +2867,16 @@ def top_commanders(limit: int = 1000) -> list[dict]:
     """
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         return [dict(r) for r in session.run(query, limit=limit)]
+
+
+def commander_names() -> list[dict]:
+    """Every legal commander's oracle id and name, for matching EDHREC's list."""
+    query = """
+    MATCH (c:Card) WHERE c.can_be_commander
+    RETURN c.oracle_id AS oracle_id, c.name AS name
+    """
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [dict(r) for r in session.run(query)]
 
 
 def find_commander(deck: list[str]) -> dict | None:

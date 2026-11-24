@@ -31,18 +31,20 @@ function busy(error: unknown): boolean {
  * Rolls a Blind Date, asking again quietly while the solver is busy.
  *
  * @param commander the Commander's oracle id
+ * @param partner the second Commander's oracle id, for a pair
  * @param bracket the player's bracket, if known
  * @param wait how to wait between tries
  * @returns the rolled themes and the cards to add now
  */
 export async function rollBlindDate(
     commander: string,
+    partner: string | null,
     bracket: number | null,
     wait: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 ): Promise<BlindDate> {
     for (let attempt = 1; ; attempt++) {
         try {
-            return await GraphApi.blindDate({ commander, bracket });
+            return await GraphApi.blindDate({ commander, partner, bracket });
         } catch (error) {
             if (!busy(error) || attempt >= BUSY_TRIES) throw error;
             await wait(BUSY_WAIT);

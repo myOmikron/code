@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { SuggestionGroup } from "src/api/graph-generated";
-import { cedhGroupOrder } from "src/utils/advisor-moves";
+import { cedhGroupOrder, modeDiff } from "src/utils/advisor-moves";
 
 /**
  * A minimal group, everything the reorder never reads left blank
@@ -37,5 +37,19 @@ describe("cedhGroupOrder", () => {
     test("a report with only one lead group promotes just that one", () => {
         const groups = [group("bucket:ramp"), group("combo"), group("staples")];
         expect(cedhGroupOrder(groups).map((g) => g.key)).toEqual(["combo", "bucket:ramp", "staples"]);
+    });
+});
+
+describe("modeDiff", () => {
+    test("auto keeps the real count", () => {
+        expect(modeDiff("auto", -12)).toBe(-12);
+        expect(modeDiff("auto", 0)).toBe(0);
+        expect(modeDiff("auto", 3)).toBe(3);
+    });
+
+    test("a picked mode overrides the count", () => {
+        expect(modeDiff("add", 4)).toBeLessThan(0);
+        expect(modeDiff("cut", -20)).toBeGreaterThan(0);
+        expect(modeDiff("swap", -20)).toBe(0);
     });
 });

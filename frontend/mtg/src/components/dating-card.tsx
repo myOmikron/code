@@ -1,9 +1,10 @@
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import { motion, useMotionValue, useTransform } from "motion/react";
 import type { Variants } from "motion/react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DatingCardResponse } from "src/api/generated";
+import { CardFlipButton } from "src/components/card-flip-button";
 import { ManaCost } from "src/components/mana-cost";
 import { formatCurrency } from "src/utils/format";
 import { SWIPE_DISTANCE, manaSymbols, swipeDirection } from "src/utils/dating";
@@ -69,6 +70,8 @@ export function DatingCard({ card, tagline, top, flipped, onSwipe, onFlip, onOpe
     const dragged = useRef(false);
     const art = card.image_art_crop ?? card.image_normal ?? null;
     const turned = top && flipped;
+    const [back, setBack] = useState(false);
+    const face = back && card.image_back_normal ? card.image_back_normal : card.image_normal;
 
     /**
      * Runs a tap unless it ended a drag
@@ -186,10 +189,10 @@ export function DatingCard({ card, tagline, top, flipped, onSwipe, onFlip, onOpe
                             className={"absolute inset-0 size-full scale-125 object-cover blur-2xl brightness-50"}
                         />
                     )}
-                    {card.image_normal ? (
+                    {face ? (
                         <span className={"absolute inset-3 flex items-center justify-center"}>
                             <img
-                                src={card.image_normal}
+                                src={face}
                                 alt={`${card.name}. ${card.oracle_text}`}
                                 draggable={false}
                                 crossOrigin={"anonymous"}
@@ -206,7 +209,19 @@ export function DatingCard({ card, tagline, top, flipped, onSwipe, onFlip, onOpe
                 </button>
             </motion.div>
 
-            <DatingCardProfile card={card} tagline={tagline ?? null} />
+            {turned && card.image_back_normal && (
+                <div className={"absolute right-3 bottom-3 z-10 lg:hidden"}>
+                    <CardFlipButton flipped={back} onFlip={() => setBack((shown) => !shown)} position={"inline"} />
+                </div>
+            )}
+
+            <DatingCardProfile
+                card={card}
+                tagline={tagline ?? null}
+                face={face ?? null}
+                back={back}
+                onFlipFace={card.image_back_normal ? () => setBack((shown) => !shown) : null}
+            />
 
             {top && (
                 <button
@@ -255,9 +270,22 @@ export function DatingCard({ card, tagline, top, flipped, onSwipe, onFlip, onOpe
 /**
  * The desktop profile beside the art: the card itself, what it is looking for, its rank and price.
  *
+ * @param props the Commander and the face shown
+ * @param props.card the Commander
+ * @param props.tagline what it is looking for
+ * @param props.face the card image to show
+ * @param props.back whether the back face is shown
+ * @param props.onFlipFace turn to the other face, `null` for one-faced cards
  * @returns the panel, hidden on phones
  */
-function DatingCardProfile({ card, tagline }: { card: DatingCardResponse; tagline: string | null }) {
+function DatingCardProfile(props: {
+    card: DatingCardResponse;
+    tagline: string | null;
+    face: string | null;
+    back: boolean;
+    onFlipFace: (() => void) | null;
+}) {
+    const { card, tagline, face, back, onFlipFace } = props;
     const [t] = useTranslation("dating");
 
     return (
@@ -266,15 +294,20 @@ function DatingCardProfile({ card, tagline }: { card: DatingCardResponse; taglin
                 "hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto rounded-r-(--radius-card) bg-zinc-900 p-6 text-white ring-1 ring-zinc-950/10 lg:flex xl:w-90 dark:ring-white/10"
             }
         >
-            {card.image_normal ? (
+            {face ? (
                 <span className={"relative min-h-48 flex-1"}>
                     <img
-                        src={card.image_normal}
+                        src={face}
                         alt={`${card.name}. ${card.oracle_text}`}
                         draggable={false}
                         crossOrigin={"anonymous"}
                         className={"absolute inset-x-0 top-0 mx-auto max-h-full max-w-full rounded-[4.75%/3.5%]"}
                     />
+                    {onFlipFace && (
+                        <span className={"absolute right-2 bottom-2"}>
+                            <CardFlipButton flipped={back} onFlip={onFlipFace} position={"inline"} />
+                        </span>
+                    )}
                 </span>
             ) : (
                 <div className={"flex flex-col gap-2"}>

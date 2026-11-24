@@ -7,7 +7,9 @@ import {
     nextColorChoice,
     manaSymbols,
     matchKey,
+    pairMatchKey,
     rejectionKey,
+    sortColors,
     swipeDirection,
 } from "src/utils/dating";
 
@@ -48,6 +50,11 @@ describe("lines", () => {
         expect(key).toMatch(/^description\.reject-themes-[1-3]$/);
     });
 
+    it("has its own lines for a theme the player said no to", () => {
+        const key = rejectionKey({ dimension: "Avoided", detail: "Tokens" }, "krenko");
+        expect(key).toMatch(/^description\.reject-avoided-[1-3]$/);
+    });
+
     it("names a match line", () => {
         expect(matchKey("krenko")).toMatch(/^description\.match-[1-3]$/);
     });
@@ -80,5 +87,19 @@ describe("colors", () => {
         expect(nextColorChoice(undefined)).toBe("excluded");
         expect(nextColorChoice("excluded")).toBe("required");
         expect(nextColorChoice("required")).toBeUndefined();
+    });
+});
+
+describe("sortColors", () => {
+    it("puts a pair's colors in WUBRG order", () => {
+        expect(sortColors("GR")).toBe("RG");
+        expect(sortColors("")).toBe("");
+    });
+});
+
+describe("pairMatchKey", () => {
+    it("picks a stable pair line", () => {
+        expect(pairMatchKey("giants")).toBe(pairMatchKey("giants"));
+        expect(pairMatchKey("giants")).toMatch(/^description\.pair-match-[1-3]$/);
     });
 });

@@ -15,6 +15,8 @@ export type DatingSetFilterProps = {
     onSets: (sets: string[]) => void;
     /** Whether the picker is open, so the page can mute its shortcuts */
     onPicking?: (picking: boolean) => void;
+    /** Show the chosen sets on phones too, not just an icon */
+    full?: boolean;
 };
 
 /**
@@ -22,7 +24,7 @@ export type DatingSetFilterProps = {
  *
  * @returns the trigger and its picker
  */
-export function DatingSetFilter({ sets, onSets, onPicking }: DatingSetFilterProps) {
+export function DatingSetFilter({ sets, onSets, onPicking, full = false }: DatingSetFilterProps) {
     const [t] = useTranslation("dating");
     const [known, setKnown] = useState<DatingSetResponse[] | null>(null);
     const [picking, setPicking] = useState(false);
@@ -41,7 +43,7 @@ export function DatingSetFilter({ sets, onSets, onPicking }: DatingSetFilterProp
 
     return (
         <>
-            <span className={"lg:hidden"}>
+            <span className={full ? "hidden" : "lg:hidden"}>
                 <Button
                     plain={true}
                     className={"relative"}
@@ -58,7 +60,7 @@ export function DatingSetFilter({ sets, onSets, onPicking }: DatingSetFilterProp
                     )}
                 </Button>
             </span>
-            <span className={"hidden max-w-64 items-center gap-1 lg:flex"}>
+            <span className={full ? "flex min-w-0 items-center gap-1" : "hidden max-w-64 items-center gap-1 lg:flex"}>
                 <Button outline={true} className={"min-w-0"} disabled={known === null} onClick={() => setPicking(true)}>
                     <span className={"truncate"}>{label}</span>
                 </Button>

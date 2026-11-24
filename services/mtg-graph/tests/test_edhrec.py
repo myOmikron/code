@@ -624,3 +624,186 @@ def test_warm_cedh_survives_a_failing_commander(warm):
 
     assert counts["cedh_failed"] == 1
     assert counts["cedh_fetched"] == 1  # the walk continued
+
+
+# --- the commander list -----------------------------------------------------
+# Pages EDHREC's deck-sorted commander list down to a floor, so new commanders
+# a low Scryfall rank buries still get warmed.
+
+
+def _first_page(views: list[tuple[str, int]], more: str | None) -> dict:
+    cardviews = [{"name": name, "num_decks": decks} for name, decks in views]
+    return {"container": {"json_dict": {"cardlists": [{"cardviews": cardviews, "more": more}]}}}
+
+
+def _later_page(views: list[tuple[str, int]], more: str | None) -> dict:
+    return {"cardviews": [{"name": n, "num_decks": d} for n, d in views], "more": more}
+
+
+def test_parse_commander_list_reads_the_nested_first_page():
+    from deck_lab.edhrec import ListedCommander, parse_commander_list
+
+    payload = _first_page([("Atraxa", 900)], "commanders/year-past2years-1.json")
+
+    entries, more = parse_commander_list(payload)
+
+    assert entries == [ListedCommander("Atraxa", 900)]
+    assert more == "commanders/year-past2years-1.json"
+
+
+def test_parse_commander_list_reads_a_later_page_and_its_end():
+    from deck_lab.edhrec import ListedCommander, parse_commander_list
+
+    entries, more = parse_commander_list(_later_page([("Krenko", 50)], None))
+
+    assert entries == [ListedCommander("Krenko", 50)]
+    assert more is None
+
+
+def test_parse_commander_list_tolerates_a_moved_schema():
+    from deck_lab.edhrec import parse_commander_list
+
+    assert parse_commander_list({}) == ([], None)
+    assert parse_commander_list({"container": {"json_dict": None}}) == ([], None)
+
+
+@pytest.fixture
+def list_pages(monkeypatch):
+    """Serve fake list pages by path, recording fetches and sleeps."""
+    from deck_lab import edhrec
+
+    state = {"pages": {}, "fetched": [], "sleeps": [], "cached": set()}
+
+    def fake_fetch(page: str) -> dict:
+        state["fetched"].append(page)
+        return state["pages"][page]
+
+    monkeypatch.setattr(edhrec, "fetch_commander_list_page", fake_fetch)
+    monkeypatch.setattr(edhrec, "_list_cached", lambda page: page in state["cached"])
+    monkeypatch.setattr(edhrec.time, "sleep", lambda s: state["sleeps"].append(s))
+    return state
+
+
+def test_listed_commanders_stops_at_the_page_below_the_floor(list_pages):
+    from deck_lab.edhrec import LIST_FIRST_PAGE, listed_commanders
+
+    list_pages["pages"] = {
+        LIST_FIRST_PAGE: _first_page([("A", 900), ("B", 60)], "commanders/p-1.json"),
+        "commanders/p-1.json": _later_page([("C", 41), ("D", 39)], "commanders/p-2.json"),
+        "commanders/p-2.json": _later_page([("E", 30)], None),
+    }
+
+    listed = listed_commanders(40, delay_seconds=0.5)
+
+    assert [entry.name for entry in listed] == ["A", "B", "C"]
+    assert list_pages["fetched"] == [LIST_FIRST_PAGE, "commanders/p-1.json"]
+    assert list_pages["sleeps"] == [0.5, 0.5]
+
+
+def test_listed_commanders_does_not_sleep_on_cached_pages(list_pages):
+    from deck_lab.edhrec import LIST_FIRST_PAGE, listed_commanders
+
+    list_pages["pages"] = {LIST_FIRST_PAGE: _first_page([("A", 900)], None)}
+    list_pages["cached"].add(LIST_FIRST_PAGE)
+
+    assert [entry.name for entry in listed_commanders(40)] == ["A"]
+    assert list_pages["sleeps"] == []
+
+
+def test_listed_commanders_refuses_an_unexpected_next_page(list_pages):
+    from deck_lab.edhrec import LIST_FIRST_PAGE, listed_commanders
+
+    list_pages["pages"] = {LIST_FIRST_PAGE: _first_page([("A", 900)], "../../elsewhere")}
+
+    assert [entry.name for entry in listed_commanders(40)] == ["A"]
+    assert list_pages["fetched"] == [LIST_FIRST_PAGE]
+
+
+def test_match_listed_maps_names_faces_and_pairs():
+    from deck_lab.edhrec import ListedCommander, match_listed
+
+    commanders = [
+        {"oracle_id": "oid-esika", "name": "Esika, God of the Tree // The Prismatic Bridge"},
+        {"oracle_id": "oid-akroma", "name": "Akroma, Vision of Ixidor"},
+        {"oracle_id": "oid-jeska", "name": "Jeska, Thrice Reborn"},
+        {"oracle_id": "oid-atraxa", "name": "Atraxa, Praetors' Voice"},
+    ]
+    listed = [
+        ListedCommander("Esika, God of the Tree // The Prismatic Bridge", 900),
+        ListedCommander("atraxa, praetors' voice", 800),
+        ListedCommander("Akroma, Vision of Ixidor // Jeska, Thrice Reborn", 50),
+        ListedCommander("Esika, God of the Tree", 45),  # front face, already matched
+        ListedCommander("Not In The Graph", 44),
+    ]
+
+    matched = match_listed(listed, commanders)
+
+    assert [row["oracle_id"] for row in matched] == [
+        "oid-esika",
+        "oid-atraxa",
+        "oid-akroma",
+        "oid-jeska",
+    ]
+
+
+def test_warm_adds_listed_commanders_the_ranked_walk_misses(warm, monkeypatch):
+    from deck_lab import edhrec, graph
+    from deck_lab.edhrec import ListedCommander
+
+    listed = [ListedCommander("Atraxa", 900), ListedCommander("Newcomer", 45)]
+    monkeypatch.setattr(edhrec, "listed_commanders", lambda floor, delay_seconds: listed)
+    monkeypatch.setattr(
+        graph,
+        "commander_names",
+        lambda: [{"oracle_id": f"oid-{n}", "name": n} for n in ("Atraxa", "Newcomer")],
+    )
+
+    counts = warm["run"](["Atraxa"], min_decks=40)
+
+    assert warm["ingested"] == ["Atraxa", "Newcomer"]
+    assert counts["listed"] == 1
+    assert counts["considered"] == 2
+
+
+def test_warm_keeps_the_ranked_walk_when_the_list_fails(warm, monkeypatch):
+    from deck_lab import edhrec
+
+    def broken(floor, delay_seconds):
+        raise RuntimeError("edhrec list exploded")
+
+    monkeypatch.setattr(edhrec, "listed_commanders", broken)
+
+    counts = warm["run"](["Atraxa"], min_decks=40)
+
+    assert warm["ingested"] == ["Atraxa"]
+    assert counts["listed"] == 0
+
+
+def test_dating_pool_applies_the_deck_floor(monkeypatch):
+    from contextlib import contextmanager
+
+    from deck_lab import graph
+    from deck_lab.dating import POOL_MIN_DECKS
+
+    seen: dict = {}
+
+    class FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def run(self, query, **params):
+            seen.update(params, query=query)
+            return []
+
+    @contextmanager
+    def fake_driver():
+        yield SimpleNamespace(session=lambda database: FakeSession())
+
+    monkeypatch.setattr(graph, "driver", fake_driver)
+
+    assert graph.dating_pool() == []
+    assert seen["min_decks"] == POOL_MIN_DECKS
+    assert "c.edhrec_decks >= $min_decks" in seen["query"]

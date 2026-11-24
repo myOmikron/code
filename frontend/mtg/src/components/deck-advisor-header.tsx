@@ -1,7 +1,24 @@
-import { FlagIcon, HandRaisedIcon, RectangleStackIcon } from "@heroicons/react/20/solid";
-import { Badge, Button } from "components";
+import {
+    AdjustmentsHorizontalIcon,
+    CheckIcon,
+    ChevronDownIcon,
+    FlagIcon,
+    HandRaisedIcon,
+    RectangleStackIcon,
+} from "@heroicons/react/20/solid";
+import {
+    Badge,
+    Button,
+    Dropdown,
+    DropdownButton,
+    DropdownDescription,
+    DropdownItem,
+    DropdownLabel,
+    DropdownMenu,
+} from "components";
 import { useTranslation } from "react-i18next";
-import { QuietButton } from "src/components/quiet-button";
+import { QUIET_BUTTON_CLASSES, QuietButton } from "src/components/quiet-button";
+import { ADVISOR_MODES, AdvisorMode } from "src/utils/advisor-moves";
 
 /**
  * The properties for {@link DeckAdvisorHeader}
@@ -17,15 +34,28 @@ export type DeckAdvisorHeaderProps = {
     onFill: () => void;
     /** Open card swiping */
     onSwipe: () => void;
+    /** Which moves the gallery offers */
+    mode: AdvisorMode;
+    onMode: (mode: AdvisorMode) => void;
 };
 
 /**
  * The advisor's one header, the same in every state of the deck: how full
- * it is, what the advice stands on, and Fill while it is short.
+ * it is, what the advice stands on, which moves it offers, and Fill while it
+ * is short.
  *
  * @returns the header row
  */
-export function DeckAdvisorHeader({ count, target, goals, onOpenGoals, onFill, onSwipe }: DeckAdvisorHeaderProps) {
+export function DeckAdvisorHeader({
+    count,
+    target,
+    goals,
+    onOpenGoals,
+    onFill,
+    onSwipe,
+    mode,
+    onMode,
+}: DeckAdvisorHeaderProps) {
     const [t] = useTranslation("advisor");
     const diff = target === null ? 0 : count - target;
     const share = target === null || target === 0 ? 1 : Math.min(1, count / target);
@@ -75,6 +105,24 @@ export function DeckAdvisorHeader({ count, target, goals, onOpenGoals, onFill, o
                     <FlagIcon className={"size-3.5 shrink-0"} />
                     <span className={"truncate"}>{goals}</span>
                 </QuietButton>
+                <Dropdown>
+                    <DropdownButton as={"button"} className={QUIET_BUTTON_CLASSES} title={t("accessibility.mode")}>
+                        <AdjustmentsHorizontalIcon className={"size-3.5 shrink-0"} />
+                        {t(`label.mode-${mode}`)}
+                        <ChevronDownIcon className={"size-3.5 shrink-0"} />
+                    </DropdownButton>
+                    <DropdownMenu anchor={"bottom end"}>
+                        {ADVISOR_MODES.map((option) => (
+                            <DropdownItem key={option} onClick={() => onMode(option)}>
+                                {mode === option ? <CheckIcon /> : <span className={"size-4"} />}
+                                <DropdownLabel>{t(`label.mode-${option}`)}</DropdownLabel>
+                                {option === "auto" && (
+                                    <DropdownDescription>{t("description.mode-auto")}</DropdownDescription>
+                                )}
+                            </DropdownItem>
+                        ))}
+                    </DropdownMenu>
+                </Dropdown>
                 {diff < 0 && (
                     <Button outline onClick={onSwipe}>
                         <HandRaisedIcon />

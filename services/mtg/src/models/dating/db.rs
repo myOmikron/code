@@ -30,6 +30,9 @@ pub struct DatingSwipeModel {
     /// The Commander's oracle id
     pub commander: Uuid,
 
+    /// The second Commander swiped for it in poly mode
+    pub partner: Option<Uuid>,
+
     /// Where the date stands
     pub status: DateStatus,
 
@@ -71,6 +74,8 @@ pub struct DatingSwipeInsertPatch {
     pub owner: ForeignModel<AccountModel>,
     /// The Commander's oracle id
     pub commander: Uuid,
+    /// The second Commander, in poly mode
+    pub partner: Option<Uuid>,
     /// Where the date stands
     pub status: DateStatus,
     /// Swiped up
@@ -108,6 +113,12 @@ pub struct DatingProfileModel {
     /// Answered deck budget in euro
     pub budget_eur: Option<i32>,
 
+    /// Answered salt, in tenths
+    pub salt: Option<i16>,
+
+    /// Theme ids the account said no to
+    pub avoided: Option<Json<Vec<String>>>,
+
     /// Whether the questions were answered at all
     #[rorm(default = false)]
     pub answered: bool,
@@ -133,6 +144,10 @@ pub struct DatingProfileInsertPatch {
     pub bracket: Option<i16>,
     /// Answered deck budget in euro
     pub budget_eur: Option<i32>,
+    /// Answered salt, in tenths
+    pub salt: Option<i16>,
+    /// Theme ids the account said no to
+    pub avoided: Option<Json<Vec<String>>>,
     /// Whether the questions were answered
     pub answered: bool,
     /// The profile last built by the advisor

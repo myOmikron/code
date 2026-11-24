@@ -105,6 +105,11 @@ def warm_edhrec(
     every_hours: float | None = typer.Option(
         None, "--every-hours", help="Repeat forever, this many hours apart."
     ),
+    min_decks: int = typer.Option(
+        40,
+        "--min-decks",
+        help="Also warm every commander EDHREC lists with this many decks; 0 skips the list.",
+    ),
 ) -> None:
     """Pre-fetch EDHREC for the most-played commanders."""
     import time
@@ -112,7 +117,8 @@ def warm_edhrec(
     from .edhrec import warm_top_commanders
 
     while True:
-        for key, value in warm_top_commanders(top, delay_seconds=delay).items():
+        counts = warm_top_commanders(top, delay_seconds=delay, min_decks=min_decks)
+        for key, value in counts.items():
             typer.echo(f"{key:>12}: {value:,}")
         if every_hours is None:
             return

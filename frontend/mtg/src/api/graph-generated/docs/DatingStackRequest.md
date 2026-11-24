@@ -12,6 +12,7 @@ Name | Type
 `colors` | Array&lt;string&gt;
 `required` | Array&lt;string&gt;
 `only` | Array&lt;string&gt;
+`poly` | boolean
 `count` | number
 `seed` | number
 

@@ -23,9 +23,10 @@ Design settled in a grilling session on 2026-11-17. Phase 1 is built on
 ## Phase 1: swiping and matches
 
 **Pool.** Commanders whose EDHREC data is in the graph (`has_recommendations`).
-A scheduled weekly `deck-lab warm-edhrec --top 1000` keeps it full; today the warm is
-manual. Cold Commanders stay out until warmed: without their EDHREC page they have no
+The weekly `graph-warm` job (`deck-lab warm-edhrec --top 1000 --min-decks 40`) keeps it
+full. Cold Commanders stay out until warmed: without their EDHREC page they have no
 interests, salt or typical deck price.
+Only Commanders with at least 40 EDHREC decks join (`POOL_MIN_DECKS` in `dating.py`); `--min-decks` walks EDHREC's commander list, so new-set Commanders get warmed too.
 
 **Stack order.** Popularity-weighted random, not by compatibility (or everything
 matches). An occasional "Your type" card. Optional color filter.
@@ -55,8 +56,12 @@ Target rejection rate among likes is about 30%, with the threshold measured agai
 real profiles, not guessed.
 
 **Profile.** A server-side snapshot, rebuilt on opening when a deck changed since. Players
-without decks fill a 3-question dating profile (colors, bracket, budget); deck
-signals override it. "My dating profile" shows the player how Commanders see them.
+set colors, bracket, budget and salt on "My dating profile" (or in the filter sheet's "Always"
+part); a set value wins over the decks until reset to "From my decks". Themes marked "not my
+thing" leave the profile and squash the themes score by the Commander's share in them, squared;
+such a rejection has its own reason ("Not your thing"). The sheet's "For now" part (colors, sets)
+is not stored; poly mode sits under "Always". Migration 0083 drops old answers wherever decks
+were overriding them.
 It is private.
 
 **Lines.** `frontend/mtg/src/assets/dating-lines/{en,de}.json`, keyed by card name, loaded lazily per
@@ -115,6 +120,23 @@ levels and bracket, and reveals. A busy solver is retried quietly, up to eight t
 - One `/fill` per date: up to 10 s, 3 concurrent fills service-wide, 429 when busy. The player sees "your date is getting ready…" while it retries quietly.
 - **Certain** cards are added automatically: lands, plus cards that fit the rolled themes *and* appear in a high share of the Commander's EDHREC decks. The cut-off is measured so about 30–40 cards are left to swipe.
 - Card swiping (phase 2) finishes the deck.
+
+## Poly mode
+
+For Commanders that share the command zone: Partner, Partner with, Partner—*group*,
+Choose a Background, Doctor's companion and the Doctors. The rules are read from the rules
+text in the graph (`pairing` in `dating.py`); a Background never leads.
+
+- A toggle in the header keeps only Commanders that take a second one in the stack.
+- A match offers to swipe the second one: a stack of only the legal partners, the same
+  popularity order with "Your type" picks. Backgrounds and other unwarmed Commanders
+  come from the graph without EDHREC facts.
+- The second one swipes back on the **pair**: shared colors, merged interests, averaged
+  bracket, budget and salt. No super like for it. Pair swipes are `dating_swipe` rows with
+  `partner` set.
+- A pair match starts a deck with both in the command zone; a Blind Date fills 98 slots
+  for both. Plan a date plans with the lead only.
+- Matches shows pairs as one entry, and "Swipe a partner" on lone matches that take one.
 
 ## Pointers
 

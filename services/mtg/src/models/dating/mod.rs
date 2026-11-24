@@ -10,6 +10,7 @@ use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm;
+use galvyn::rorm::conditions::Condition;
 use galvyn::rorm::db::Executor;
 use galvyn::rorm::db::executor::All;
 use galvyn::rorm::db::sql::value::Value;
@@ -76,9 +77,22 @@ pub struct GraphProfile {
     pub budget_eur: Option<f64>,
     /// Average salt of the account's Commanders
     pub salt: Option<f64>,
+    /// Theme ids the account said no to
+    #[serde(default)]
+    pub avoided: Vec<String>,
 }
 
-/// The dating-profile questions, for accounts without decks
+/// A salt answer as stored: tenths, so answers stay hashable
+pub fn salt_tenths(salt: f64) -> i16 {
+    (salt * 10.0).round() as i16
+}
+
+/// A stored salt answer on EDHREC's scale
+pub fn salt_value(tenths: i16) -> f64 {
+    f64::from(tenths) / 10.0
+}
+
+/// The account's own preferences; each one given wins over its decks
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ProfileAnswers {
     /// Colors as letters of WUBRG
@@ -87,6 +101,10 @@ pub struct ProfileAnswers {
     pub bracket: Option<i16>,
     /// Typical deck budget in euro
     pub budget_eur: Option<i32>,
+    /// Preferred salt, in tenths
+    pub salt: Option<i16>,
+    /// Theme ids the account said no to
+    pub avoided: Vec<String>,
 }
 
 /// One deck as the profile reads it
@@ -122,6 +140,8 @@ impl From<DatingProfileModel> for DatingProfile {
                 colors: model.colors.into_inner(),
                 bracket: model.bracket,
                 budget_eur: model.budget_eur,
+                salt: model.salt,
+                avoided: model.avoided.map(Json::into_inner).unwrap_or_default(),
             }),
             snapshot: model.snapshot.map(Json::into_inner),
             snapshot_key: model.snapshot_key.map(MaxStr::into_inner),
@@ -155,6 +175,11 @@ impl DatingProfile {
             .set(DatingProfileModel.colors, colors.clone())
             .set(DatingProfileModel.bracket, answers.bracket)
             .set(DatingProfileModel.budget_eur, answers.budget_eur)
+            .set(DatingProfileModel.salt, answers.salt)
+            .set(
+                DatingProfileModel.avoided,
+                Some(Json(answers.avoided.clone())),
+            )
             .set(DatingProfileModel.answered, true)
             .set(DatingProfileModel.snapshot_key, None)
             .condition(DatingProfileModel.owner.equals(owner.into_inner()))
@@ -168,6 +193,8 @@ impl DatingProfile {
                     colors,
                     bracket: answers.bracket,
                     budget_eur: answers.budget_eur,
+                    salt: answers.salt,
+                    avoided: Some(Json(answers.avoided.clone())),
                     answered: true,
                     snapshot: None,
                     snapshot_key: None,
@@ -200,6 +227,8 @@ impl DatingProfile {
                     colors: MaxStr::default(),
                     bracket: None,
                     budget_eur: None,
+                    salt: None,
+                    avoided: None,
                     answered: false,
                     snapshot: Some(Json(snapshot)),
                     snapshot_key: key,
@@ -311,6 +340,8 @@ pub fn profile_key(decks: &[ProfileDeck], answers: Option<&ProfileAnswers>) -> S
 pub struct Swipe {
     /// The Commander's oracle id
     pub commander: Uuid,
+    /// The second Commander, in poly mode
+    pub partner: Option<Uuid>,
     /// Where the date stands
     pub status: DateStatus,
     /// Swiped up
@@ -333,6 +364,7 @@ impl From<DatingSwipeModel> for Swipe {
     fn from(model: DatingSwipeModel) -> Self {
         Self {
             commander: model.commander,
+            partner: model.partner,
             status: model.status,
             super_like: model.super_like,
             came_back: model.came_back,
@@ -350,6 +382,8 @@ impl From<DatingSwipeModel> for Swipe {
 pub struct SwipeInsert {
     /// The Commander's oracle id
     pub commander: Uuid,
+    /// The second Commander, in poly mode
+    pub partner: Option<Uuid>,
     /// Where the date stands
     pub status: DateStatus,
     /// Swiped up
@@ -378,21 +412,49 @@ fn bounded<const N: usize>(value: Option<String>) -> Option<MaxStr<N>> {
     MaxStr::new(value).ok()
 }
 
+fn partner_is(partner: Option<Uuid>) -> Box<dyn Condition<'static>> {
+    match partner {
+        Some(partner) => DatingSwipeModel.partner.equals(Some(partner)).boxed(),
+        None => DatingSwipeModel.partner.is_none().boxed(),
+    }
+}
+
 impl Swipe {
-    /// Oracle ids of every Commander the account has swiped
+    /// Oracle ids of every Commander the account has swiped on its own
     #[instrument(name = "Swipe::swiped", skip(tx))]
     pub async fn swiped(
         tx: &mut Transaction,
         owner: AccountUuid,
     ) -> Result<Vec<Uuid>, rorm::Error> {
         let rows = rorm::query(&mut *tx, DatingSwipeModel.commander)
-            .condition(DatingSwipeModel.owner.equals(owner.into_inner()))
+            .condition(rorm::and![
+                DatingSwipeModel.owner.equals(owner.into_inner()),
+                DatingSwipeModel.partner.is_none(),
+            ])
             .all()
             .await?;
         Ok(rows)
     }
 
-    /// Record a swipe, replacing an earlier one on the same Commander
+    /// Oracle ids of every second Commander the account has swiped for `commander`
+    #[instrument(name = "Swipe::swiped_partners", skip(tx))]
+    pub async fn swiped_partners(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        commander: Uuid,
+    ) -> Result<Vec<Uuid>, rorm::Error> {
+        let rows = rorm::query(&mut *tx, DatingSwipeModel.partner)
+            .condition(rorm::and![
+                DatingSwipeModel.owner.equals(owner.into_inner()),
+                DatingSwipeModel.commander.equals(commander),
+                DatingSwipeModel.partner.is_some(),
+            ])
+            .all()
+            .await?;
+        Ok(rows.into_iter().flatten().collect())
+    }
+
+    /// Record a swipe, replacing an earlier one on the same Commander or pair
     #[instrument(name = "Swipe::record", skip(tx))]
     pub async fn record(
         tx: &mut Transaction,
@@ -403,6 +465,7 @@ impl Swipe {
             .condition(rorm::and![
                 DatingSwipeModel.owner.equals(owner.into_inner()),
                 DatingSwipeModel.commander.equals(insert.commander),
+                partner_is(insert.partner),
             ])
             .await?;
         let model = rorm::insert(&mut *tx, DatingSwipeModel)
@@ -410,6 +473,7 @@ impl Swipe {
                 uuid: Uuid::now_v7(),
                 owner: ForeignModelByField(owner.into_inner()),
                 commander: insert.commander,
+                partner: insert.partner,
                 status: insert.status,
                 super_like: insert.super_like,
                 score: insert.score,
@@ -422,12 +486,12 @@ impl Swipe {
         Ok(Swipe::from(model))
     }
 
-    /// Undo the newest swipe, returning its Commander
+    /// Undo the newest swipe, returning its Commander and second Commander
     #[instrument(name = "Swipe::rewind", skip(tx))]
     pub async fn rewind(
         tx: &mut Transaction,
         owner: AccountUuid,
-    ) -> Result<Option<Uuid>, rorm::Error> {
+    ) -> Result<Option<(Uuid, Option<Uuid>)>, rorm::Error> {
         let newest = rorm::query(&mut *tx, DatingSwipeModel)
             .condition(DatingSwipeModel.owner.equals(owner.into_inner()))
             .order_desc(DatingSwipeModel.created_at)
@@ -439,7 +503,7 @@ impl Swipe {
         rorm::delete(&mut *tx, DatingSwipeModel)
             .condition(DatingSwipeModel.uuid.equals(newest.uuid))
             .await?;
-        Ok(Some(newest.commander))
+        Ok(Some((newest.commander, newest.partner)))
     }
 
     /// How many super likes the account spent since `since`
@@ -495,12 +559,13 @@ impl Swipe {
         Ok(models.into_iter().map(Swipe::from).collect())
     }
 
-    /// Move a date to `status`, `None` when there is no date with that Commander
+    /// Move a date to `status`, `None` when there is no date with that Commander or pair
     #[instrument(name = "Swipe::set_status", skip(tx))]
     pub async fn set_status(
         tx: &mut Transaction,
         owner: AccountUuid,
         commander: Uuid,
+        partner: Option<Uuid>,
         status: DateStatus,
         came_back: bool,
     ) -> Result<Option<Swipe>, rorm::Error> {
@@ -508,6 +573,7 @@ impl Swipe {
             rorm::and![
                 DatingSwipeModel.owner.equals(owner.into_inner()),
                 DatingSwipeModel.commander.equals(commander),
+                partner_is(partner),
                 DatingSwipeModel.status.not_equals(DateStatus::Passed),
             ]
         };
@@ -554,6 +620,8 @@ pub struct CommanderPrinting {
     pub image_art_crop: Option<String>,
     /// Full card image url
     pub image_normal: Option<String>,
+    /// The back face's full image url, for two-faced cards
+    pub image_back_normal: Option<String>,
 }
 
 /// The Default printing per oracle id, for those the catalog knows
@@ -573,7 +641,7 @@ pub async fn read_commander_printings(
         .execute::<All>(
             format!(
                 "SELECT DISTINCT ON (p.oracle_id) p.oracle_id, p.id, p.name, p.color_identity, \
-                    p.image_art_crop, p.image_normal \
+                    p.image_art_crop, p.image_normal, p.image_back_normal \
              FROM printing p \
              WHERE p.oracle_id IN ({placeholders}) \
                AND (p.released_at IS NULL OR p.released_at <= CURRENT_DATE) \
@@ -600,8 +668,22 @@ pub async fn read_commander_printings(
                 color_identity: row.get("color_identity").map_err(decode)?,
                 image_art_crop: row.get("image_art_crop").map_err(decode)?,
                 image_normal: row.get("image_normal").map_err(decode)?,
+                image_back_normal: row.get("image_back_normal").map_err(decode)?,
             },
         );
     }
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn salt_survives_storage() {
+        for salt in [0.0, 0.5, 1.0, 1.5, 2.0, 4.0] {
+            assert_eq!(salt_value(salt_tenths(salt)), salt);
+        }
+        assert_eq!(salt_tenths(1.04), 10);
+    }
 }

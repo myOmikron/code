@@ -6,6 +6,8 @@ import clsx from "clsx";
 export type HeadingProps = {
     /** The heading level (1-6) */
     level?: 1 | 2 | 3 | 4 | 5 | 6;
+    /** Keeps {@link Heading} small on phones too, for a row it shares with buttons */
+    compact?: boolean;
 } & React.ComponentPropsWithoutRef<"h1" | "h2" | "h3" | "h4" | "h5" | "h6">;
 
 /**
@@ -20,13 +22,17 @@ export type HeadingProps = {
  * @see https://catalyst.tailwindui.com/docs/heading
  */
 export function Heading(props: HeadingProps) {
-    const { className, level = 1, ...rest } = props;
+    const { className, level = 1, compact = false, ...rest } = props;
     const Element: `h${typeof level}` = `h${level}`;
 
     return (
         <Element
             {...rest}
-            className={clsx(className, "text-2xl/8 font-semibold text-zinc-950 sm:text-xl/8 dark:text-white")}
+            className={clsx(
+                className,
+                compact ? "text-lg/7" : "text-2xl/8",
+                "font-semibold text-zinc-950 sm:text-xl/8 dark:text-white",
+            )}
         />
     );
 }
@@ -36,7 +42,7 @@ export function Heading(props: HeadingProps) {
  *
  * @see https://catalyst.tailwindui.com/docs/heading
  */
-export function Subheading(props: HeadingProps) {
+export function Subheading(props: Omit<HeadingProps, "compact">) {
     const { className, level = 2, ...rest } = props;
     const Element: `h${typeof level}` = `h${level}`;
 

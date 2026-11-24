@@ -606,8 +606,27 @@ class DatingStackRequest(BaseModel):
     colors: list[dating.Color] | None = Field(None, max_length=5)
     required: list[dating.Color] = Field(default_factory=list, max_length=5)
     only: list[OracleId] | None = Field(None, max_length=dating.MAX_EXCLUDED)
+    poly: bool = False
     count: int = Field(10, ge=1, le=dating.MAX_STACK)
     seed: int = 0
+
+
+class DatingPartnersRequest(BaseModel):
+    """The next second commanders for a lead, minus the ones already swiped."""
+
+    profile: DatingProfile
+    commander: OracleId
+    exclude: list[OracleId] = Field(default_factory=list, max_length=dating.MAX_EXCLUDED)
+    colors: list[dating.Color] | None = Field(None, max_length=5)
+    required: list[dating.Color] = Field(default_factory=list, max_length=5)
+    count: int = Field(10, ge=1, le=dating.MAX_STACK)
+    seed: int = 0
+
+
+class DatingSeeksRequest(BaseModel):
+    """Commanders to ask what second commander they look for."""
+
+    commanders: list[OracleId] = Field(max_length=dating.MAX_EXCLUDED)
 
 
 class DatingStackResponse(BaseModel):
@@ -617,11 +636,18 @@ class DatingStackResponse(BaseModel):
     remaining: int
 
 
+class DatingPartnersResponse(DatingStackResponse):
+    """A slice of a lead's partner stack, and the lead."""
+
+    lead: DatingCommander
+
+
 class DatingVerdictRequest(BaseModel):
     """A like, to be answered by the commander."""
 
     profile: DatingProfile
     commander: OracleId
+    partner: OracleId | None = None
 
 
 def _dating_pool() -> dict[str, dict]:
@@ -631,6 +657,29 @@ def _dating_pool() -> dict[str, dict]:
         return {row["oracle_id"]: row for row in dating_pool()}
 
     return dating_pool_cache.get_or_compute("pool", compute)
+
+
+def _dating_pairable() -> dict[str, dict]:
+    """Pairable commanders, with the pool's facts where it has them."""
+
+    def compute() -> dict[str, dict]:
+        from .graph import dating_pairable
+
+        return {row["oracle_id"]: row for row in dating_pairable()}
+
+    pool = _dating_pool()
+    rows = dating_pool_cache.get_or_compute("pairable", compute)
+    return {oid: pool.get(oid, row) for oid, row in rows.items()}
+
+
+def _pair(commander: str, partner: str) -> tuple[dict, dict]:
+    lead = _dating_pool().get(commander)
+    other = _dating_pairable().get(partner)
+    if lead is None or other is None:
+        raise HTTPException(status_code=404, detail="commander is not in the dating pool")
+    if not dating.can_pair(lead, other):
+        raise HTTPException(status_code=404, detail="the two cannot share the command zone")
+    return lead, other
 
 
 @app.post("/dating/profile", response_model=DatingProfile)
@@ -647,6 +696,8 @@ def post_dating_stack(request: DatingStackRequest) -> DatingStackResponse:
     colors = set(request.colors) if request.colors is not None else None
     only = set(request.only) if request.only is not None else None
     required = set(request.required)
+    if request.poly:
+        pool = {oid: row for oid, row in pool.items() if dating.pairing(row).seeks is not None}
     commanders = dating.stack(
         pool.values(),
         request.profile,
@@ -668,10 +719,46 @@ def post_dating_stack(request: DatingStackRequest) -> DatingStackResponse:
 @app.post("/dating/verdict", response_model=DatingVerdict)
 def post_dating_verdict(request: DatingVerdictRequest) -> DatingVerdict:
     """The commander's answer to a like."""
+    if request.partner is not None:
+        lead, other = _pair(request.commander, request.partner)
+        return dating.verdict(request.profile, dating.pair_card(lead, other))
     row = _dating_pool().get(request.commander)
     if row is None:
         raise HTTPException(status_code=404, detail="commander is not in the dating pool")
     return dating.verdict(request.profile, dating.commander_card(row))
+
+
+@app.post("/dating/partners", response_model=DatingPartnersResponse)
+def post_dating_partners(request: DatingPartnersRequest) -> DatingPartnersResponse:
+    """The next second commanders a lead can share the command zone with."""
+    lead = _dating_pool().get(request.commander)
+    if lead is None:
+        raise HTTPException(status_code=404, detail="commander is not in the dating pool")
+    commanders, remaining = dating.partner_stack(
+        lead,
+        _dating_pairable().values(),
+        request.profile,
+        exclude=set(request.exclude),
+        colors=set(request.colors) if request.colors is not None else None,
+        required=set(request.required),
+        count=request.count,
+        seed=request.seed,
+    )
+    return DatingPartnersResponse(
+        commanders=commanders, remaining=remaining, lead=dating.commander_card(lead)
+    )
+
+
+@app.post("/dating/seeks", response_model=dict[str, dating.Seeks])
+def post_dating_seeks(request: DatingSeeksRequest) -> dict[str, dating.Seeks]:
+    """What second commander each of them looks for; ones that look for none are left out."""
+    pool = _dating_pool()
+    out: dict[str, dating.Seeks] = {}
+    for oid in request.commanders:
+        seeks = dating.pairing(pool[oid]).seeks if oid in pool else None
+        if seeks is not None:
+            out[oid] = seeks
+    return out
 
 
 class DatingDateRequest(BaseModel):
@@ -693,6 +780,7 @@ class DatingBlindRequest(BaseModel):
     """A Blind Date: roll themes for the commander and fill a deck to them."""
 
     commander: OracleId
+    partner: OracleId | None = None
     bracket: float | None = Field(None, ge=1, le=5)
     seed: int | None = None
 
@@ -708,19 +796,24 @@ def post_dating_blind(request: DatingBlindRequest) -> dating.BlindDate:
     row = _dating_pool().get(request.commander)
     if row is None:
         raise HTTPException(status_code=404, detail="commander is not in the dating pool")
+    seats = [row]
+    if request.partner is not None:
+        seats.append(_pair(request.commander, request.partner)[1])
     rng = random_module.Random(request.seed)
     plan = _answer_cached(dating_date_cache, request.commander, lambda: dating.date_plan(row))
     themes = dating.roll_themes(plan, row, rng)
     speed = 0.5 if request.bracket is None else min(1.0, max(0.0, (request.bracket - 1) / 4))
+    slots = 100 - len(seats)
     try:
         result = run_fill(
-            [request.commander],
-            [row["name"]],
-            quantities={request.commander: 1},
+            [seat["oracle_id"] for seat in seats],
+            [seat["name"] for seat in seats],
+            quantities={seat["oracle_id"]: 1 for seat in seats},
             commander_oracle_id=request.commander,
+            commander_oracle_ids=[seat["oracle_id"] for seat in seats],
             speed=speed,
             theme_targets={theme.theme: dating.LEVEL_SHARE[theme.level] for theme in themes},
-            deck_size=99,
+            deck_size=slots,
             allow_network=lambda: False,
         )
     except SolverBusy as exc:
@@ -743,7 +836,9 @@ def post_dating_blind(request: DatingBlindRequest) -> dating.BlindDate:
         if (fit["fit"] or 0.0) >= FIT_THRESHOLD
     }
     inclusion = inclusion_among(request.commander, ids)
-    add_now, add_later, open_slots = dating.split_fill(chosen, lands, fitting, inclusion)
+    add_now, add_later, open_slots = dating.split_fill(
+        chosen, lands, fitting, inclusion, slots=slots
+    )
     return dating.BlindDate(
         themes=themes,
         add_now=add_now,

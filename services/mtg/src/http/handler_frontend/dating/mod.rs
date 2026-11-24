@@ -12,6 +12,7 @@ pub fn initialize_routes() -> GalvynRouter {
     GalvynRouter::new().merge(
         GalvynRouter::new()
             .handler(handler::get_dating_stack)
+            .handler(handler::get_partner_stack)
             .handler(handler::get_dating_sets)
             .handler(handler::swipe_commander)
             .handler(handler::rewind_swipe)

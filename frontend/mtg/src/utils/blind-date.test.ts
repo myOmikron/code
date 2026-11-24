@@ -34,7 +34,7 @@ describe("rollBlindDate", () => {
         blindDate.mockRejectedValueOnce(refused(429)).mockRejectedValueOnce(refused(429)).mockResolvedValue(DATE);
         const waits: Array<number> = [];
 
-        const date = await rollBlindDate("krenko", 3, async (ms) => {
+        const date = await rollBlindDate("krenko", null, 3, async (ms) => {
             waits.push(ms);
         });
 
@@ -48,7 +48,7 @@ describe("rollBlindDate", () => {
             throw refused(500);
         });
 
-        expect(await failure(rollBlindDate("krenko", null, async () => {}))).not.toBeNull();
+        expect(await failure(rollBlindDate("krenko", null, null, async () => {}))).not.toBeNull();
         expect(blindDate).toHaveBeenCalledTimes(1);
     });
 
@@ -57,7 +57,7 @@ describe("rollBlindDate", () => {
             throw refused(429);
         });
 
-        expect(await failure(rollBlindDate("krenko", null, async () => {}))).not.toBeNull();
+        expect(await failure(rollBlindDate("krenko", null, null, async () => {}))).not.toBeNull();
         expect(blindDate).toHaveBeenCalledTimes(8);
     });
 });

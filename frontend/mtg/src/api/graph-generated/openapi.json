@@ -187,6 +187,94 @@
                 }
             }
         },
+        "/dating/partners": {
+            "post": {
+                "summary": "Post Dating Partners",
+                "description": "The next second commanders a lead can share the command zone with.",
+                "operationId": "post_dating_partners",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DatingPartnersRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DatingPartnersResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/dating/seeks": {
+            "post": {
+                "summary": "Post Dating Seeks",
+                "description": "What second commander each of them looks for; ones that look for none are left out.",
+                "operationId": "post_dating_seeks",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DatingSeeksRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "additionalProperties": {
+                                        "type": "string",
+                                        "enum": [
+                                            "partner",
+                                            "background",
+                                            "doctor",
+                                            "companion"
+                                        ]
+                                    },
+                                    "type": "object",
+                                    "title": "Response Post Dating Seeks"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/dating/date": {
             "post": {
                 "summary": "Post Dating Date",
@@ -1401,6 +1489,18 @@
                         "maxLength": 64,
                         "title": "Commander"
                     },
+                    "partner": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 64
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Partner"
+                    },
                     "bracket": {
                         "anyOf": [
                             {
@@ -1527,6 +1627,23 @@
                     "your_type": {
                         "type": "boolean",
                         "title": "Your Type"
+                    },
+                    "seeks": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "partner",
+                                    "background",
+                                    "doctor",
+                                    "companion"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Seeks"
                     }
                 },
                 "type": "object",
@@ -1635,6 +1752,109 @@
                 "title": "DatingDeck",
                 "description": "One of the player's decks, as the profile reads it."
             },
+            "DatingPartnersRequest": {
+                "properties": {
+                    "profile": {
+                        "$ref": "#/components/schemas/DatingProfile"
+                    },
+                    "commander": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "title": "Commander"
+                    },
+                    "exclude": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 20000,
+                        "title": "Exclude"
+                    },
+                    "colors": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "enum": [
+                                        "W",
+                                        "U",
+                                        "B",
+                                        "R",
+                                        "G"
+                                    ]
+                                },
+                                "type": "array",
+                                "maxItems": 5
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Colors"
+                    },
+                    "required": {
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "W",
+                                "U",
+                                "B",
+                                "R",
+                                "G"
+                            ]
+                        },
+                        "type": "array",
+                        "maxItems": 5,
+                        "title": "Required"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "maximum": 30.0,
+                        "minimum": 1.0,
+                        "title": "Count",
+                        "default": 10
+                    },
+                    "seed": {
+                        "type": "integer",
+                        "title": "Seed",
+                        "default": 0
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "profile",
+                    "commander"
+                ],
+                "title": "DatingPartnersRequest",
+                "description": "The next second commanders for a lead, minus the ones already swiped."
+            },
+            "DatingPartnersResponse": {
+                "properties": {
+                    "commanders": {
+                        "items": {
+                            "$ref": "#/components/schemas/DatingCommander"
+                        },
+                        "type": "array",
+                        "title": "Commanders"
+                    },
+                    "remaining": {
+                        "type": "integer",
+                        "title": "Remaining"
+                    },
+                    "lead": {
+                        "$ref": "#/components/schemas/DatingCommander"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "commanders",
+                    "remaining",
+                    "lead"
+                ],
+                "title": "DatingPartnersResponse",
+                "description": "A slice of a lead's partner stack, and the lead."
+            },
             "DatingProfile": {
                 "properties": {
                     "decks": {
@@ -1694,6 +1914,13 @@
                             }
                         ],
                         "title": "Salt"
+                    },
+                    "avoided": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Avoided"
                     }
                 },
                 "type": "object",
@@ -1706,7 +1933,7 @@
                     "salt"
                 ],
                 "title": "DatingProfile",
-                "description": "What commanders see of a player. Deck signals win over answers."
+                "description": "What commanders see of a player. Answers win over deck signals."
             },
             "DatingProfileRequest": {
                 "properties": {
@@ -1732,6 +1959,25 @@
                 "type": "object",
                 "title": "DatingProfileRequest",
                 "description": "The player's decks, plus the dating-profile answers."
+            },
+            "DatingSeeksRequest": {
+                "properties": {
+                    "commanders": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 20000,
+                        "title": "Commanders"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "commanders"
+                ],
+                "title": "DatingSeeksRequest",
+                "description": "Commanders to ask what second commander they look for."
             },
             "DatingStackRequest": {
                 "properties": {
@@ -1800,6 +2046,11 @@
                         ],
                         "title": "Only"
                     },
+                    "poly": {
+                        "type": "boolean",
+                        "title": "Poly",
+                        "default": false
+                    },
                     "count": {
                         "type": "integer",
                         "maximum": 30.0,
@@ -1861,7 +2112,8 @@
                                     "colors",
                                     "bracket",
                                     "budget",
-                                    "salt"
+                                    "salt",
+                                    "avoided"
                                 ]
                             },
                             {
@@ -1929,6 +2181,18 @@
                         "type": "string",
                         "maxLength": 64,
                         "title": "Commander"
+                    },
+                    "partner": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 64
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Partner"
                     }
                 },
                 "type": "object",
@@ -3261,11 +3525,33 @@
                             }
                         ],
                         "title": "Budget Eur"
+                    },
+                    "salt": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 4.0,
+                                "minimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Salt"
+                    },
+                    "avoided": {
+                        "items": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "type": "array",
+                        "maxItems": 64,
+                        "title": "Avoided"
                     }
                 },
                 "type": "object",
                 "title": "ProfileAnswers",
-                "description": "The dating-profile questions, for players without decks."
+                "description": "The player's own preferences; each one set wins over the decks."
             },
             "ProtectionWayEntry": {
                 "properties": {

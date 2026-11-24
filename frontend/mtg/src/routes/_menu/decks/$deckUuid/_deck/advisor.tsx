@@ -29,7 +29,7 @@ import { DeckFillDialog } from "src/components/deck-fill-dialog";
 import { dimLabel } from "src/components/deck-advisor-impact-badges";
 import { Direction, fixOf, shiftTargets } from "src/utils/advisor-directions";
 import { deckDims, needs, plateaued, roomFor } from "src/utils/advisor-impact";
-import { Move, buildMoves, rankedAdds } from "src/utils/advisor-moves";
+import { ADVISOR_MODES, AdvisorMode, Move, buildMoves, modeDiff, rankedAdds } from "src/utils/advisor-moves";
 import { say, sayWhy } from "src/utils/advisor-phrase";
 import { IgnoredCard, KeptCard, ThemeLevel, withThemeLevel } from "src/utils/advisor-settings";
 import { effectiveManaValue } from "src/utils/commander";
@@ -82,15 +82,18 @@ const DEBRIEF_SNOOZE_DAYS = 1;
 /** The cut reasons that argue for letting a card go, worded as its one fact */
 const ARGUES_OUT = new Set(["bucket-crowded", "excluded-theme", "improves-shape", "rarely-played", "stranded"]);
 
-/** The advisor's search: `swipe` opens card swiping over it */
+/** The advisor's search: `swipe` opens card swiping over it, `mode` picks the moves */
 type AdvisorSearch = {
     /** Card swiping is open */
     swipe?: boolean;
+    /** The moves the reader picked, absent for `auto` */
+    mode?: Exclude<AdvisorMode, "auto">;
 };
 
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/advisor")({
     validateSearch: (search: Record<string, unknown>): AdvisorSearch => ({
         swipe: search.swipe === true || search.swipe === "true" ? true : undefined,
+        mode: ADVISOR_MODES.find((mode) => mode !== "auto" && mode === search.mode) as AdvisorSearch["mode"],
     }),
     loader: ({ params }) => Api.decks.cards.list(params.deckUuid),
     component: RouteComponent,
@@ -109,15 +112,15 @@ function daysFromNow(days: number): string {
 
 /**
  * The deck advisor: one gallery of moves under one read of the deck's shape.
- * The card count decides whether a move adds, cuts or swaps; the screen stays
- * the same.
+ * The card count decides whether a move adds, cuts or swaps, unless the reader
+ * picked a mode; the screen stays the same.
  *
  * @returns the page
  */
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
     const { cards } = Route.useLoaderData();
-    const { swipe } = Route.useSearch();
+    const { swipe, mode = "auto" } = Route.useSearch();
     const navigate = useNavigate({ from: Route.fullPath });
     const [lastSwipe, setLastSwipe] = useState<
         | { kind: "add"; oracle_id: string; quantity: number }
@@ -168,6 +171,7 @@ function RouteComponent() {
         [cards],
     );
     const diff = target === null ? -1 : cardCount - target;
+    const shape = modeDiff(mode, diff);
 
     useEffect(() => {
         if (!ready || setupDecided.current === deckUuid) return;
@@ -311,8 +315,8 @@ function RouteComponent() {
         return out;
     }, [adds, roomCuts, t]);
     const moves = useMemo(
-        () => buildMoves({ diff, adds, cuts: diff === 0 ? roomCuts : cuts, dims, facts, filter }),
-        [diff, adds, cuts, roomCuts, dims, facts, filter],
+        () => buildMoves({ diff: shape, adds, cuts: shape === 0 ? roomCuts : cuts, dims, facts, filter }),
+        [shape, adds, cuts, roomCuts, dims, facts, filter],
     );
     const roomOptions = useMemo(
         () => (makingRoom === null ? [] : roomFor(makingRoom, roomCuts, dims)),
@@ -592,12 +596,12 @@ function RouteComponent() {
         save({ ...settings, kept: settings.kept.filter((entry) => entry.oracle_id !== card.oracle_id) });
     }
 
-    const latest = useRef({ diff, add, cut, keep });
+    const latest = useRef({ shape, add, cut, keep });
     useEffect(() => {
-        latest.current = { diff, add, cut, keep };
+        latest.current = { shape, add, cut, keep };
     });
     const onPrimary = useCallback((move: Move) => {
-        const { diff: now, add: adding, cut: cutting } = latest.current;
+        const { shape: now, add: adding, cut: cutting } = latest.current;
         if (move.kind === "cut") void cutting(move.cut);
         else if (now === 0) setMakingRoom(move.suggestion);
         else void adding(move.suggestion);
@@ -771,7 +775,7 @@ function RouteComponent() {
                     {t("button.show-all")}
                 </Button>
             </div>
-        ) : diff === 0 ? (
+        ) : shape === 0 ? (
             <div className={"flex flex-wrap items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400"}>
                 {t("description.no-improvements")}
                 <Button outline onClick={() => setDebriefOpen(true)}>
@@ -795,7 +799,14 @@ function RouteComponent() {
                     goals={goalsLine}
                     onOpenGoals={() => setGoalsTab("goals")}
                     onFill={() => setFilling(true)}
-                    onSwipe={() => navigate({ search: { swipe: true } })}
+                    onSwipe={() => navigate({ search: (prev) => ({ ...prev, swipe: true }) })}
+                    mode={mode}
+                    onMode={(next) =>
+                        navigate({
+                            search: (prev) => ({ ...prev, mode: next === "auto" ? undefined : next }),
+                            replace: true,
+                        })
+                    }
                 />
 
                 {needsSetup && cardCount >= FRESH_DECK_CARDS && (
@@ -1012,7 +1023,7 @@ function RouteComponent() {
                         )
                     }
                     onUndo={undoSwipe}
-                    onClose={() => navigate({ search: {} })}
+                    onClose={() => navigate({ search: (prev) => ({ ...prev, swipe: undefined }) })}
                 />
             )}
         </MotionConfig>

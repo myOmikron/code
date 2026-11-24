@@ -219,12 +219,12 @@ services:
       timeout: 5s
       retries: 60
 
-  # Re-walks the top 1000 commanders on EDHREC once a week, so the dating pool
-  # stays full and fresh. Throttled to one request per second.
+  # Re-walks the top 1000 commanders plus every commander with 40+ EDHREC decks
+  # once a week, so the dating pool stays full and fresh. One request per second.
   graph-warm:
     image: ghcr.io/myomikron/mtg/graph:${MTG_VERSION:?}
     restart: unless-stopped
-    command: [ "deck-lab", "warm-edhrec", "--top", "1000", "--every-hours", "168" ]
+    command: [ "deck-lab", "warm-edhrec", "--top", "1000", "--min-decks", "40", "--every-hours", "168" ]
     environment:
       - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_PASSWORD=${NEO4J_PASSWORD:?}

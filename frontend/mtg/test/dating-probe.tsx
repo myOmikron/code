@@ -3,7 +3,8 @@
  * screenshotted without a login. `?state=stack|flip|match|reject|super|bio|profile|date-answer|date-pick|date-done|date-left|swipe|swipe-package`,
  * `?lng=de`.
  */
-import { Button, Heading, Navbar, NavbarItem, NavbarLabel, NavbarSection, StackedLayout } from "components";
+import { Navbar, NavbarItem, NavbarLabel, NavbarSection, StackedLayout } from "components";
+import { RouterProvider, createMemoryHistory, createRootRoute, createRouter } from "@tanstack/react-router";
 import { AnimatePresence } from "motion/react";
 import { Suspense, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -20,9 +21,9 @@ import type { Printing } from "src/utils/scryfall";
 import { DatingActions } from "src/components/dating-actions";
 import { DatingBioDialog } from "src/components/dating-bio-dialog";
 import { DatingCard } from "src/components/dating-card";
-import { DatingColorFilter } from "src/components/dating-color-filter";
-import { DatingSetFilter } from "src/components/dating-set-filter";
-import { DatingProfileForm } from "src/components/dating-profile-form";
+import { DatingPreferences } from "src/components/dating-preferences";
+import { DatingFilterSheet } from "src/components/dating-filter-sheet";
+import { DatingHeader } from "src/components/dating-header";
 import { DatingVerdict } from "src/components/dating-verdict";
 import type { Verdict } from "src/components/dating-verdict";
 import { nextColorChoice } from "src/utils/dating";
@@ -31,13 +32,20 @@ import type { Color, ColorChoice, SwipeDirection } from "src/utils/dating";
 const art = (name: string, version = "art_crop") =>
     `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=${version}`;
 
-const card = (name: string, colors: string, interests: string[], yourType = false): DatingCardResponse => ({
+const card = (
+    name: string,
+    colors: string,
+    interests: string[],
+    yourType = false,
+    twoFaced = false,
+): DatingCardResponse => ({
     commander: name.toLowerCase().replace(/\W+/g, "-"),
     printing: null,
     name,
     color_identity: colors,
     image_art_crop: art(name),
     image_normal: art(name, "normal"),
+    image_back_normal: twoFaced ? `${art(name, "normal")}&face=back` : null,
     type_line: "Legendary Creature",
     oracle_text: "Flying, vigilance, deathtouch, lifelink\nAt the beginning of your end step, proliferate.",
     edhrec_rank: 12,
@@ -47,6 +55,7 @@ const card = (name: string, colors: string, interests: string[], yourType = fals
 });
 
 const STACK = [
+    card("Esika, Queen of Myriad", "WG", ["Legends", "Tokens", "Counters"], false, true),
     card("Atraxa, Praetors' Voice", "WUBG", ["+1/+1 Counters", "Superfriends", "Infect"], true),
     card("Toxrill, the Corrosive", "UB", ["Control", "Removal", "Tokens"]),
     card("Krenko, Mob Boss", "R", ["Goblins", "Tokens", "Aggro"]),
@@ -181,6 +190,7 @@ function Probe() {
     const [stack, setStack] = useState(STACK);
     const [exit, setExit] = useState<SwipeDirection | null>(null);
     const [flipped, setFlipped] = useState(state === "flip");
+    const [sheet, setSheet] = useState(state === "filters");
     const [colors, setColors] = useState<Map<Color, ColorChoice>>(
         new Map([
             ["U", "required"],
@@ -278,11 +288,36 @@ function Probe() {
 
     if (state === "profile") {
         return (
-            <div className={"mx-auto max-w-md p-4"}>
-                <DatingProfileForm answers={{ colors: "UB", bracket: 3, budget_eur: 300 }} onSave={async () => {}} />
+            <div className={"mx-auto max-w-2xl px-2 py-4 sm:p-6"}>
+                <DatingPreferences
+                    profile={{
+                        decks: 4,
+                        colors: ["B", "G"],
+                        bracket: 2.8,
+                        budget_eur: 240,
+                        salt: 1.1,
+                        answers: { colors: "", bracket: 3, budget_eur: null, salt: null, avoided: ["tokens"] },
+                        themes: [
+                            { theme: "aristocrats", label: "Aristocrats", strength: 1, avoided: false },
+                            { theme: "graveyard", label: "Graveyard", strength: 0.4, avoided: false },
+                            { theme: "tokens", label: "Tokens", strength: 0, avoided: true },
+                        ],
+                    }}
+                    onChange={() => {}}
+                    themes={true}
+                />
             </div>
         );
     }
+
+    const toggleColor = (color: Color) =>
+        setColors((current) => {
+            const next = new Map(current);
+            const choice = nextColorChoice(current.get(color));
+            if (choice === undefined) next.delete(color);
+            else next.set(color, choice);
+            return next;
+        });
 
     const swipe = (direction: SwipeDirection) => {
         setExit(direction);
@@ -308,34 +343,22 @@ function Probe() {
             }
         >
             <div
+                data-full-bleed={""}
                 className={
-                    "mx-auto flex h-[calc(100dvh-5rem)] min-h-[34rem] w-full max-w-md flex-col gap-2 px-4 pt-2 pb-4 lg:h-[calc(100dvh-9rem)] lg:min-h-[30rem] lg:max-w-none lg:gap-5 lg:p-0"
+                    "mx-auto flex h-[calc(100dvh-5rem)] min-h-[34rem] w-full max-w-md flex-col gap-2 p-4 lg:h-[calc(100dvh-4rem)] lg:min-h-[35rem] lg:max-w-6xl lg:gap-5 lg:p-10"
                 }
             >
-                <header className={"flex flex-wrap items-center gap-x-2 gap-y-2 lg:flex-nowrap lg:gap-x-5"}>
-                    <Heading className={"min-w-0 flex-1"}>{"Command Zone Dating"}</Heading>
-                    <div className={"order-last w-full lg:order-none lg:w-auto"}>
-                        <DatingColorFilter
-                            choices={colors}
-                            onToggle={(color) =>
-                                setColors((current) => {
-                                    const next = new Map(current);
-                                    const choice = nextColorChoice(current.get(color));
-                                    if (choice === undefined) next.delete(color);
-                                    else next.set(color, choice);
-                                    return next;
-                                })
-                            }
-                        />
-                    </div>
-                    <span aria-hidden={true} className={"hidden h-6 w-px bg-zinc-950/10 lg:block dark:bg-white/10"} />
-                    <DatingSetFilter sets={sets} onSets={setSets} />
-                    <span aria-hidden={true} className={"hidden h-6 w-px bg-zinc-950/10 lg:block dark:bg-white/10"} />
-                    <div className={"flex items-center"}>
-                        <Button plain={true}>{"P"}</Button>
-                        <Button plain={true}>{"M"}</Button>
-                    </div>
-                </header>
+                <DatingHeader
+                    profileNeeded={false}
+                    colors={colors}
+                    onToggleColor={toggleColor}
+                    sets={sets}
+                    onSets={setSets}
+                    onPicking={() => {}}
+                    poly={false}
+                    onPoly={() => {}}
+                    onFilters={() => setSheet(true)}
+                />
                 <div className={"relative isolate min-h-0 flex-1 lg:mx-auto lg:w-full lg:max-w-5xl"}>
                     <AnimatePresence custom={exit}>
                         {stack
@@ -363,6 +386,14 @@ function Probe() {
                     onRewind={() => {}}
                 />
                 <DatingBioDialog card={state === "bio" ? STACK[0] : null} onClose={() => {}} />
+                <DatingFilterSheet
+                    open={sheet}
+                    onClose={() => setSheet(false)}
+                    colors={colors}
+                    onToggleColor={toggleColor}
+                    session={{ sets, onSets: setSets, poly: false, onPoly: () => {} }}
+                    onPreferences={() => {}}
+                />
                 {verdict !== null && (
                     <DatingVerdict
                         commander={STACK[1].commander}
@@ -385,9 +416,15 @@ if (language) await i18n.changeLanguage(language);
 await i18n.loadNamespaces(["dating", "advisor"]);
 if (params.get("dark") !== null) document.documentElement.classList.add("dark");
 
+// The real header links with the router, so the probe runs inside a throwaway one
+const router = createRouter({
+    routeTree: createRootRoute({ component: Probe }),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+});
+
 createRoot(document.getElementById("root")!).render(
     <Suspense fallback={null}>
-        <Probe />
+        <RouterProvider router={router} />
     </Suspense>,
 );
 document.body.dataset.status = "mounted";

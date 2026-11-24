@@ -1,4 +1,6 @@
-import type { DateSessionResponse, ThemeLevel } from "src/api/generated";
+import { ThemeLevel } from "src/api/generated";
+import type { DateSessionResponse } from "src/api/generated";
+import type { SwipeDirection } from "src/utils/dating";
 
 /** One line of a date's chat */
 export type DateMessage = {
@@ -25,6 +27,34 @@ const PROPOSE_VARIANTS = 3;
  */
 export function levelKey(level: ThemeLevel): string {
     return `label.level-${level}`;
+}
+
+/** The answer each swipe of a proposal gives */
+const SWIPE_LEVELS: Record<SwipeDirection, ThemeLevel> = {
+    up: ThemeLevel.allin,
+    right: ThemeLevel.core,
+    left: ThemeLevel.avoid,
+};
+
+/**
+ * The answer a swipe of the Commander's proposal gives.
+ *
+ * @param direction the swipe
+ * @returns the level
+ */
+export function swipeLevel(direction: SwipeDirection): ThemeLevel {
+    return SWIPE_LEVELS[direction];
+}
+
+/**
+ * The way a proposal leaves after an answer.
+ *
+ * @param level the answer
+ * @returns the swipe giving it, `null` for an answer no swipe gives
+ */
+export function levelSwipe(level: ThemeLevel): SwipeDirection | null {
+    const directions: Array<SwipeDirection> = ["up", "right", "left"];
+    return directions.find((direction) => SWIPE_LEVELS[direction] === level) ?? null;
 }
 
 /**

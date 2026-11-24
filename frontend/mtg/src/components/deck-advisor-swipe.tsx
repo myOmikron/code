@@ -8,6 +8,7 @@ import type { Variants } from "motion/react";
 import { ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SuggestionGroup } from "src/api/graph-generated";
+import { CardFlipButton } from "src/components/card-flip-button";
 import { DeckAdvisorImpactBadges } from "src/components/deck-advisor-impact-badges";
 import { PrimaryButton } from "src/components/primary-button";
 import type { Move } from "src/utils/advisor-moves";
@@ -112,6 +113,8 @@ export function DeckAdvisorSwipe(props: DeckAdvisorSwipeProps) {
     const [left, setLeft] = useState<Set<string>>(new Set());
     const [singles, setSingles] = useState(false);
     const [swiped, setSwiped] = useState<Array<Swiped>>([]);
+    // The card whose back face is shown
+    const [backOf, setBackOf] = useState<string | null>(null);
 
     const full = count >= target;
     // A basic swiped in comes back while the advisor still asks for lands
@@ -335,9 +338,25 @@ export function DeckAdvisorSwipe(props: DeckAdvisorSwipeProps) {
                                         otherLabel={t("label.swipe-never-stamp")}
                                         onSwipe={decide}
                                     >
-                                        <CardImage printing={current.printing} name={top.name} large={true} />
+                                        <CardImage
+                                            printing={current.printing}
+                                            name={top.name}
+                                            large={true}
+                                            back={backOf === top.oracle_id}
+                                        />
                                     </SwipeShell>
                                 </AnimatePresence>
+                                {current.printing?.backImageUrl && (
+                                    <div className={"absolute right-2 bottom-2 z-10"}>
+                                        <CardFlipButton
+                                            flipped={backOf === top.oracle_id}
+                                            onFlip={() =>
+                                                setBackOf((shown) => (shown === top.oracle_id ? null : top.oracle_id))
+                                            }
+                                            position={"inline"}
+                                        />
+                                    </div>
+                                )}
                             </div>
                             <aside
                                 className={
@@ -557,13 +576,16 @@ function SwipeShell(props: {
  * @param props.printing the printing to show
  * @param props.name card name
  * @param props.large whether the full-size image is worth loading
+ * @param props.back whether to show the back face
  * @returns the image
  */
-function CardImage(props: { printing: Printing | undefined; name: string; large: boolean }) {
-    const { printing, name, large } = props;
-    const image = (large ? printing?.largeImageUrl : null) ?? printing?.imageUrl ?? printing?.largeImageUrl ?? null;
+function CardImage(props: { printing: Printing | undefined; name: string; large: boolean; back?: boolean }) {
+    const { printing, name, large, back = false } = props;
+    const small = (back ? printing?.backImageUrl : printing?.imageUrl) ?? null;
+    const big = (back ? printing?.backLargeImageUrl : printing?.largeImageUrl) ?? null;
+    const image = (large ? big : null) ?? small ?? big;
     // A small image shown on desktop is drawn larger than it is
-    const desktop = large ? null : (printing?.largeImageUrl ?? null);
+    const desktop = large ? null : big;
     return image !== null ? (
         <picture className={"contents"}>
             {desktop !== null && <source media={"(min-width: 64rem)"} srcSet={desktop} />}
@@ -624,7 +646,13 @@ function PackageCard(props: {
     const focus = moves.find((move) => move.oracle_id === focusId) ?? moves[0];
     const focusPrinting = focus === undefined ? undefined : shown.printings.get(focus.name);
     const focusPrice = focusPrinting?.priceEur;
-    const focusImage = focusPrinting?.largeImageUrl ?? focusPrinting?.imageUrl ?? undefined;
+    const [backOf, setBackOf] = useState<string | null>(null);
+    const focusBack = focus !== undefined && backOf === focus.oracle_id;
+    const hasBack = focusPrinting?.backImageUrl != null;
+    const focusImage =
+        (focusBack && hasBack
+            ? (focusPrinting?.backLargeImageUrl ?? focusPrinting?.backImageUrl)
+            : (focusPrinting?.largeImageUrl ?? focusPrinting?.imageUrl)) ?? undefined;
 
     return (
         <SwipeShell
@@ -765,6 +793,15 @@ function PackageCard(props: {
                                             "absolute inset-x-0 top-0 mx-auto max-h-full max-w-full rounded-[4.75%/3.5%] shadow-(--shadow-card-lg)"
                                         }
                                     />
+                                )}
+                                {hasBack && (
+                                    <span className={"absolute right-2 bottom-2"}>
+                                        <CardFlipButton
+                                            flipped={focusBack}
+                                            onFlip={() => setBackOf(focusBack ? null : (focus?.oracle_id ?? null))}
+                                            position={"inline"}
+                                        />
+                                    </span>
                                 )}
                             </span>
                         </aside>

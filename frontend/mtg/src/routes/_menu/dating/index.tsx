@@ -1,6 +1,5 @@
-import { ChatBubbleLeftRightIcon, UserCircleIcon } from "@heroicons/react/20/solid";
-import { createFileRoute } from "@tanstack/react-router";
-import { Button, EmptyState, Heading, Text, notify } from "components";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { EmptyState, Text, notify } from "components";
 import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,20 +9,29 @@ import type { DatingCardResponse } from "src/api/generated";
 import { DatingActions } from "src/components/dating-actions";
 import { DatingBioDialog } from "src/components/dating-bio-dialog";
 import { DatingCard } from "src/components/dating-card";
-import { DatingColorFilter } from "src/components/dating-color-filter";
-import { DatingSetFilter } from "src/components/dating-set-filter";
+import { DatingFilterSheet } from "src/components/dating-filter-sheet";
+import { DatingHeader } from "src/components/dating-header";
 import { DatingVerdict } from "src/components/dating-verdict";
 import type { Verdict } from "src/components/dating-verdict";
 import { PrimaryButton } from "src/components/primary-button";
 import { RequireAccount } from "src/components/require-account";
 import i18n from "src/i18n";
-import { REFILL_AT, colorFilter, nextColorChoice } from "src/utils/dating";
+import { REFILL_AT, colorFilter, loadPoly, nextColorChoice, savePoly } from "src/utils/dating";
 import type { Color, ColorChoice, SwipeDirection } from "src/utils/dating";
 import { useShortcuts } from "src/utils/use-shortcuts";
 import { useDatingLines } from "src/utils/dating-lines";
 import { useStartDeck } from "src/utils/use-start-deck";
 
+/** What the dating page is opened with */
+type DatingSearch = {
+    /** The lead whose second Commander is being swiped */
+    with?: string;
+};
+
 export const Route = createFileRoute("/_menu/dating/")({
+    validateSearch: (search: Record<string, unknown>): DatingSearch => ({
+        with: typeof search.with === "string" ? search.with : undefined,
+    }),
     loader: async () => {
         await i18n.loadNamespaces(["dating"]);
     },
@@ -37,8 +45,12 @@ export const Route = createFileRoute("/_menu/dating/")({
  */
 function RouteComponent() {
     const [t] = useTranslation("dating");
+    const navigate = useNavigate({ from: Route.fullPath });
+    const { with: leadId } = Route.useSearch();
     const startDeck = useStartDeck();
     const lines = useDatingLines();
+    const [poly, setPoly] = useState(loadPoly);
+    const [lead, setLead] = useState<DatingCardResponse | null>(null);
     const [stack, setStack] = useState<DatingCardResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [exhausted, setExhausted] = useState(false);
@@ -47,11 +59,17 @@ function RouteComponent() {
     const [colors, setColors] = useState<Map<Color, ColorChoice>>(new Map());
     const [sets, setSets] = useState<string[]>([]);
     const [filtering, setFiltering] = useState(false);
+    const [sheet, setSheet] = useState(false);
+    const preferencesChanged = useRef(false);
     const [exit, setExit] = useState<SwipeDirection | null>(null);
     const [last, setLast] = useState<{ card: DatingCardResponse; kind: SwipeKind } | null>(null);
     const [bio, setBio] = useState<DatingCardResponse | null>(null);
     const [flipped, setFlipped] = useState<string | null>(null);
-    const [date, setDate] = useState<{ card: DatingCardResponse; verdict: Verdict } | null>(null);
+    const [date, setDate] = useState<{
+        card: DatingCardResponse;
+        partner: DatingCardResponse | null;
+        verdict: Verdict;
+    } | null>(null);
     const [busy, setBusy] = useState(false);
     const refilling = useRef(false);
     const gone = useRef(new Set<string>());
@@ -60,20 +78,39 @@ function RouteComponent() {
 
     const load = useCallback(
         async (pending: DatingCardResponse[]) => {
+            const held = [...pending.map((card) => card.commander), ...saving.current];
+            if (leadId !== undefined) {
+                const response = await Api.dating.partners({
+                    commander: leadId,
+                    colors: allowed,
+                    required_colors: required,
+                    pending: held,
+                });
+                setLead(response.lead);
+                return response.commanders;
+            }
             const response = await Api.dating.stack({
                 colors: allowed,
                 required_colors: required,
                 sets,
-                pending: [...pending.map((card) => card.commander), ...saving.current],
+                poly,
+                pending: held,
             });
             setProfileNeeded(response.profile_needed);
             setSupers(response.super_likes_left);
             return response.commanders;
         },
-        [allowed, required, sets],
+        [allowed, required, sets, poly, leadId],
     );
 
     useEffect(() => {
+        gone.current.clear();
+        setLast(null);
+        setFlipped(null);
+        if (leadId === undefined) setLead(null);
+    }, [leadId]);
+
+    const restart = useCallback(() => {
         let cancelled = false;
         setLoading(true);
         setExhausted(false);
@@ -87,6 +124,15 @@ function RouteComponent() {
             cancelled = true;
         };
     }, [load]);
+
+    useEffect(() => restart(), [restart]);
+
+    const closeSheet = () => {
+        setSheet(false);
+        if (!preferencesChanged.current) return;
+        preferencesChanged.current = false;
+        restart();
+    };
 
     useEffect(() => {
         if (loading || exhausted || refilling.current || stack.length > REFILL_AT) return;
@@ -108,6 +154,7 @@ function RouteComponent() {
     const swipe = async (direction: SwipeDirection) => {
         const top = stack[0];
         if (top === undefined || date !== null || busy) return;
+        if (leadId !== undefined && (lead === null || direction === "up")) return;
         if (direction === "up" && supers <= 0) {
             notify.info(t("description.super-gone"));
             return;
@@ -123,7 +170,11 @@ function RouteComponent() {
 
         let response;
         try {
-            response = await Api.dating.swipe({ commander: top.commander, kind });
+            response = await Api.dating.swipe(
+                lead === null
+                    ? { commander: top.commander, kind }
+                    : { commander: lead.commander, partner: top.commander, kind },
+            );
         } catch {
             notify.error(t("toast.swipe-failed"));
             gone.current.delete(top.commander);
@@ -137,7 +188,8 @@ function RouteComponent() {
         setSupers(response.super_likes_left);
         if (kind === SwipeKind.Pass) return;
         setDate({
-            card: top,
+            card: lead ?? top,
+            partner: lead === null ? null : top,
             verdict:
                 response.status === DateStatus.Matched
                     ? {
@@ -179,6 +231,18 @@ function RouteComponent() {
             return next;
         });
 
+    const togglePoly = (on: boolean) => {
+        savePoly(on);
+        setPoly(on);
+    };
+
+    const findPartner = (commander: string) => {
+        setDate(null);
+        void navigate({ search: { with: commander } });
+    };
+
+    const leavePartners = () => navigate({ search: {} });
+
     useShortcuts(
         {
             arrowleft: () => swipe("left"),
@@ -187,46 +251,34 @@ function RouteComponent() {
             arrowdown: () => flip(),
             backspace: () => rewind(),
         },
-        date === null && bio === null && !profileNeeded && !filtering,
+        date === null && bio === null && !profileNeeded && !filtering && !sheet,
     );
 
     const top = stack[0];
     const filtered = sets.length > 0;
+    const pairing = leadId !== undefined;
 
     return (
         <RequireAccount>
+            {/* Full bleed: the page pads itself, so phones get a wider card and thrown cards are clipped */}
             <div
+                data-full-bleed={""}
                 className={
-                    "mx-auto flex h-[calc(100dvh-5rem)] min-h-[34rem] w-full max-w-md flex-col gap-2 px-4 pt-2 pb-4 lg:h-[calc(100dvh-9rem)] lg:min-h-[30rem] lg:max-w-none lg:gap-5 lg:p-0"
+                    "mx-auto flex h-[calc(100dvh-5rem)] min-h-[34rem] w-full max-w-md flex-col gap-2 p-4 lg:h-[calc(100dvh-4rem)] lg:min-h-[35rem] lg:max-w-6xl lg:gap-5 lg:p-10"
                 }
             >
-                <header className={"flex flex-wrap items-center gap-x-2 gap-y-2 lg:flex-nowrap lg:gap-x-5"}>
-                    <Heading className={"min-w-0 flex-1"}>{t("heading.title")}</Heading>
-                    {!profileNeeded && (
-                        <>
-                            <div className={"order-last w-full lg:order-none lg:w-auto"}>
-                                <DatingColorFilter choices={colors} onToggle={toggleColor} />
-                            </div>
-                            <span
-                                aria-hidden={true}
-                                className={"hidden h-6 w-px bg-zinc-950/10 lg:block dark:bg-white/10"}
-                            />
-                            <DatingSetFilter sets={sets} onSets={setSets} onPicking={setFiltering} />
-                            <span
-                                aria-hidden={true}
-                                className={"hidden h-6 w-px bg-zinc-950/10 lg:block dark:bg-white/10"}
-                            />
-                        </>
-                    )}
-                    <div className={"flex items-center"}>
-                        <Button plain={true} href={"/dating/profile"} aria-label={t("button.profile")}>
-                            <UserCircleIcon />
-                        </Button>
-                        <Button plain={true} href={"/dating/matches"} aria-label={t("button.matches")}>
-                            <ChatBubbleLeftRightIcon />
-                        </Button>
-                    </div>
-                </header>
+                <DatingHeader
+                    pairing={pairing ? { lead, onLeave: leavePartners } : undefined}
+                    profileNeeded={profileNeeded}
+                    colors={colors}
+                    onToggleColor={toggleColor}
+                    sets={sets}
+                    onSets={setSets}
+                    onPicking={setFiltering}
+                    poly={poly}
+                    onPoly={togglePoly}
+                    onFilters={() => setSheet(true)}
+                />
 
                 <div className={"relative isolate min-h-0 flex-1 lg:mx-auto lg:w-full lg:max-w-5xl"}>
                     {loading ? (
@@ -237,6 +289,14 @@ function RouteComponent() {
                             description={t("description.no-profile")}
                             action={
                                 <PrimaryButton href={"/dating/profile"}>{t("button.answer-questions")}</PrimaryButton>
+                            }
+                        />
+                    ) : top === undefined && pairing ? (
+                        <EmptyState
+                            title={t("heading.title")}
+                            description={t("description.empty-partners", { name: lead?.name ?? "" })}
+                            action={
+                                <PrimaryButton onClick={leavePartners}>{t("button.back-to-commanders")}</PrimaryButton>
                             }
                         />
                     ) : top === undefined && filtered ? (
@@ -291,12 +351,23 @@ function RouteComponent() {
                     <DatingActions
                         canSwipe={top !== undefined}
                         canRewind={last !== null && !busy}
-                        supers={supers}
+                        supers={pairing ? null : supers}
                         onSwipe={swipe}
                         onRewind={rewind}
                     />
                 )}
             </div>
+
+            <DatingFilterSheet
+                open={sheet}
+                onClose={closeSheet}
+                colors={colors}
+                onToggleColor={toggleColor}
+                session={pairing ? null : { sets, onSets: setSets, poly, onPoly: togglePoly }}
+                onPreferences={() => {
+                    preferencesChanged.current = true;
+                }}
+            />
 
             <DatingBioDialog
                 card={bio}
@@ -310,6 +381,18 @@ function RouteComponent() {
                         commander={date.card.commander}
                         name={date.card.name}
                         art={date.card.image_art_crop ?? date.card.image_normal ?? null}
+                        partner={
+                            date.partner && {
+                                commander: date.partner.commander,
+                                name: date.partner.name,
+                                art: date.partner.image_art_crop ?? date.partner.image_normal ?? null,
+                            }
+                        }
+                        findPartner={
+                            poly && date.partner === null && date.card.seeks
+                                ? { seeks: date.card.seeks, onFind: () => findPartner(date.card.commander) }
+                                : null
+                        }
                         verdict={date.verdict}
                         lines={lines?.[date.card.name] ?? null}
                         busy={busy}
@@ -323,6 +406,11 @@ function RouteComponent() {
                                         name: date.card.name,
                                         printing: date.card.printing,
                                         art: date.card.image_art_crop,
+                                        partner: date.partner && {
+                                            commander: date.partner.commander,
+                                            name: date.partner.name,
+                                            printing: date.partner.printing,
+                                        },
                                     },
                                     mode,
                                 );
@@ -333,8 +421,8 @@ function RouteComponent() {
                         onComeBack={async () => {
                             setBusy(true);
                             try {
-                                await Api.dating.comeBack(date.card.commander);
-                                setDate({ card: date.card, verdict: { kind: "match", how: "comeback", shared: null } });
+                                await Api.dating.comeBack(date.card.commander, date.partner?.commander);
+                                setDate({ ...date, verdict: { kind: "match", how: "comeback", shared: null } });
                             } finally {
                                 setBusy(false);
                             }

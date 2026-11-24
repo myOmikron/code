@@ -1,0 +1,85 @@
+[Migration]
+Hash = "6919920167366580089"
+Initial = false
+Dependency = 82
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "dating_profile"
+
+[Migration.Operations.Field]
+Name = "salt"
+Type = "int16"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 117
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "dating_profile"
+
+[Migration.Operations.Field]
+Name = "avoided"
+Type = "binary"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 120
+Column = 9
+
+# Answers used to only stand in for missing decks; now they win over decks. Drop the
+# ones the decks were overriding, so nobody's profile changes by itself.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+UPDATE dating_profile SET colors = '', budget_eur = NULL
+WHERE EXISTS (
+    SELECT 1 FROM deck d JOIN deckcard c ON c.deck = d.uuid
+    WHERE d.owner = dating_profile.owner AND c.zone = 'Commander'
+);
+"""
+Postgres = """
+UPDATE dating_profile SET colors = '', budget_eur = NULL
+WHERE EXISTS (
+    SELECT 1 FROM deck d JOIN deckcard c ON c.deck = d.uuid
+    WHERE d.owner = dating_profile.owner AND c.zone = 'Commander'
+);
+"""
+MySQL = """
+UPDATE dating_profile SET colors = '', budget_eur = NULL
+WHERE EXISTS (
+    SELECT 1 FROM deck d JOIN deckcard c ON c.deck = d.uuid
+    WHERE d.owner = dating_profile.owner AND c.zone = 'Commander'
+);
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+UPDATE dating_profile SET bracket = NULL
+WHERE EXISTS (
+    SELECT 1 FROM deck d JOIN deckcard c ON c.deck = d.uuid
+    WHERE d.owner = dating_profile.owner AND c.zone = 'Commander' AND d.bracket IS NOT NULL
+);
+"""
+Postgres = """
+UPDATE dating_profile SET bracket = NULL
+WHERE EXISTS (
+    SELECT 1 FROM deck d JOIN deckcard c ON c.deck = d.uuid
+    WHERE d.owner = dating_profile.owner AND c.zone = 'Commander' AND d.bracket IS NOT NULL
+);
+"""
+MySQL = """
+UPDATE dating_profile SET bracket = NULL
+WHERE EXISTS (
+    SELECT 1 FROM deck d JOIN deckcard c ON c.deck = d.uuid
+    WHERE d.owner = dating_profile.owner AND c.zone = 'Commander' AND d.bracket IS NOT NULL
+);
+"""
