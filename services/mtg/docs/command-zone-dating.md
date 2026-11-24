@@ -23,9 +23,10 @@ Design settled in a grilling session on 2026-11-17. Phase 1 is built on
 ## Phase 1: swiping and matches
 
 **Pool.** Commanders whose EDHREC data is in the graph (`has_recommendations`).
-A scheduled weekly `deck-lab warm-edhrec --top 1000` keeps it full; today the warm is
-manual. Cold Commanders stay out until warmed: without their EDHREC page they have no
+The weekly `graph-warm` job (`deck-lab warm-edhrec --top 1000 --min-decks 40`) keeps it
+full. Cold Commanders stay out until warmed: without their EDHREC page they have no
 interests, salt or typical deck price.
+Only Commanders with at least 40 EDHREC decks join (`POOL_MIN_DECKS` in `dating.py`); `--min-decks` walks EDHREC's commander list, so new-set Commanders get warmed too.
 
 **Stack order.** Popularity-weighted random, not by compatibility (or everything
 matches). An occasional "Your type" card. Optional color filter.
@@ -55,8 +56,10 @@ Target rejection rate among likes is about 30%, with the threshold measured agai
 real profiles, not guessed.
 
 **Profile.** A server-side snapshot, rebuilt on opening when a deck changed since. Players
-without decks fill a 3-question dating profile (colors, bracket, budget); deck
-signals override it. "My dating profile" shows the player how Commanders see them.
+set colors, bracket, budget and salt on "My dating profile"; a set value wins over the decks
+until reset. Themes marked "not my thing" leave the profile and squash the themes score by the
+Commander's share in them, squared; such a rejection has its own reason ("Not your thing").
+Migration 0083 drops old answers wherever decks were overriding them.
 It is private.
 
 **Lines.** `frontend/mtg/src/assets/dating-lines/{en,de}.json`, keyed by card name, loaded lazily per

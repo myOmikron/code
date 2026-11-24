@@ -77,9 +77,22 @@ pub struct GraphProfile {
     pub budget_eur: Option<f64>,
     /// Average salt of the account's Commanders
     pub salt: Option<f64>,
+    /// Theme ids the account said no to
+    #[serde(default)]
+    pub avoided: Vec<String>,
 }
 
-/// The dating-profile questions, for accounts without decks
+/// A salt answer as stored: tenths, so answers stay hashable
+pub fn salt_tenths(salt: f64) -> i16 {
+    (salt * 10.0).round() as i16
+}
+
+/// A stored salt answer on EDHREC's scale
+pub fn salt_value(tenths: i16) -> f64 {
+    f64::from(tenths) / 10.0
+}
+
+/// The account's own preferences; each one given wins over its decks
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ProfileAnswers {
     /// Colors as letters of WUBRG
@@ -88,6 +101,10 @@ pub struct ProfileAnswers {
     pub bracket: Option<i16>,
     /// Typical deck budget in euro
     pub budget_eur: Option<i32>,
+    /// Preferred salt, in tenths
+    pub salt: Option<i16>,
+    /// Theme ids the account said no to
+    pub avoided: Vec<String>,
 }
 
 /// One deck as the profile reads it
@@ -123,6 +140,8 @@ impl From<DatingProfileModel> for DatingProfile {
                 colors: model.colors.into_inner(),
                 bracket: model.bracket,
                 budget_eur: model.budget_eur,
+                salt: model.salt,
+                avoided: model.avoided.map(Json::into_inner).unwrap_or_default(),
             }),
             snapshot: model.snapshot.map(Json::into_inner),
             snapshot_key: model.snapshot_key.map(MaxStr::into_inner),
@@ -156,6 +175,11 @@ impl DatingProfile {
             .set(DatingProfileModel.colors, colors.clone())
             .set(DatingProfileModel.bracket, answers.bracket)
             .set(DatingProfileModel.budget_eur, answers.budget_eur)
+            .set(DatingProfileModel.salt, answers.salt)
+            .set(
+                DatingProfileModel.avoided,
+                Some(Json(answers.avoided.clone())),
+            )
             .set(DatingProfileModel.answered, true)
             .set(DatingProfileModel.snapshot_key, None)
             .condition(DatingProfileModel.owner.equals(owner.into_inner()))
@@ -169,6 +193,8 @@ impl DatingProfile {
                     colors,
                     bracket: answers.bracket,
                     budget_eur: answers.budget_eur,
+                    salt: answers.salt,
+                    avoided: Some(Json(answers.avoided.clone())),
                     answered: true,
                     snapshot: None,
                     snapshot_key: None,
@@ -201,6 +227,8 @@ impl DatingProfile {
                     colors: MaxStr::default(),
                     bracket: None,
                     budget_eur: None,
+                    salt: None,
+                    avoided: None,
                     answered: false,
                     snapshot: Some(Json(snapshot)),
                     snapshot_key: key,
@@ -592,6 +620,8 @@ pub struct CommanderPrinting {
     pub image_art_crop: Option<String>,
     /// Full card image url
     pub image_normal: Option<String>,
+    /// The back face's full image url, for two-faced cards
+    pub image_back_normal: Option<String>,
 }
 
 /// The Default printing per oracle id, for those the catalog knows
@@ -611,7 +641,7 @@ pub async fn read_commander_printings(
         .execute::<All>(
             format!(
                 "SELECT DISTINCT ON (p.oracle_id) p.oracle_id, p.id, p.name, p.color_identity, \
-                    p.image_art_crop, p.image_normal \
+                    p.image_art_crop, p.image_normal, p.image_back_normal \
              FROM printing p \
              WHERE p.oracle_id IN ({placeholders}) \
                AND (p.released_at IS NULL OR p.released_at <= CURRENT_DATE) \
@@ -638,8 +668,22 @@ pub async fn read_commander_printings(
                 color_identity: row.get("color_identity").map_err(decode)?,
                 image_art_crop: row.get("image_art_crop").map_err(decode)?,
                 image_normal: row.get("image_normal").map_err(decode)?,
+                image_back_normal: row.get("image_back_normal").map_err(decode)?,
             },
         );
     }
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn salt_survives_storage() {
+        for salt in [0.0, 0.5, 1.0, 1.5, 2.0, 4.0] {
+            assert_eq!(salt_value(salt_tenths(salt)), salt);
+        }
+        assert_eq!(salt_tenths(1.04), 10);
+    }
 }

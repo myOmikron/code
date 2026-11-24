@@ -17,7 +17,9 @@ This is the project's riskiest dependency and it is deliberately quarantined:
   operator-run, throttled walks — of the most-played commanders, and of one
   tag's commander×tag subpages, respectively — so those fetches happen on a
   CLI run rather than inside a user's request. Nothing else may crawl; the
-  production stack repeats the commander walk weekly (`graph-warm`).
+  production stack repeats the commander walk weekly (`graph-warm`). The
+  commander walk also pages EDHREC's commander list (`listed_commanders`) down
+  to a deck floor, so new commanders a low Scryfall rank buries get warmed too.
 
 Schema as observed 2026-08-04 (`atraxa-praetors-voice`):
 
@@ -36,6 +38,7 @@ import json
 import re
 import time
 import unicodedata
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -734,7 +737,7 @@ def _warm_cedh_pass(
 
 
 def warm_top_commanders(
-    top: int = 1000, *, delay_seconds: float = 1.0, cedh: bool = False
+    top: int = 1000, *, delay_seconds: float = 1.0, cedh: bool = False, min_decks: int = 0
 ) -> dict[str, int]:
     """Pre-fetch the most-played commanders so users never pay the first fetch.
 
@@ -753,6 +756,9 @@ def warm_top_commanders(
     separate `cedh_*` keys, present in the returned dict only when
     `cedh=True` — so a caller not asking for the cedh pass still sees
     exactly today's six keys.
+
+    `min_decks > 0` adds every commander EDHREC's list shows with at least
+    that many decks (`listed_commanders`), counted under `listed`.
     """
     from .graph import has_commander_facts, has_recommendations, top_commanders
     from .type_targets import CEDH_MIN_DECKS
@@ -775,7 +781,13 @@ def warm_top_commanders(
             cedh_failed=0,
         )
 
-    for row in top_commanders(top):
+    rows = top_commanders(top)
+    if min_decks > 0:
+        ranked = len(rows)
+        rows = _with_listed(rows, min_decks, delay_seconds)
+        counts["listed"] = len(rows) - ranked
+
+    for row in rows:
         name = row["name"]
         oracle_id = row["oracle_id"]
         counts["considered"] += 1
@@ -807,3 +819,137 @@ def warm_top_commanders(
 
     log.info("edhrec.warmed", **counts)
     return counts
+
+
+# --- the commander list -----------------------------------------------------
+# EDHREC's commanders ranked by decks over the past two years, 100 per page:
+# the first page nests the list in `container.json_dict.cardlists[0]`, later
+# pages carry `{cardviews, more}` top-level. `more` names the next page.
+
+LIST_BASE_URL = "https://json.edhrec.com/pages"
+LIST_FIRST_PAGE = "commanders/year.json"
+# The list reorders as decks are logged; a day keeps each weekly walk current.
+LIST_TTL_SECONDS = 24 * 60 * 60
+# A runaway stop: about 42 pages reach 40 decks.
+LIST_MAX_PAGES = 200
+_LIST_PAGE = re.compile(r"commanders/[a-z0-9-]+\.json")
+
+
+@dataclass(frozen=True)
+class ListedCommander:
+    name: str
+    decks: int
+
+
+def parse_commander_list(payload: dict) -> tuple[list[ListedCommander], str | None]:
+    """One list page -> its commanders and the next page's path, if any."""
+    block = payload
+    cardlists = ((payload.get("container") or {}).get("json_dict") or {}).get("cardlists")
+    if cardlists:
+        block = cardlists[0]
+    entries = [
+        ListedCommander(view["name"], int(view.get("num_decks") or 0))
+        for view in block.get("cardviews") or []
+        if view.get("name")
+    ]
+    return entries, block.get("more") or None
+
+
+def _list_cache_path(page: str) -> Path:
+    # `_lists` cannot collide with a commander: `slugify` never yields a `_`.
+    return settings.data_dir / "edhrec" / "_lists" / Path(page).name
+
+
+def _list_cached(page: str) -> bool:
+    path = _list_cache_path(page)
+    return path.exists() and (time.time() - path.stat().st_mtime) < LIST_TTL_SECONDS
+
+
+def fetch_commander_list_page(page: str) -> dict:
+    """One page of the commander list, from disk within `LIST_TTL_SECONDS`."""
+    path = _list_cache_path(page)
+    if _list_cached(page):
+        return json.loads(path.read_text())
+
+    log.info("edhrec.fetch_list", page=page)
+    response = httpx.get(
+        f"{LIST_BASE_URL}/{page}",
+        headers={
+            "User-Agent": settings.scryfall_user_agent,
+            "Accept": "application/json",
+        },
+        timeout=30.0,
+        follow_redirects=True,
+    )
+    response.raise_for_status()
+    payload = response.json()
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload))
+    return payload
+
+
+def listed_commanders(min_decks: int, *, delay_seconds: float = 1.0) -> list[ListedCommander]:
+    """Every listed commander with at least `min_decks` decks, most played first.
+
+    Stops at the first page whose last entry falls below the floor, since the
+    list is sorted by decks. Throttled like the warm walk.
+    """
+    listed: list[ListedCommander] = []
+    page: str | None = LIST_FIRST_PAGE
+    for _ in range(LIST_MAX_PAGES):
+        if page is None:
+            break
+        if not _LIST_PAGE.fullmatch(page):
+            log.warning("edhrec.list_unexpected_page", page=page)
+            break
+        network = not _list_cached(page)
+        payload = fetch_commander_list_page(page)
+        if network:
+            time.sleep(delay_seconds)
+        entries, page = parse_commander_list(payload)
+        listed += [entry for entry in entries if entry.decks >= min_decks]
+        if not entries or entries[-1].decks < min_decks:
+            break
+    return listed
+
+
+def match_listed(listed: Iterable[ListedCommander], commanders: Iterable[dict]) -> list[dict]:
+    """Listed names -> graph commander rows, in list order, each once.
+
+    A `//` name is a double-faced card or a pair; a pair matches each half.
+    """
+    rows = list(commanders)
+    full = {row["name"].casefold(): row for row in rows}
+    front = {row["name"].split(" // ")[0].casefold(): row for row in rows}
+
+    def lookup(name: str) -> dict | None:
+        return full.get(name) or front.get(name)
+
+    matched: list[dict] = []
+    seen: set[str] = set()
+    for entry in listed:
+        key = entry.name.casefold()
+        hit = lookup(key)
+        hits = [hit] if hit else [lookup(part) for part in key.split(" // ")]
+        for row in hits:
+            if row is not None and row["oracle_id"] not in seen:
+                seen.add(row["oracle_id"])
+                matched.append(row)
+    return matched
+
+
+def _with_listed(rows: list[dict], min_decks: int, delay_seconds: float) -> list[dict]:
+    """`rows` plus the listed commanders above `min_decks` they miss."""
+    from .graph import commander_names
+
+    try:
+        listed = listed_commanders(min_decks, delay_seconds=delay_seconds)
+    except Exception as exc:  # noqa: BLE001 — the ranked walk still runs without the list
+        log.warning("edhrec.list_failed", error=str(exc))
+        return rows
+
+    seen = {row["oracle_id"] for row in rows}
+    extra = [row for row in match_listed(listed, commander_names()) if row["oracle_id"] not in seen]
+    log.info("edhrec.listed", listed=len(listed), extra=len(extra))
+    return rows + extra

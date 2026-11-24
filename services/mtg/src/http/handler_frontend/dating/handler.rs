@@ -74,6 +74,8 @@ use crate::models::dating::read_profile_decks;
 use crate::models::dating::remote;
 use crate::models::dating::remote::StackCommander;
 use crate::models::dating::remote::StackFilter;
+use crate::models::dating::salt_tenths;
+use crate::models::dating::salt_value;
 use crate::models::deck::DeckAccess;
 use crate::models::deck::DeckUuid;
 
@@ -91,6 +93,12 @@ const MAX_FILTER_SETS: usize = 100;
 
 /// Super likes per day
 const SUPER_LIKES_PER_DAY: i64 = 1;
+
+/// The highest salt an answer may ask for, EDHREC's scale
+const MAX_SALT: f64 = 4.0;
+
+/// How many themes an account may say no to
+const MAX_AVOIDED: usize = 64;
 
 fn advisor_error(error: anyhow::Error) -> ApiError {
     warn!(%error, "The advisor did not answer a dating request");
@@ -156,6 +164,7 @@ fn reason(
         "bracket" => RejectDimension::Bracket,
         "budget" => RejectDimension::Budget,
         "salt" => RejectDimension::Salt,
+        "avoided" => RejectDimension::Avoided,
         _ => return None,
     };
     let direction = match direction {
@@ -225,6 +234,7 @@ fn card_response(
         color_identity: commander.color_identity.concat(),
         image_art_crop: printing.and_then(|p| p.image_art_crop.clone()),
         image_normal: printing.and_then(|p| p.image_normal.clone()),
+        image_back_normal: printing.and_then(|p| p.image_back_normal.clone()),
         type_line: commander.type_line,
         oracle_text: commander.oracle_text,
         edhrec_rank: commander.edhrec_rank,
@@ -631,16 +641,24 @@ async fn profile_response(owner: AccountUuid) -> ApiResult<DatingProfileResponse
     tx.commit().await?;
 
     let labels = profile.labels;
+    let label = |theme: &String| labels.get(theme).cloned().unwrap_or_else(|| theme.clone());
     let mut themes: Vec<ThemeStrength> = profile
         .themes
         .into_iter()
         .map(|(theme, strength)| ThemeStrength {
-            label: labels.get(&theme).cloned().unwrap_or_else(|| theme.clone()),
+            label: label(&theme),
             theme,
             strength,
+            avoided: false,
         })
         .collect();
     themes.sort_by(|a, b| b.strength.total_cmp(&a.strength));
+    themes.extend(profile.avoided.into_iter().map(|theme| ThemeStrength {
+        label: label(&theme),
+        theme,
+        strength: 0.0,
+        avoided: true,
+    }));
     let mut colors: Vec<(String, f64)> = profile.colors.into_iter().collect();
     colors.sort_by(|a, b| b.1.total_cmp(&a.1));
 
@@ -649,6 +667,12 @@ async fn profile_response(owner: AccountUuid) -> ApiResult<DatingProfileResponse
             colors: MaxStr::new(answers.colors).unwrap_or_default(),
             bracket: answers.bracket,
             budget_eur: answers.budget_eur,
+            salt: answers.salt.map(salt_value),
+            avoided: answers
+                .avoided
+                .into_iter()
+                .filter_map(|theme| MaxStr::new(theme).ok())
+                .collect(),
         }),
         decks: profile.decks,
         themes,
@@ -686,11 +710,29 @@ pub async fn update_dating_profile(
     {
         return Err(ApiError::bad_request("Budget is out of range"));
     }
+    if request
+        .salt
+        .is_some_and(|salt| !(0.0..=MAX_SALT).contains(&salt))
+    {
+        return Err(ApiError::bad_request("Salt must be between 0 and 4"));
+    }
+    if request.avoided.len() > MAX_AVOIDED {
+        return Err(ApiError::bad_request("Too many avoided themes"));
+    }
 
+    let mut avoided: Vec<String> = request
+        .avoided
+        .into_iter()
+        .map(MaxStr::into_inner)
+        .collect();
+    avoided.sort();
+    avoided.dedup();
     let answers = ProfileAnswers {
         colors: request.colors.into_inner(),
         bracket: request.bracket,
         budget_eur: request.budget_eur,
+        salt: request.salt.map(salt_tenths),
+        avoided,
     };
     let mut tx = Database::global().start_transaction().await?;
     DatingProfile::save_answers(&mut tx, account.uuid, &answers).await?;

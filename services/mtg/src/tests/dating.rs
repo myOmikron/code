@@ -113,7 +113,7 @@ fn coming_back_needs_a_date() {
 }
 
 #[test]
-fn answers_must_be_wubrg_and_a_real_bracket() {
+fn answers_must_be_wubrg_a_real_bracket_and_in_range() {
     run(async {
         let member = create_account(Role::Member).await;
         let mut session = TestClient::logged_in(&member).await;
@@ -122,6 +122,8 @@ fn answers_must_be_wubrg_and_a_real_bracket() {
             json!({ "colors": "WX", "bracket": 3, "budget_eur": 100 }),
             json!({ "colors": "W", "bracket": 6, "budget_eur": 100 }),
             json!({ "colors": "W", "bracket": 2, "budget_eur": -1 }),
+            json!({ "colors": "W", "bracket": 2, "budget_eur": 100, "salt": 4.5 }),
+            json!({ "colors": "W", "bracket": 2, "budget_eur": 100, "avoided": vec!["tokens"; 65] }),
         ] {
             let response = session
                 .json(Method::PUT, &api("dating/profile"), &body)

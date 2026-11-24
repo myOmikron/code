@@ -39,6 +39,8 @@ pub enum RejectDimension {
     Budget,
     /// How salty the account's Commanders are
     Salt,
+    /// A theme the account said no to
+    Avoided,
 }
 
 /// Whether the Commander wants more or less of a dimension than the account brings
@@ -146,6 +148,8 @@ pub struct DatingCardResponse {
     pub image_art_crop: Option<String>,
     /// Full card image url
     pub image_normal: Option<String>,
+    /// The back face's full image url, for two-faced cards
+    pub image_back_normal: Option<String>,
     /// Type line
     pub type_line: String,
     /// Oracle text
@@ -272,7 +276,7 @@ pub struct DatesResponse {
     pub shots: Vec<DateResponse>,
 }
 
-/// The dating-profile questions
+/// The account's own preferences; each one given wins over its decks
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct DatingAnswers {
     /// Colors as letters of WUBRG
@@ -281,6 +285,12 @@ pub struct DatingAnswers {
     pub bracket: Option<i16>,
     /// Typical deck budget in euro
     pub budget_eur: Option<i32>,
+    /// Preferred salt, 0 to 4
+    #[serde(default)]
+    pub salt: Option<f64>,
+    /// Theme ids the account said no to
+    #[serde(default)]
+    pub avoided: Vec<MaxStr<64>>,
 }
 
 /// How strongly the account plays a theme
@@ -292,6 +302,8 @@ pub struct ThemeStrength {
     pub label: String,
     /// 0..1
     pub strength: f64,
+    /// Whether the account said no to it
+    pub avoided: bool,
 }
 
 /// What Commanders see of the account

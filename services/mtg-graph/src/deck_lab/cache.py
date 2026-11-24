@@ -170,7 +170,7 @@ facets_cache = LruTtlCache(
     ttl_seconds=settings.facets_cache_ttl_seconds,
 )
 
-# The dating pool: every commander with stored page facts. A warm adds to it.
+# The dating pool: every commander with stored page facts and enough decks. A warm adds to it.
 dating_pool_cache = LruTtlCache(
     "dating_pool",
     max_entries=1,

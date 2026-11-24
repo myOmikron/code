@@ -23,8 +23,12 @@ from .themes import THEMES
 OracleId = Annotated[str, Field(max_length=64)]
 Color = Literal["W", "U", "B", "R", "G"]
 Dimension = Literal["themes", "colors", "bracket", "budget", "salt"]
+# A rejection's dimension: "avoided" is a themes rejection over a theme the player said no to.
+Reason = Literal["themes", "colors", "bracket", "budget", "salt", "avoided"]
 
 MAX_DECKS = 40
+# EDHREC decks a commander needs to join the dating pool.
+POOL_MIN_DECKS = 40
 MAX_EXCLUDED = 20_000
 MAX_STACK = 30
 
@@ -221,15 +225,17 @@ class DatingDeck(BaseModel):
 
 
 class ProfileAnswers(BaseModel):
-    """The dating-profile questions, for players without decks."""
+    """The player's own preferences; each one set wins over the decks."""
 
     colors: list[Color] = Field(default_factory=list, max_length=5)
     bracket: int | None = Field(None, ge=1, le=5)
     budget_eur: float | None = Field(None, ge=0)
+    salt: float | None = Field(None, ge=0, le=4)
+    avoided: list[Annotated[str, Field(max_length=64)]] = Field(default_factory=list, max_length=64)
 
 
 class DatingProfile(BaseModel):
-    """What commanders see of a player. Deck signals win over answers."""
+    """What commanders see of a player. Answers win over deck signals."""
 
     decks: int
     themes: dict[str, float]
@@ -238,6 +244,7 @@ class DatingProfile(BaseModel):
     bracket: float | None
     budget_eur: float | None
     salt: float | None
+    avoided: list[str] = Field(default_factory=list)
 
 
 class DatingVerdict(BaseModel):
@@ -245,7 +252,7 @@ class DatingVerdict(BaseModel):
 
     match: bool
     score: float
-    dimension: Dimension | None
+    dimension: Reason | None
     direction: Literal["more", "less"] | None
     detail: str | None
     shared: str | None
@@ -384,12 +391,13 @@ def build_profile(
     deck_themes: Callable[[DatingDeck], dict[str, float]] = _deck_themes,
     salts: Callable[[list[str]], dict[str, float]] | None = None,
 ) -> DatingProfile:
-    """Aggregate the player's decks; answers fill what the decks cannot say."""
+    """Aggregate the player's decks; every answer given overrides them."""
     if salts is None:
         from .graph import commander_salts as salts
 
     answers = answers or ProfileAnswers()
     decks = decks[:MAX_DECKS]
+    avoided = set(answers.avoided)
 
     themes: dict[str, float] = {}
     for deck in decks:
@@ -399,30 +407,44 @@ def build_profile(
             strength = _clamp(share / THEME_PLAYED)
             if strength > themes.get(theme, 0.0):
                 themes[theme] = round(strength, 3)
-    themes = {theme: strength for theme, strength in themes.items() if strength > 0}
+    themes = {
+        theme: strength
+        for theme, strength in themes.items()
+        if strength > 0 and theme not in avoided
+    }
 
-    if decks:
+    if answers.colors:
+        colors = {color: 1.0 for color in answers.colors}
+    elif decks:
         colors = {
             color: round(sum(color in deck.colors for deck in decks) / len(decks), 3)
             for color in "WUBRG"
         }
         colors = {color: share for color, share in colors.items() if share > 0}
     else:
-        colors = {color: 1.0 for color in answers.colors}
+        colors = {}
 
     brackets = [deck.bracket for deck in decks if deck.bracket is not None]
     prices = [deck.price_eur for deck in decks if deck.price_eur]
     seats = sorted({seat for deck in decks for seat in deck.commanders})
-    salt_values = list(salts(seats).values()) if seats else []
+    salt_values = list(salts(seats).values()) if seats and answers.salt is None else []
+
+    def pick(
+        answer: float | None, measured: list[float], average: Callable, digits: int
+    ) -> float | None:
+        if answer is not None:
+            return answer
+        return round(average(measured), digits) if measured else None
 
     return DatingProfile(
         decks=len(decks),
         themes=themes,
-        labels={theme: THEMES[theme].label for theme in themes if theme in THEMES},
+        labels={theme: THEMES[theme].label for theme in {*themes, *avoided} if theme in THEMES},
         colors=colors,
-        bracket=round(fmean(brackets), 2) if brackets else answers.bracket,
-        budget_eur=round(median(prices), 2) if prices else answers.budget_eur,
-        salt=round(fmean(salt_values), 3) if salt_values else None,
+        bracket=pick(answers.bracket, brackets, fmean, 2),
+        budget_eur=pick(answers.budget_eur, prices, median, 2),
+        salt=pick(answers.salt, salt_values, fmean, 3),
+        avoided=sorted(theme for theme in avoided if theme in THEMES),
     )
 
 
@@ -433,14 +455,24 @@ def _scores(
     out: dict[str, tuple[float, str | None, str | None]] = {}
 
     mapped = [interest for interest in commander.interests if interest.theme]
-    if profile.themes and mapped:
+    avoided = [interest for interest in mapped if interest.theme in profile.avoided]
+    if mapped and (profile.themes or avoided):
         total = sum(interest.share for interest in mapped) or 1.0
-        score = sum(
-            interest.share / total * profile.themes.get(interest.theme or "", 0.0)
-            for interest in mapped
-        )
-        missing = min(mapped, key=lambda interest: profile.themes.get(interest.theme or "", 0.0))
-        out["themes"] = (score, None, missing.label)
+        score = 1.0
+        missing = None
+        if profile.themes:
+            score = sum(
+                interest.share / total * profile.themes.get(interest.theme or "", 0.0)
+                for interest in mapped
+            )
+            missing = min(
+                mapped, key=lambda interest: profile.themes.get(interest.theme or "", 0.0)
+            )
+        if avoided:
+            # Squared, so a top interest the player said no to sinks the match.
+            score *= (1 - sum(interest.share for interest in avoided) / total) ** 2
+            missing = max(avoided, key=lambda interest: interest.share)
+        out["themes"] = (score, "avoided" if avoided else None, missing.label if missing else None)
 
     identity = [color for color in commander.color_identity if color in "WUBRG"]
     if not identity:
@@ -508,10 +540,13 @@ def verdict(profile: DatingProfile, commander: DatingCommander) -> DatingVerdict
 
     worst = min(scores, key=lambda dimension: (scores[dimension][0], -WEIGHTS[dimension]))
     _, direction, detail = scores[worst]
+    reason: str = worst
+    if direction == "avoided":
+        reason, direction = "avoided", None
     return DatingVerdict(
         match=False,
         score=round(total, 3),
-        dimension=worst,  # type: ignore[arg-type]
+        dimension=reason,  # type: ignore[arg-type]
         direction=direction,  # type: ignore[arg-type]
         detail=detail,
         shared=shared,

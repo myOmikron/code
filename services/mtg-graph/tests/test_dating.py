@@ -16,6 +16,7 @@ from deck_lab.dating import (
     ProfileAnswers,
     build_profile,
     commander_card,
+    score,
     stack,
     verdict,
 )
@@ -122,6 +123,44 @@ def test_answers_fill_in_for_a_player_without_decks():
     assert result.colors == {"U": 1.0, "R": 1.0}
     assert result.bracket == 2
     assert result.budget_eur == 50
+
+
+def test_answers_win_over_the_decks():
+    decks = [DatingDeck(commanders=["a"], cards={"c1": 1}, bracket=4, price_eur=900, colors=["B"])]
+    answers = ProfileAnswers(colors=["G"], bracket=2, budget_eur=100, salt=0.4, avoided=["tokens"])
+
+    result = build_profile(
+        decks,
+        answers,
+        deck_themes=lambda deck: {"tokens": 0.3, "aristocrats": 0.3},
+        salts=lambda ids: {"a": 3.0},
+    )
+
+    assert result.colors == {"G": 1.0}
+    assert result.bracket == 2
+    assert result.budget_eur == 100
+    assert result.salt == 0.4
+    assert result.themes == {"aristocrats": 1.0}
+    assert result.avoided == ["tokens"]
+    assert result.labels["tokens"]
+
+
+def test_an_avoided_interest_sinks_the_match_and_is_named():
+    teysa = commander_card(row("teysa"))
+
+    answer = verdict(profile(avoided=["aristocrats"]), teysa)
+
+    assert not answer.match
+    assert answer.dimension == "avoided"
+    assert answer.direction is None
+    assert answer.detail == "Aristocrats"
+
+
+def test_avoiding_counts_without_deck_themes():
+    teysa = commander_card(row("teysa"))
+    without = score(profile(themes={}), teysa)
+
+    assert score(profile(themes={}, avoided=["aristocrats"]), teysa) < without
 
 
 def test_a_close_fit_matches_and_names_the_shared_interest():

@@ -13,6 +13,7 @@ use crate::models::dating::GraphProfile;
 use crate::models::dating::ProfileAnswers;
 use crate::models::dating::ProfileDeck;
 use crate::models::dating::date::Support;
+use crate::models::dating::salt_value;
 use crate::modules::graph::GraphClient;
 
 /// One EDHREC tag of a Commander
@@ -116,16 +117,18 @@ pub struct Verdict {
 }
 
 #[derive(Serialize)]
-struct Answers {
+struct Answers<'a> {
     colors: Vec<String>,
     bracket: Option<i16>,
     budget_eur: Option<i32>,
+    salt: Option<f64>,
+    avoided: &'a [String],
 }
 
 #[derive(Serialize)]
 struct ProfileRequest<'a> {
     decks: &'a [ProfileDeck],
-    answers: Option<Answers>,
+    answers: Option<Answers<'a>>,
 }
 
 #[derive(Serialize)]
@@ -195,6 +198,8 @@ pub async fn build_profile(
             colors: letters(&answers.colors),
             bracket: answers.bracket,
             budget_eur: answers.budget_eur,
+            salt: answers.salt.map(salt_value),
+            avoided: &answers.avoided,
         }),
     };
     GraphClient::global()

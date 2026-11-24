@@ -50,6 +50,11 @@ describe("lines", () => {
         expect(key).toMatch(/^description\.reject-themes-[1-3]$/);
     });
 
+    it("has its own lines for a theme the player said no to", () => {
+        const key = rejectionKey({ dimension: "Avoided", detail: "Tokens" }, "krenko");
+        expect(key).toMatch(/^description\.reject-avoided-[1-3]$/);
+    });
+
     it("names a match line", () => {
         expect(matchKey("krenko")).toMatch(/^description\.match-[1-3]$/);
     });
