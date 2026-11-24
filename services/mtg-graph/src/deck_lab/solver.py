@@ -97,6 +97,23 @@ DEEP_SHORTFALL_COST = OVER_TARGET_COST
 # evidence, scaled by the basic's damping: brackets 4-5 still prefer fetches.
 BASIC_COPY_SCORE = WEIGHT_ROLE
 
+# Each colour needs at least this share of the deck's lands making it, by the
+# number of colours. p10 of the worst colour over 284 cached EDHREC pages'
+# average decks (stated basics split evenly, top nonbasics by inclusion):
+# 1: 0.85 (188 pages), 2: 0.60 (80), 3: 0.50 (13), 5: 0.35 (2). Four had one
+# page at 0.48; 0.45 sits between its neighbours. Without it a speed-1.0
+# mono-blue fill ran 27 lands and no Island.
+COLOR_SOURCE_SHARE = {1: 0.85, 2: 0.60, 3: 0.50, 4: 0.45, 5: 0.35}
+
+
+@dataclass(slots=True)
+class ColorSources:
+    """The deck's own lands, per colour they make, and the share each colour needs."""
+
+    held: dict[str, int]
+    lands: int
+    share: float
+
 
 @dataclass(slots=True)
 class Candidate:
@@ -114,6 +131,8 @@ class Candidate:
     copy_score: float = 0.0
     # The basic-lands part of `score`; `land_need` pays it per land instead.
     need_score: float = 0.0
+    # Lands only: which of the deck's colours this land makes or fetches.
+    colors: frozenset[str] = frozenset()
     # The part of `score` the fixing-lands channel gave, paid only up to the
     # deck's fixing shortfall (`fixing_room`).
     fixing_score: float = 0.0
@@ -178,6 +197,31 @@ def _fixing_score(provenance) -> float:
     return fixing + (MULTI_CHANNEL_BONUS if others else 0.0)
 
 
+def _color_sources(
+    cards: list[dict], commanders: set[str], candidates: list[Candidate], identity: list[str]
+) -> ColorSources | None:
+    """Tags each land candidate with its colours; counts the deck's own sources."""
+    from .graph import land_texts
+    from .land_colors import land_colors
+
+    if not identity:
+        return None
+    own: dict[str, int] = {}
+    for card in cards:
+        if card["is_land"] and card["oracle_id"] not in commanders:
+            own[card["oracle_id"]] = own.get(card["oracle_id"], 0) + card["qty"]
+    texts = land_texts([*own, *(c.oracle_id for c in candidates if c.is_land)])
+    for candidate in candidates:
+        if candidate.oracle_id in texts:
+            candidate.colors = frozenset(land_colors(*texts[candidate.oracle_id], identity))
+    held = dict.fromkeys(identity, 0)
+    for oracle_id, qty in own.items():
+        for color in land_colors(*texts.get(oracle_id, ("", "")), identity):
+            held[color] += qty
+    share = COLOR_SOURCE_SHARE.get(len(identity), COLOR_SOURCE_SHARE[5])
+    return ColorSources(held=held, lands=sum(own.values()), share=share)
+
+
 def _bucket_weight(roles: dict[str, float], bucket: Bucket) -> int:
     """A card's contribution to one bucket, in hundredths.
 
@@ -207,6 +251,7 @@ def solve_fill(
     max_game_changers: int | None = None,
     fixing_room: int | None = None,
     land_need: tuple[float, float] | None = None,
+    color_sources: ColorSources | None = None,
     time_limit: float = DEFAULT_TIME_LIMIT,
 ) -> FillResult:
     """Choose `slots` cards that land the deck's quotas as close to target as possible.
@@ -224,6 +269,9 @@ def solve_fill(
     `land_need` is the basic-lands channel's (target, current land count). The
     k-th land picked earns that channel's score at the shortfall left after
     k-1, so the need shrinks as lands go in, whichever lands they are.
+
+    `color_sources` asks every colour of a share of the lands, a missing
+    source costing as much as a card short of a quota.
     """
     try:
         from ortools.sat.python import cp_model
@@ -324,6 +372,15 @@ def solve_fill(
         objective.append(int(round(steps[0] * SCALE)) * flat_var if flat else 0)
         for k, var in zip(range(flat, len(steps)), tail, strict=True):
             objective.append(int(round(steps[k] * SCALE)) * var)
+
+    if color_sources is not None:
+        share = int(round(color_sources.share * SCALE))
+        lands = color_sources.lands + sum(copies[i] for i, c in enumerate(candidates) if c.is_land)
+        for color, held in color_sources.held.items():
+            makes = sum(copies[i] for i, c in enumerate(candidates) if color in c.colors)
+            short = model.NewIntVar(0, 200 * SCALE, f"sources_short_{color}")
+            model.Add(short >= share * lands - SCALE * (held + makes))
+            objective.append(-QUOTA_PENALTY * short)
 
     # The basics split evenly across the identity's land types, so an Esper
     # fill cannot take thirty Plains and one Island. Pips would be finer.
@@ -755,6 +812,7 @@ def _fill_deck(
         ),
         None,
     )
+    color_sources = _color_sources(cards, commanders, candidates, list(report.identity))
 
     # Bracket 3's Game Changer headroom, as a count constraint on the chosen
     # set. The suggestion layer withholds game changers card-by-card — all of
@@ -814,6 +872,7 @@ def _fill_deck(
         budget=budget,
         max_game_changers=max_game_changers,
         fixing_room=fixing_room,
+        color_sources=color_sources,
         land_need=next(
             (
                 (float(p.params["target"]), float(p.params["amount"]))

@@ -604,3 +604,34 @@ def test_the_land_need_shrinks_with_each_land_picked():
 
     assert without.get("island", 0) <= 1
     assert 6 <= with_need["island"] <= 10
+
+
+def test_every_colour_gets_its_share_of_the_lands():
+    """A colourless utility land scoring above an Island still loses the slot
+    once blue falls under its share of the lands."""
+    from deck_lab.solver import ColorSources
+
+    # A real basic's score is all land need, so its first copy scores the copy.
+    island = _basic("island", need=0.7, roles={})
+    island.colors = frozenset({"U"})
+    utility = [
+        Candidate(
+            oracle_id=f"tower{i}",
+            name=f"tower{i}",
+            cmc=0.0,
+            is_land=True,
+            score=1.0,
+            primary_type="Land",
+        )
+        for i in range(10)
+    ]
+
+    without = _quantities(_solve([island, *utility], 10))
+    with_colors = _quantities(
+        _solve(
+            [island, *utility], 10, color_sources=ColorSources(held={"U": 0}, lands=0, share=0.85)
+        )
+    )
+
+    assert without.get("island", 0) == 0
+    assert with_colors["island"] >= 8
