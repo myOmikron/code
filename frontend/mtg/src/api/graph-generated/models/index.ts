@@ -70,6 +70,10 @@ export interface BlindCard {
      * 
      */
     name: string;
+    /**
+     * 
+     */
+    quantity?: number;
 }
 /**
  * A rolled, filled deck: what goes in now and how much is left to swipe.
@@ -1195,6 +1199,10 @@ export interface FilledCard {
      * 
      */
     price_usd?: number | null;
+    /**
+     * 
+     */
+    quantity?: number;
 }
 /**
  * What the user asked to see more of.

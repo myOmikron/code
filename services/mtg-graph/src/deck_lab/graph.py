@@ -1502,9 +1502,22 @@ def recommendations_for(commander_name: str, *, limit: int = 15, min_synergy: fl
 # through (a missing price must not hide a card from a soft budget), while a
 # pool query's `eur<5` clause excludes them (a null comparison is null) — the
 # pool is a stated restriction, and "price unknown" does not satisfy it.
+# A fetch has no colour identity, so the identity check alone let Bloodstained
+# Mire into a mono-blue deck. The last clause drops a land that searches only
+# for basic types the identity has none of; "basic land card" fetches stay.
 _HARD_FILTER = """
       NOT c.oracle_id IN $deck
       AND all(sym IN c.color_identity WHERE sym IN $identity)
+      AND NOT (
+        coalesce(c.is_land, false)
+        AND coalesce(c.oracle_text, '') CONTAINS 'Search your library'
+        AND NOT c.oracle_text CONTAINS 'basic land card'
+        AND any(t IN ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest']
+                WHERE c.oracle_text CONTAINS t)
+        AND none(sym IN $identity
+                 WHERE c.oracle_text CONTAINS coalesce(
+                   {W: 'Plains', U: 'Island', B: 'Swamp', R: 'Mountain', G: 'Forest'}[sym], '#'))
+      )
       AND ($max_price IS NULL
            OR coalesce(c.price_eur, c.price_usd) IS NULL
            OR coalesce(c.price_eur, c.price_usd) <= $max_price)

@@ -351,7 +351,7 @@ def test_a_blind_date_rolls_two_or_three_supported_themes():
 
 
 def test_lands_and_the_surest_picks_go_in_first():
-    chosen = [("land", "Mountain"), ("a", "A"), ("b", "B"), ("c", "C"), ("d", "D")]
+    chosen = [("land", "Mountain", 1), ("a", "A", 1), ("b", "B", 1), ("c", "C", 1), ("d", "D", 1)]
 
     now, later, open_slots = dating.split_fill(
         chosen,
@@ -364,6 +364,18 @@ def test_lands_and_the_surest_picks_go_in_first():
 
     assert [card.oracle_id for card in now] == ["land", "c", "a"]
     assert [card.oracle_id for card in later] == ["d", "b"]
+    assert open_slots == 3
+
+
+def test_a_stack_of_basics_splits_between_now_and_later():
+    chosen = [("island", "Island", 5), ("a", "A", 1)]
+
+    now, later, open_slots = dating.split_fill(
+        chosen, lands={"island"}, fitting=set(), inclusion={}, slots=6, open_slots=3
+    )
+
+    assert [(card.oracle_id, card.quantity) for card in now] == [("island", 3)]
+    assert [(card.oracle_id, card.quantity) for card in later] == [("island", 2), ("a", 1)]
     assert open_slots == 3
 
 

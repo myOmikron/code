@@ -540,3 +540,67 @@ def test_no_cap_means_no_constraint():
 
     assert result.solved
     assert sum(1 for c in result.chosen if c.oracle_id.startswith("gc")) == 4
+
+
+def _basic(oid, *, score=0.7, copy=0.7, need=0.0, roles=None):
+    return Candidate(
+        oracle_id=oid,
+        name=oid,
+        cmc=0.0,
+        is_land=True,
+        score=score,
+        roles={"land": 1.0} if roles is None else roles,
+        primary_type="Land",
+        basic_type=oid.capitalize(),
+        copy_score=copy,
+        need_score=need,
+    )
+
+
+def _quantities(result):
+    return {card.oracle_id: card.quantity for card in result.chosen}
+
+
+def test_a_basic_takes_several_copies_split_evenly_across_its_types():
+    candidates = [_basic("island"), _basic("swamp"), *_pool(4, {}, score=0.1)]
+
+    result = _solve(candidates, 12)
+
+    counts = _quantities(result)
+    assert sum(counts.values()) == 12
+    assert counts["island"] > 1
+    assert abs(counts["island"] - counts.get("swamp", 0)) <= 1
+
+
+def test_fixing_is_paid_only_for_the_lands_the_deck_is_short():
+    fetches = [
+        Candidate(
+            oracle_id=f"fetch{i}",
+            name=f"fetch{i}",
+            cmc=0.0,
+            is_land=True,
+            score=2.5,
+            roles={"land": 1.0},
+            primary_type="Land",
+            fixing_score=2.0,
+        )
+        for i in range(6)
+    ]
+
+    result = _solve([*fetches, _basic("island")], 6, fixing_room=2)
+
+    counts = _quantities(result)
+    assert sum(1 for oid in counts if oid.startswith("fetch")) == 2
+    assert counts["island"] == 4
+
+
+def test_the_land_need_shrinks_with_each_land_picked():
+    # No roles and a spread curve, so only the need argues for lands.
+    spells = [_cand(f"c{i}", {}, score=1.5, cmc=float(1 + i % 6)) for i in range(60)]
+    candidates = [_basic("island", score=8.7, need=8.0, roles={}), *spells]
+
+    without = _quantities(_solve(candidates, 20))
+    with_need = _quantities(_solve(candidates, 20, land_need=(10.0, 0.0)))
+
+    assert without.get("island", 0) <= 1
+    assert 6 <= with_need["island"] <= 10

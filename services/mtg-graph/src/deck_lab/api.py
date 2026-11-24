@@ -730,8 +730,8 @@ def post_dating_blind(request: DatingBlindRequest) -> dating.BlindDate:
             headers={"Retry-After": str(int(DEFAULT_TIME_LIMIT))},
         ) from exc
 
-    chosen = [(card.oracle_id, card.name) for card in result.chosen]
-    ids = [oid for oid, _ in chosen]
+    chosen = [(card.oracle_id, card.name, card.quantity) for card in result.chosen]
+    ids = [oid for oid, _, _ in chosen]
     lands = {
         card["oracle_id"]
         for card in fetch_deck(dict.fromkeys(ids, 1))

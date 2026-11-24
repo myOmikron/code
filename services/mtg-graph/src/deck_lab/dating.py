@@ -99,6 +99,7 @@ class BlindCard(BaseModel):
 
     oracle_id: str
     name: str
+    quantity: int = 1
 
 
 class BlindDate(BaseModel):
@@ -572,7 +573,7 @@ def roll_themes(plan: DatePlan, row: dict, rng: random.Random) -> list[RolledThe
 
 
 def split_fill(
-    chosen: list[tuple[str, str]],
+    chosen: list[tuple[str, str, int]],
     lands: set[str],
     fitting: set[str],
     inclusion: dict[str, float],
@@ -583,13 +584,21 @@ def split_fill(
     """Lands and the surest picks go in now, until `open_slots` are left for swiping.
 
     The rest of the fill comes back as well, for a player who skips the swiping.
+    A stack of basics can split between the two.
     """
-    keep = max(0, slots - open_slots)
-    land_cards = [(oid, name) for oid, name in chosen if oid in lands]
+    room = max(0, slots - open_slots)
+    land_cards = [card for card in chosen if card[0] in lands]
     others = sorted(
-        ((oid, name) for oid, name in chosen if oid not in lands),
+        (card for card in chosen if card[0] not in lands),
         key=lambda card: (card[0] not in fitting, -inclusion.get(card[0], 0.0)),
     )
-    ordered = [BlindCard(oracle_id=oid, name=name) for oid, name in land_cards + others]
-    now = ordered[:keep]
-    return now, ordered[keep:], slots - len(now)
+    now: list[BlindCard] = []
+    later: list[BlindCard] = []
+    for oid, name, quantity in land_cards + others:
+        taken = min(quantity, room)
+        room -= taken
+        if taken:
+            now.append(BlindCard(oracle_id=oid, name=name, quantity=taken))
+        if quantity > taken:
+            later.append(BlindCard(oracle_id=oid, name=name, quantity=quantity - taken))
+    return now, later, slots - sum(card.quantity for card in now)

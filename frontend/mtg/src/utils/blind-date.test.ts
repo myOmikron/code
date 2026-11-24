@@ -1,10 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const blindDate = vi.fn();
+const importCards = vi.fn();
 vi.mock("src/api/graph", () => ({ GraphApi: { blindDate: (...args: unknown[]) => blindDate(...args) } }));
-vi.mock("src/api/api", () => ({ Api: {} }));
+vi.mock("src/api/api", () => ({
+    Api: { decks: { cards: { import: (...args: unknown[]) => importCards(...args) } } },
+}));
+vi.mock("src/utils/use-suggestion-cards", () => ({
+    resolveCardNames: async (names: Array<string>) =>
+        new Map(names.map((name) => [name, { id: `print-${name}`, finishes: ["nonfoil"] }])),
+}));
 
-const { rollBlindDate } = await import("src/utils/blind-date");
+const { rollBlindDate, surpriseMe } = await import("src/utils/blind-date");
 
 const refused = (status: number) => ({ response: new Response(null, { status }) });
 const DATE = { themes: [], add_now: [], open_slots: 35, solved: true };
@@ -52,5 +59,27 @@ describe("rollBlindDate", () => {
 
         expect(await failure(rollBlindDate("krenko", null, async () => {}))).not.toBeNull();
         expect(blindDate).toHaveBeenCalledTimes(8);
+    });
+});
+
+describe("surpriseMe", () => {
+    beforeEach(() => {
+        importCards.mockReset();
+    });
+
+    it("files every copy of a basic", async () => {
+        const date = {
+            ...DATE,
+            add_later: [
+                { oracle_id: "island", name: "Island", quantity: 12 },
+                { oracle_id: "a", name: "Ponder" },
+            ],
+        };
+
+        const added = await surpriseMe("deck", date);
+
+        expect(added).toBe(13);
+        const [, request] = importCards.mock.calls[0];
+        expect(request.cards.map((card: { quantity: number }) => card.quantity)).toEqual([12, 1]);
     });
 });

@@ -59,17 +59,20 @@ export async function rollBlindDate(
  */
 async function addFill(deck: string, fill: BlindCard[]): Promise<number> {
     const printings = await resolveCardNames(fill.map((card) => card.name));
-    const cards = fill
-        .map((card) => printings.get(card.name))
-        .filter((printing) => printing !== undefined)
-        .map((printing) => ({
-            printing: printing.id,
-            quantity: 1,
-            zone: DeckZone.Main,
-            foil: defaultFoil(printing.finishes),
-        }));
+    const cards = fill.flatMap((card) => {
+        const printing = printings.get(card.name);
+        if (printing === undefined) return [];
+        return [
+            {
+                printing: printing.id,
+                quantity: card.quantity ?? 1,
+                zone: DeckZone.Main,
+                foil: defaultFoil(printing.finishes),
+            },
+        ];
+    });
     if (cards.length > 0) await Api.decks.cards.import(deck, { cards, mode: "Fill" });
-    return cards.length;
+    return cards.reduce((sum, card) => sum + card.quantity, 0);
 }
 
 /**

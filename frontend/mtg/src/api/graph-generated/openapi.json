@@ -731,6 +731,11 @@
                     "name": {
                         "type": "string",
                         "title": "Name"
+                    },
+                    "quantity": {
+                        "type": "integer",
+                        "title": "Quantity",
+                        "default": 1
                     }
                 },
                 "type": "object",
@@ -2496,6 +2501,11 @@
                             }
                         ],
                         "title": "Price Usd"
+                    },
+                    "quantity": {
+                        "type": "integer",
+                        "title": "Quantity",
+                        "default": 1
                     }
                 },
                 "type": "object",

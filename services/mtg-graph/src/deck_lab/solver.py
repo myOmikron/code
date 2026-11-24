@@ -30,10 +30,15 @@ from .composition import CURVE_BUCKETS, OVER_TARGET_COST, DeckTemplate
 from .config import settings
 from .poolquery import PoolFilter
 from .suggestions import (
+    BASIC_LAND_CAP,
+    BASIC_LAND_RAMP,
     GAME_CHANGER_CAP_BRACKET_THREE,
+    MULTI_CHANNEL_BONUS,
     ROLE_SHORTFALL_SATURATION,
     SPEED_BRACKET_FOUR,
     SPEED_BRACKET_THREE,
+    WEIGHT_BASIC_LAND,
+    WEIGHT_ROLE,
     Phrase,
     phrase,
 )
@@ -85,6 +90,13 @@ QUOTA_PENALTY = 3
 QUOTA_SATURATION_CARDS = ROLE_SHORTFALL_SATURATION
 DEEP_SHORTFALL_COST = OVER_TARGET_COST
 
+# What one copy of a basic scores. The deck's land need is paid to every
+# land, per land (`land_need`), not to each basic: at the basic's own score
+# the fill would be all Islands, at zero any filler land beat them (one
+# Island, nine fetches). So a copy is worth the best role-gap land without
+# evidence, scaled by the basic's damping: brackets 4-5 still prefer fetches.
+BASIC_COPY_SCORE = WEIGHT_ROLE
+
 
 @dataclass(slots=True)
 class Candidate:
@@ -97,6 +109,14 @@ class Candidate:
     price_usd: float | None = None
     primary_type: str = "Other"
     game_changer: bool = False
+    # Basics only: the land type ("Island"), and what each further copy scores.
+    basic_type: str | None = None
+    copy_score: float = 0.0
+    # The basic-lands part of `score`; `land_need` pays it per land instead.
+    need_score: float = 0.0
+    # The part of `score` the fixing-lands channel gave, paid only up to the
+    # deck's fixing shortfall (`fixing_room`).
+    fixing_score: float = 0.0
 
 
 class FilledCard(BaseModel):
@@ -105,6 +125,7 @@ class FilledCard(BaseModel):
     cmc: float
     score: float
     price_usd: float | None = None
+    quantity: int = 1
 
 
 class FillResult(BaseModel):
@@ -121,6 +142,40 @@ class FillResult(BaseModel):
     total_price: float = 0.0
     solve_ms: float = 0.0
     notes: list[Phrase] = Field(default_factory=list)
+
+
+def _basic_type(name: str, type_line: str) -> str | None:
+    """The land type of a basic, snow twins included; None for any other card."""
+    if not type_line.startswith("Basic"):
+        return None
+    return type_line.partition("—")[2].strip() or name
+
+
+def _basic_reason(provenance):
+    return next((p for p in provenance if p.channel == "basic_lands"), None)
+
+
+def _land_need(target: float, count: float) -> float:
+    """The basic-lands channel's score for a deck at `count` lands, undamped."""
+    return WEIGHT_BASIC_LAND * min((target - count) / BASIC_LAND_RAMP, BASIC_LAND_CAP)
+
+
+def _copy_score(provenance) -> float:
+    """What one copy of a basic scores: the role-gap ceiling, damped like the basic."""
+    basic = _basic_reason(provenance)
+    if basic is None:
+        return 0.0
+    undamped = _land_need(float(basic.params["target"]), float(basic.params["amount"]))
+    return BASIC_COPY_SCORE * (basic.score / undamped if undamped > 0 else 1.0)
+
+
+def _fixing_score(provenance) -> float:
+    """The fixing-lands score, with the agreement bonus it alone earned."""
+    fixing = sum(p.score for p in provenance if p.channel == "fixing_lands")
+    if fixing <= 0:
+        return 0.0
+    others = {p.channel for p in provenance if p.score > 0 and p.channel != "fixing_lands"}
+    return fixing + (MULTI_CHANNEL_BONUS if others else 0.0)
 
 
 def _bucket_weight(roles: dict[str, float], bucket: Bucket) -> int:
@@ -150,6 +205,8 @@ def solve_fill(
     base_types: dict[str, float] | None = None,
     budget: float | None = None,
     max_game_changers: int | None = None,
+    fixing_room: int | None = None,
+    land_need: tuple[float, float] | None = None,
     time_limit: float = DEFAULT_TIME_LIMIT,
 ) -> FillResult:
     """Choose `slots` cards that land the deck's quotas as close to target as possible.
@@ -159,6 +216,14 @@ def solve_fill(
     plays. The suggestion layer withholds them one card at a time; only the
     solver picks many cards at once, so only the solver can add four singly
     legal ones and land the deck over its cap. `None` means no cap.
+
+    `fixing_room` is how many fixing lands the deck is short. Each fixing
+    land's score assumes the full shortfall, so without the cap a fill took
+    every fetch in the pool.
+
+    `land_need` is the basic-lands channel's (target, current land count). The
+    k-th land picked earns that channel's score at the shortfall left after
+    k-1, so the need shrinks as lands go in, whichever lands they are.
     """
     try:
         from ortools.sat.python import cp_model
@@ -182,7 +247,7 @@ def solve_fill(
             slots=0,
             notes=[phrase("fill-deck-full", "The deck is already full.")],
         )
-    if len(candidates) < slots:
+    if sum(slots if c.basic_type else 1 for c in candidates) < slots:
         return FillResult(
             status="infeasible",
             solved=False,
@@ -200,11 +265,19 @@ def solve_fill(
 
     model = cp_model.CpModel()
     picks = [model.NewBoolVar(c.oracle_id) for c in candidates]
-    model.Add(sum(picks) == slots)
+    # A basic's further copies. Not tied to its first copy: that one always
+    # scores higher, and a big-M link stalled the search (200ms to >60s).
+    extra = {
+        i: model.NewIntVar(0, slots - 1, f"extra_{c.oracle_id}")
+        for i, c in enumerate(candidates)
+        if c.basic_type
+    }
+    copies = [picks[i] + extra[i] if i in extra else picks[i] for i in range(len(candidates))]
+    model.Add(sum(copies) == slots)
 
     if budget is not None:
         cents = [int(round((c.price_usd or 0.0) * 100)) for c in candidates]
-        model.Add(sum(cents[i] * picks[i] for i in range(len(candidates))) <= int(budget * 100))
+        model.Add(sum(cents[i] * copies[i] for i in range(len(candidates))) <= int(budget * 100))
 
     if max_game_changers is not None:
         changers = [i for i, c in enumerate(candidates) if c.game_changer]
@@ -217,13 +290,56 @@ def solve_fill(
     # argument — theme fit included — so the solver ranks a card exactly as
     # the adds list does; an extra theme term here double-counted what the
     # score had already priced in.
+    #
+    # Fixing is paid once per land the deck is short, at the mean of the best
+    # `fixing_room` fixing scores; each land keeps only its difference from
+    # that mean. One capped count, not a flag per land: the flags stalled the
+    # search past the time limit.
+    fixing = [i for i, c in enumerate(candidates) if c.fixing_score > 0]
+    paid = 0.0
+    if fixing and fixing_room is not None:
+        best = sorted((candidates[i].fixing_score for i in fixing), reverse=True)
+        top = best[: max(1, fixing_room)]
+        paid = sum(top) / len(top)
+        counted = model.NewIntVar(0, max(0, fixing_room), "fixing_counted")
+        model.Add(counted <= sum(picks[i] for i in fixing))
+        objective.append(int(round(paid * SCALE)) * counted)
     for index, candidate in enumerate(candidates):
-        objective.append(int(round(candidate.score * SCALE)) * picks[index])
+        score = candidate.score - (paid if candidate.fixing_score > 0 else 0.0)
+        score += candidate.copy_score - candidate.need_score
+        objective.append(int(round(score * SCALE)) * picks[index])
+        if index in extra:
+            objective.append(int(round(candidate.copy_score * SCALE)) * extra[index])
+
+    if land_need is not None:
+        target, count = land_need
+        lands = sum(copies[i] for i, c in enumerate(candidates) if c.is_land)
+        steps = [_land_need(target, count + k) for k in range(slots)]
+        steps = [step for step in steps if step > 0]
+        # The capped stretch is one variable; the sloped tail a flag per land.
+        flat = sum(1 for step in steps if step >= WEIGHT_BASIC_LAND * BASIC_LAND_CAP)
+        flat_var = model.NewIntVar(0, flat, "land_need_flat")
+        tail = [model.NewBoolVar(f"land_need_{k}") for k in range(flat, len(steps))]
+        model.Add(flat_var + sum(tail) <= lands)
+        objective.append(int(round(steps[0] * SCALE)) * flat_var if flat else 0)
+        for k, var in zip(range(flat, len(steps)), tail, strict=True):
+            objective.append(int(round(steps[k] * SCALE)) * var)
+
+    # The basics split evenly across the identity's land types, so an Esper
+    # fill cannot take thirty Plains and one Island. Pips would be finer.
+    by_type: dict[str, list[int]] = {}
+    for index, candidate in enumerate(candidates):
+        if candidate.basic_type:
+            by_type.setdefault(candidate.basic_type, []).append(index)
+    if len(by_type) >= 2:
+        basics = sum(copies[i] for members in by_type.values() for i in members)
+        for members in by_type.values():
+            model.Add(len(by_type) * sum(copies[i] for i in members) <= basics + len(by_type) - 1)
 
     # --- soft quotas ------------------------------------------------------
     for bucket, target in template.buckets.items():
         contribution = sum(
-            _bucket_weight(candidates[i].roles, bucket) * picks[i] for i in range(len(candidates))
+            _bucket_weight(candidates[i].roles, bucket) * copies[i] for i in range(len(candidates))
         )
         total = contribution + int(round(base_coverage.get(bucket, 0.0) * SCALE))
 
@@ -311,7 +427,7 @@ def solve_fill(
             if not target.weight:
                 continue
             at_type = [i for i, c in enumerate(candidates) if c.primary_type == name]
-            count = int(round(base_types.get(name, 0.0))) + sum(picks[i] for i in at_type)
+            count = int(round(base_types.get(name, 0.0))) + sum(copies[i] for i in at_type)
 
             type_under = model.NewIntVar(0, 200, f"type_under_{name}")
             type_over = model.NewIntVar(0, 200, f"type_over_{name}")
@@ -355,11 +471,12 @@ def solve_fill(
             notes=[phrase("fill-no-arrangement", "No arrangement satisfied the hard constraints.")],
         )
 
-    chosen = [candidates[i] for i in range(len(candidates)) if solver.Value(picks[i])]
+    counts = [solver.Value(copy) for copy in copies]
+    chosen = [(candidates[i], n) for i, n in enumerate(counts) if n]
 
     coverage = {}
     for bucket in template.buckets:
-        picked = sum(_bucket_weight(c.roles, bucket) for c in chosen) / SCALE
+        picked = sum(_bucket_weight(c.roles, bucket) * n for c, n in chosen) / SCALE
         coverage[str(bucket)] = round(base_coverage.get(bucket, 0.0) + picked, 1)
 
     notes = [
@@ -392,14 +509,15 @@ def solve_fill(
                 cmc=c.cmc,
                 score=round(c.score, 2),
                 price_usd=c.price_usd,
+                quantity=n,
             )
-            for c in sorted(chosen, key=lambda c: -c.score)
+            for c, n in sorted(chosen, key=lambda pick: -pick[0].score)
         ],
         coverage=coverage,
         targets={
             str(bucket): [target.low, target.high] for bucket, target in template.buckets.items()
         },
-        total_price=round(sum(c.price_usd or 0.0 for c in chosen), 2),
+        total_price=round(sum((c.price_usd or 0.0) * n for c, n in chosen), 2),
         solve_ms=round(solver.WallTime() * 1000, 1),
     )
 
@@ -621,9 +739,22 @@ def _fill_deck(
             price_usd=s.price_usd,
             primary_type=primary_type(s.type_line or ""),
             game_changer=s.game_changer,
+            basic_type=_basic_type(s.name, s.type_line or ""),
+            copy_score=_copy_score(s.provenance),
+            need_score=basic.score if (basic := _basic_reason(s.provenance)) else 0.0,
+            fixing_score=_fixing_score(s.provenance),
         )
         for s in report.suggestions
     ]
+    fixing_room = next(
+        (
+            int(p.params["target"]) - int(p.params["current"])
+            for s in report.suggestions
+            for p in s.provenance
+            if p.channel == "fixing_lands"
+        ),
+        None,
+    )
 
     # Bracket 3's Game Changer headroom, as a count constraint on the chosen
     # set. The suggestion layer withholds game changers card-by-card — all of
@@ -682,6 +813,16 @@ def _fill_deck(
         base_types=base_types,
         budget=budget,
         max_game_changers=max_game_changers,
+        fixing_room=fixing_room,
+        land_need=next(
+            (
+                (float(p.params["target"]), float(p.params["amount"]))
+                for s in report.suggestions
+                for p in s.provenance
+                if p.channel == "basic_lands"
+            ),
+            None,
+        ),
     )
     result.notes.extend(report.notes)
 
