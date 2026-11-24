@@ -70,6 +70,10 @@ export interface BlindCard {
      * 
      */
     name: string;
+    /**
+     * 
+     */
+    quantity?: number;
 }
 /**
  * A rolled, filled deck: what goes in now and how much is left to swipe.
@@ -574,6 +578,10 @@ export interface DatingBlindRequest {
     /**
      * 
      */
+    partner?: string | null;
+    /**
+     * 
+     */
     bracket?: number | null;
     /**
      * 
@@ -638,7 +646,24 @@ export interface DatingCommander {
      * 
      */
     your_type: boolean;
+    /**
+     * 
+     */
+    seeks?: DatingCommanderSeeksEnum | null;
 }
+
+
+/**
+ * @export
+ */
+export const DatingCommanderSeeksEnum = {
+    partner: 'partner',
+    background: 'background',
+    doctor: 'doctor',
+    companion: 'companion',
+} as const;
+export type DatingCommanderSeeksEnum = typeof DatingCommanderSeeksEnum[keyof typeof DatingCommanderSeeksEnum];
+
 /**
  * The commander a date is planned with.
  * @export
@@ -692,7 +717,87 @@ export const DatingDeckColorsEnum = {
 export type DatingDeckColorsEnum = typeof DatingDeckColorsEnum[keyof typeof DatingDeckColorsEnum];
 
 /**
- * What commanders see of a player. Deck signals win over answers.
+ * The next second commanders for a lead, minus the ones already swiped.
+ * @export
+ * @interface DatingPartnersRequest
+ */
+export interface DatingPartnersRequest {
+    /**
+     * 
+     */
+    profile: DatingProfile;
+    /**
+     * 
+     */
+    commander: string;
+    /**
+     * 
+     */
+    exclude?: Array<string>;
+    /**
+     * 
+     */
+    colors?: Array<DatingPartnersRequestColorsEnum> | null;
+    /**
+     * 
+     */
+    required?: Array<DatingPartnersRequestRequiredEnum>;
+    /**
+     * 
+     */
+    count?: number;
+    /**
+     * 
+     */
+    seed?: number;
+}
+
+
+/**
+ * @export
+ */
+export const DatingPartnersRequestColorsEnum = {
+    W: 'W',
+    U: 'U',
+    B: 'B',
+    R: 'R',
+    G: 'G',
+} as const;
+export type DatingPartnersRequestColorsEnum = typeof DatingPartnersRequestColorsEnum[keyof typeof DatingPartnersRequestColorsEnum];
+
+/**
+ * @export
+ */
+export const DatingPartnersRequestRequiredEnum = {
+    W: 'W',
+    U: 'U',
+    B: 'B',
+    R: 'R',
+    G: 'G',
+} as const;
+export type DatingPartnersRequestRequiredEnum = typeof DatingPartnersRequestRequiredEnum[keyof typeof DatingPartnersRequestRequiredEnum];
+
+/**
+ * A slice of a lead's partner stack, and the lead.
+ * @export
+ * @interface DatingPartnersResponse
+ */
+export interface DatingPartnersResponse {
+    /**
+     * 
+     */
+    commanders: Array<DatingCommander>;
+    /**
+     * 
+     */
+    remaining: number;
+    /**
+     * 
+     */
+    lead: DatingCommander;
+}
+/**
+ * What commanders see of a player. Answers win over deck signals.
  * @export
  * @interface DatingProfile
  */
@@ -725,6 +830,10 @@ export interface DatingProfile {
      * 
      */
     salt: number | null;
+    /**
+     * 
+     */
+    avoided?: Array<string>;
 }
 /**
  * The player's decks, plus the dating-profile answers.
@@ -740,6 +849,17 @@ export interface DatingProfileRequest {
      * 
      */
     answers?: ProfileAnswers | null;
+}
+/**
+ * Commanders to ask what second commander they look for.
+ * @export
+ * @interface DatingSeeksRequest
+ */
+export interface DatingSeeksRequest {
+    /**
+     * 
+     */
+    commanders: Array<string>;
 }
 /**
  * The next commanders to swipe, minus everything already swiped.
@@ -767,6 +887,10 @@ export interface DatingStackRequest {
      * 
      */
     only?: Array<string> | null;
+    /**
+     * 
+     */
+    poly?: boolean;
     /**
      * 
      */
@@ -859,6 +983,7 @@ export const DatingVerdictDimensionEnum = {
     bracket: 'bracket',
     budget: 'budget',
     salt: 'salt',
+    avoided: 'avoided',
 } as const;
 export type DatingVerdictDimensionEnum = typeof DatingVerdictDimensionEnum[keyof typeof DatingVerdictDimensionEnum];
 
@@ -885,6 +1010,10 @@ export interface DatingVerdictRequest {
      * 
      */
     commander: string;
+    /**
+     * 
+     */
+    partner?: string | null;
 }
 /**
  * 
@@ -1195,6 +1324,10 @@ export interface FilledCard {
      * 
      */
     price_usd?: number | null;
+    /**
+     * 
+     */
+    quantity?: number;
 }
 /**
  * What the user asked to see more of.
@@ -1698,7 +1831,7 @@ export interface PoolQueryResponse {
     position: number | null;
 }
 /**
- * The dating-profile questions, for players without decks.
+ * The player's own preferences; each one set wins over the decks.
  * @export
  * @interface ProfileAnswers
  */
@@ -1715,6 +1848,14 @@ export interface ProfileAnswers {
      * 
      */
     budget_eur?: number | null;
+    /**
+     * 
+     */
+    salt?: number | null;
+    /**
+     * 
+     */
+    avoided?: Array<string>;
 }
 
 

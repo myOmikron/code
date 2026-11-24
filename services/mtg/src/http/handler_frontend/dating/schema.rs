@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::models::dating::DateStatus;
 use crate::models::dating::date::DateProgress;
 use crate::models::dating::date::TurnBy;
+use crate::models::dating::remote::Seeks;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::advisor::ThemeLevel;
 
@@ -71,8 +72,43 @@ pub struct DatingStackRequest {
     /// Only Commanders printed in one of these sets, by code; empty means every set
     #[serde(default)]
     pub sets: Vec<MaxStr<16>>,
+    /// Only Commanders that take a second one
+    #[serde(default)]
+    pub poly: bool,
     /// Commanders the client still holds, unswiped
     pub pending: Vec<Uuid>,
+}
+
+/// Asks for the next second Commanders of a lead
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PartnerStackRequest {
+    /// The lead's oracle id
+    pub commander: Uuid,
+    /// Only pairs within these colors, as letters of WUBRG
+    pub colors: Option<MaxStr<8>>,
+    /// Only pairs with all of these colors, as letters of WUBRG
+    #[serde(default)]
+    pub required_colors: Option<MaxStr<8>>,
+    /// Second Commanders the client still holds, unswiped
+    pub pending: Vec<Uuid>,
+}
+
+/// The next second Commanders of a lead
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PartnerStackResponse {
+    /// The lead
+    pub lead: DatingCardResponse,
+    /// The second Commanders, in order
+    pub commanders: Vec<DatingCardResponse>,
+    /// Unswiped ones left
+    pub remaining: i64,
+}
+
+/// Which pair a date is about
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DatePartnerQuery {
+    /// The second Commander, for a pair
+    pub partner: Option<Uuid>,
 }
 
 /// A set with legendary cards, to filter the stack by
@@ -122,6 +158,8 @@ pub struct DatingCardResponse {
     pub interests: Vec<InterestResponse>,
     /// Picked for compatibility rather than popularity
     pub your_type: bool,
+    /// What second Commander it looks for
+    pub seeks: Option<Seeks>,
 }
 
 /// The next Commanders to swipe
@@ -142,6 +180,9 @@ pub struct DatingStackResponse {
 pub struct SwipeRequest {
     /// The Commander's oracle id
     pub commander: Uuid,
+    /// The second Commander swiped for it, in poly mode
+    #[serde(default)]
+    pub partner: Option<Uuid>,
     /// Which way
     pub kind: SwipeKind,
 }
@@ -166,6 +207,25 @@ pub struct SwipeResponse {
 pub struct RewindResponse {
     /// The Commander whose swipe was undone, `None` without any swipe
     pub commander: Option<Uuid>,
+    /// The second Commander of an undone pair swipe
+    pub partner: Option<Uuid>,
+}
+
+/// The second Commander of a pair date
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DatePartnerResponse {
+    /// Oracle id
+    pub commander: Uuid,
+    /// The Default printing, to add it to a deck
+    pub printing: Option<Uuid>,
+    /// Card name
+    pub name: String,
+    /// Color identity letters
+    pub color_identity: String,
+    /// Art crop url
+    pub image_art_crop: Option<String>,
+    /// Full card image url
+    pub image_normal: Option<String>,
 }
 
 /// A date that got past a pass
@@ -197,6 +257,10 @@ pub struct DateResponse {
     pub created_at: SchemaDateTime,
     /// The deck of a date that is not finished yet
     pub open_date: Option<Uuid>,
+    /// The second Commander of a pair
+    pub partner: Option<DatePartnerResponse>,
+    /// What second Commander a lone Commander looks for
+    pub seeks: Option<Seeks>,
 }
 
 /// Every date, split by how it went

@@ -31,18 +31,20 @@ function busy(error: unknown): boolean {
  * Rolls a Blind Date, asking again quietly while the solver is busy.
  *
  * @param commander the Commander's oracle id
+ * @param partner the second Commander's oracle id, for a pair
  * @param bracket the player's bracket, if known
  * @param wait how to wait between tries
  * @returns the rolled themes and the cards to add now
  */
 export async function rollBlindDate(
     commander: string,
+    partner: string | null,
     bracket: number | null,
     wait: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 ): Promise<BlindDate> {
     for (let attempt = 1; ; attempt++) {
         try {
-            return await GraphApi.blindDate({ commander, bracket });
+            return await GraphApi.blindDate({ commander, partner, bracket });
         } catch (error) {
             if (!busy(error) || attempt >= BUSY_TRIES) throw error;
             await wait(BUSY_WAIT);
@@ -59,17 +61,20 @@ export async function rollBlindDate(
  */
 async function addFill(deck: string, fill: BlindCard[]): Promise<number> {
     const printings = await resolveCardNames(fill.map((card) => card.name));
-    const cards = fill
-        .map((card) => printings.get(card.name))
-        .filter((printing) => printing !== undefined)
-        .map((printing) => ({
-            printing: printing.id,
-            quantity: 1,
-            zone: DeckZone.Main,
-            foil: defaultFoil(printing.finishes),
-        }));
+    const cards = fill.flatMap((card) => {
+        const printing = printings.get(card.name);
+        if (printing === undefined) return [];
+        return [
+            {
+                printing: printing.id,
+                quantity: card.quantity ?? 1,
+                zone: DeckZone.Main,
+                foil: defaultFoil(printing.finishes),
+            },
+        ];
+    });
     if (cards.length > 0) await Api.decks.cards.import(deck, { cards, mode: "Fill" });
-    return cards.length;
+    return cards.reduce((sum, card) => sum + card.quantity, 0);
 }
 
 /**

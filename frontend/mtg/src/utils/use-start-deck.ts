@@ -12,10 +12,30 @@ export type DeckCommander = {
     printing: string | null | undefined;
     /** Art crop url, for a Blind Date's reveal */
     art?: string | null;
+    /** The second Commander of a pair */
+    partner?: {
+        /** Oracle id */
+        commander: string;
+        /** Card name */
+        name: string;
+        /** The printing to put in the command zone */
+        printing?: string | null;
+    } | null;
 };
 
 /** Plan the themes on a date, roll them on a Blind Date, or go straight to the cards */
 export type StartMode = "date" | "blind" | "build";
+
+/**
+ * A deck's name for one Commander or a pair.
+ *
+ * @param name the Commander's name
+ * @param partner the second Commander of a pair
+ * @returns e.g. "Baeloth Barrityl, Entertainer & Raised by Giants"
+ */
+export function pairName(name: string, partner?: { name: string } | null): string {
+    return partner ? `${name} & ${partner.name}` : name;
+}
 
 /**
  * Creates a Commander deck around a match, then opens a date or the deck.
@@ -26,16 +46,13 @@ export function useStartDeck(): (commander: DeckCommander, mode: StartMode) => P
     const navigate = useNavigate();
     return async (commander, mode) => {
         const created = await Api.decks.create({
-            name: commander.name,
+            name: pairName(commander.name, commander.partner),
             format: "commander",
             visibility: Visibility.Public,
         });
-        if (commander.printing) {
-            await Api.decks.cards.add(created.uuid, {
-                printing: commander.printing,
-                quantity: 1,
-                zone: DeckZone.Commander,
-            });
+        for (const printing of [commander.printing, commander.partner?.printing]) {
+            if (!printing) continue;
+            await Api.decks.cards.add(created.uuid, { printing, quantity: 1, zone: DeckZone.Commander });
         }
         if (mode === "date") {
             await Api.dating.date.start(commander.commander, created.uuid);
@@ -46,7 +63,12 @@ export function useStartDeck(): (commander: DeckCommander, mode: StartMode) => P
             await navigate({
                 to: "/dating/blind/$deckUuid",
                 params: { deckUuid: created.uuid },
-                search: { commander: commander.commander, name: commander.name, art: commander.art ?? undefined },
+                search: {
+                    commander: commander.commander,
+                    partner: commander.partner?.commander,
+                    name: pairName(commander.name, commander.partner),
+                    art: commander.art ?? undefined,
+                },
             });
             return;
         }

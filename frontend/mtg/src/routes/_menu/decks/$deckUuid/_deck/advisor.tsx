@@ -33,6 +33,7 @@ import { Move, buildMoves, rankedAdds } from "src/utils/advisor-moves";
 import { say, sayWhy } from "src/utils/advisor-phrase";
 import { IgnoredCard, KeptCard, ThemeLevel, withThemeLevel } from "src/utils/advisor-settings";
 import { effectiveManaValue } from "src/utils/commander";
+import { isBasicLand } from "src/utils/card-types";
 import { defaultFoil } from "src/utils/default-finish";
 import {
     ADVISOR_MAX_CARDS,
@@ -131,6 +132,11 @@ function RouteComponent() {
     const [busyOracle, setBusyOracle] = useState<string | null>(null);
     const { settings, ready, save } = useAdvisorSettings(deckUuid);
     const [accepted, setAccepted] = useState<Array<string>>([]);
+    // Basics added against this report; hidden from the adds only until the next one
+    const [basicsAdded, setBasicsAdded] = useState<{ ids: Array<string>; against: unknown }>({
+        ids: [],
+        against: null,
+    });
     const [filling, setFilling] = useState(false);
     const [goalsTab, setGoalsTab] = useState<GoalsTab | null>(null);
     const [showingSetup, setShowingSetup] = useState(false);
@@ -144,6 +150,7 @@ function RouteComponent() {
 
     useEffect(() => {
         setAccepted([]);
+        setBasicsAdded({ ids: [], against: null });
         setShowingSetup(false);
         setFilter(null);
         setupDecided.current = null;
@@ -265,9 +272,14 @@ function RouteComponent() {
     }, [report, settings.themes, settings.targets, themeLabels]);
     const deckNeeds = useMemo(() => needs(dims), [dims]);
 
+    // An added basic comes back once a fresh report still asks for lands
+    const hidden = useMemo(
+        () => accepted.filter((id) => !basicsAdded.ids.includes(id) || basicsAdded.against === swaps.data),
+        [accepted, basicsAdded, swaps.data],
+    );
     const adds = useMemo(
-        () => (swaps.data === null ? [] : rankedAdds(filterReport(swaps.data.suggestions, accepted), cedh)),
-        [swaps.data, accepted, cedh],
+        () => (swaps.data === null ? [] : rankedAdds(filterReport(swaps.data.suggestions, hidden), cedh)),
+        [swaps.data, hidden, cedh],
     );
     const cuts = useMemo(
         () => (swaps.data === null ? [] : filterCuts(swaps.data.cuts, protectedIds, cards)),
@@ -389,6 +401,12 @@ function RouteComponent() {
         setAccepted((held) => (held.includes(oracleId) ? held : [...held, oracleId]));
     }
 
+    const basicAdded = useCallback(
+        (ids: Array<string>) =>
+            setBasicsAdded((held) => ({ ids: [...new Set([...held.ids, ...ids])], against: swaps.data })),
+        [swaps.data],
+    );
+
     const add = useCallback(
         async (suggestion: Suggestion, quiet = false) => {
             const printing = suggestionCards.get(suggestion.name);
@@ -411,13 +429,14 @@ function RouteComponent() {
                 }
                 if (!quiet) notify.success(t("toast.card-added", { name: suggestion.name, count: quantity }));
                 defend(suggestion.oracle_id);
+                if (isBasicLand(suggestion.type_line)) basicAdded([suggestion.oracle_id]);
                 setBusyOracle(null);
                 await router.invalidate();
             } finally {
                 setBusyOracle(null);
             }
         },
-        [suggestionCards, deckColors, cards, deckUuid, t, router],
+        [suggestionCards, deckColors, cards, deckUuid, t, router, basicAdded],
     );
 
     const addToMaybe = useCallback(
@@ -586,8 +605,8 @@ function RouteComponent() {
     const onIgnore = useCallback((move: Move) => ignore({ oracle_id: move.oracle_id, name: move.name }), [ignore]);
 
     const swipeGroups = useMemo(
-        () => (swaps.data === null ? [] : (filterReport(swaps.data.suggestions, accepted).groups ?? [])),
-        [swaps.data, accepted],
+        () => (swaps.data === null ? [] : (filterReport(swaps.data.suggestions, hidden).groups ?? [])),
+        [swaps.data, hidden],
     );
 
     /**
@@ -617,6 +636,7 @@ function RouteComponent() {
         if (imports.length === 0) return;
         await Api.decks.cards.import(deckUuid, { cards: imports, mode: "Fill" });
         setAccepted((held) => [...held, ...chosen.map((card) => card.oracle_id).filter((id) => !held.includes(id))]);
+        basicAdded(chosen.filter((card) => isBasicLand(card.type_line)).map((card) => card.oracle_id));
         await router.invalidate();
     }
 

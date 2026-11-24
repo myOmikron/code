@@ -8,6 +8,7 @@ A Blind Date: roll themes for the commander and fill a deck to them.
 Name | Type
 ------------ | -------------
 `commander` | string
+`partner` | string
 `bracket` | number
 `seed` | number
 

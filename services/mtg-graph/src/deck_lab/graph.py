@@ -1403,6 +1403,27 @@ def dating_pool() -> list[dict[str, Any]]:
         return [dict(r) for r in session.run(DATING_POOL)]
 
 
+# Page facts are null for commanders not warmed yet; Backgrounds rarely are.
+DATING_PAIRABLE = """
+MATCH (c:Card)
+WHERE c.can_be_commander
+  AND (c.oracle_text CONTAINS 'Partner' OR c.oracle_text CONTAINS 'Choose a Background'
+       OR c.oracle_text CONTAINS 'companion' OR c.oracle_text CONTAINS 'Friends forever'
+       OR c.type_line CONTAINS 'Background' OR c.type_line CONTAINS 'Time Lord Doctor')
+RETURN c.oracle_id AS oracle_id, c.name AS name, c.color_identity AS color_identity,
+       c.edhrec_rank AS edhrec_rank, c.price_eur AS price_eur, c.oracle_text AS oracle_text,
+       c.type_line AS type_line, c.edhrec_salt AS salt, c.edhrec_decks AS decks,
+       c.edhrec_budget AS budget, c.edhrec_brackets AS brackets, c.edhrec_tags AS tags,
+       c.edhrec_tag_labels AS tag_labels, c.edhrec_tag_counts AS tag_counts
+"""
+
+
+def dating_pairable() -> list[dict[str, Any]]:
+    """Every commander that could share the command zone, warmed or not."""
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return [dict(r) for r in session.run(DATING_PAIRABLE)]
+
+
 def commander_salts(oracle_ids: list[str]) -> dict[str, float]:
     """Stored EDHREC salt per commander, for those that have one."""
     query = """
@@ -1502,9 +1523,22 @@ def recommendations_for(commander_name: str, *, limit: int = 15, min_synergy: fl
 # through (a missing price must not hide a card from a soft budget), while a
 # pool query's `eur<5` clause excludes them (a null comparison is null) — the
 # pool is a stated restriction, and "price unknown" does not satisfy it.
+# A fetch has no colour identity, so the identity check alone let Bloodstained
+# Mire into a mono-blue deck. The last clause drops a land that searches only
+# for basic types the identity has none of; "basic land card" fetches stay.
 _HARD_FILTER = """
       NOT c.oracle_id IN $deck
       AND all(sym IN c.color_identity WHERE sym IN $identity)
+      AND NOT (
+        coalesce(c.is_land, false)
+        AND coalesce(c.oracle_text, '') CONTAINS 'Search your library'
+        AND NOT c.oracle_text CONTAINS 'basic land card'
+        AND any(t IN ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest']
+                WHERE c.oracle_text CONTAINS t)
+        AND none(sym IN $identity
+                 WHERE c.oracle_text CONTAINS coalesce(
+                   {W: 'Plains', U: 'Island', B: 'Swamp', R: 'Mountain', G: 'Forest'}[sym], '#'))
+      )
       AND ($max_price IS NULL
            OR coalesce(c.price_eur, c.price_usd) IS NULL
            OR coalesce(c.price_eur, c.price_usd) <= $max_price)
@@ -1720,10 +1754,8 @@ LIMIT $limit
 # Bog) that fix nothing. A land fixes *this* deck when its text taps for any
 # colour, when it produces two or more of the deck's colours (its colour
 # identity — already scoped to the deck's by the hard filter), or when it
-# fetches a basic type the identity can use. The last clause is the one that
-# admits an off-pair fetch — Polluted Delta finds a Swamp for an Abzan deck —
-# while excluding a dead one, which the colourless identity of every fetch
-# would otherwise wave through (Scalding Tarn finds nothing there).
+# fetches two or more basic types the identity can use. An off-pair fetch
+# finds one colour: Bloodstained Mire in Golgari is a Swamp that costs life.
 # `$fetch_types` is the identity's basic type names ("Plains", "Swamp", …).
 # `= true`: `card_is_land` does not answer the bare property.
 _FIXING_LAND = """
@@ -1733,7 +1765,7 @@ _FIXING_LAND = """
         OR size(c.color_identity) >= 2
         OR (c.oracle_text CONTAINS 'Search your library'
             AND (c.oracle_text CONTAINS 'basic land card'
-                 OR any(t IN $fetch_types WHERE c.oracle_text CONTAINS t)))
+                 OR size([t IN $fetch_types WHERE c.oracle_text CONTAINS t]) >= 2))
       )
 """
 
@@ -2967,6 +2999,21 @@ def fetch_deck(deck: dict[str, int]) -> list[dict[str, Any]]:
     """Look up deck cards by oracle_id. Missing ids are simply absent."""
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         return [dict(r) for r in session.run(DECK_CARDS, rows=_deck_rows(deck))]
+
+
+LAND_TEXTS = """
+MATCH (c:Card) WHERE c.oracle_id IN $ids AND c.is_land = true
+RETURN c.oracle_id AS oracle_id, c.oracle_text AS oracle_text, c.type_line AS type_line
+"""
+
+
+def land_texts(ids: list[str]) -> dict[str, tuple[str, str]]:
+    """Oracle text and type line of the lands among `ids`, for `land_colors`."""
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        return {
+            r["oracle_id"]: (r["oracle_text"] or "", r["type_line"] or "")
+            for r in session.run(LAND_TEXTS, ids=ids)
+        }
 
 
 def deck_card_roles(deck: dict[str, int]) -> list[dict[str, Any]]:

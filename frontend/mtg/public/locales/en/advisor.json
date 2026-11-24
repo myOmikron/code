@@ -547,6 +547,7 @@
         "why-typal-is": "Is a {{type}} — {{share}} of your deck",
         "why-typal-makes": "Makes {{type}}s — {{share}} of your deck",
         "why-type-saturation": "Deck holds {{amount}} {{type}} cards against a target of {{low}}–{{high}}",
+        "why-type-gap": "Deck holds {{amount}} {{type}} cards against a target of {{low}}–{{high}}",
         "with-mdfcs": "with MDFCs"
     },
     "toast": {

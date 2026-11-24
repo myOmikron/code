@@ -30,6 +30,9 @@ pub struct DatingSwipeModel {
     /// The Commander's oracle id
     pub commander: Uuid,
 
+    /// The second Commander swiped for it in poly mode
+    pub partner: Option<Uuid>,
+
     /// Where the date stands
     pub status: DateStatus,
 
@@ -71,6 +74,8 @@ pub struct DatingSwipeInsertPatch {
     pub owner: ForeignModel<AccountModel>,
     /// The Commander's oracle id
     pub commander: Uuid,
+    /// The second Commander, in poly mode
+    pub partner: Option<Uuid>,
     /// Where the date stands
     pub status: DateStatus,
     /// Swiped up

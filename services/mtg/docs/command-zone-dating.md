@@ -116,6 +116,23 @@ levels and bracket, and reveals. A busy solver is retried quietly, up to eight t
 - **Certain** cards are added automatically: lands, plus cards that fit the rolled themes *and* appear in a high share of the Commander's EDHREC decks. The cut-off is measured so about 30–40 cards are left to swipe.
 - Card swiping (phase 2) finishes the deck.
 
+## Poly mode
+
+For Commanders that share the command zone: Partner, Partner with, Partner—*group*,
+Choose a Background, Doctor's companion and the Doctors. The rules are read from the rules
+text in the graph (`pairing` in `dating.py`); a Background never leads.
+
+- A toggle in the header keeps only Commanders that take a second one in the stack.
+- A match offers to swipe the second one: a stack of only the legal partners, the same
+  popularity order with "Your type" picks. Backgrounds and other unwarmed Commanders
+  come from the graph without EDHREC facts.
+- The second one swipes back on the **pair**: shared colors, merged interests, averaged
+  bracket, budget and salt. No super like for it. Pair swipes are `dating_swipe` rows with
+  `partner` set.
+- A pair match starts a deck with both in the command zone; a Blind Date fills 98 slots
+  for both. Plan a date plans with the lead only.
+- Matches shows pairs as one entry, and "Swipe a partner" on lone matches that take one.
+
 ## Pointers
 
 - Commander facts: `Card.can_be_commander`, `edhrec_rank`, `color_identity`

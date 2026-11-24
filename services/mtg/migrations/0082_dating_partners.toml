@@ -1,0 +1,19 @@
+[Migration]
+Hash = "5461599769070198512"
+Initial = false
+Dependency = 81
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "dating_swipe"
+
+[Migration.Operations.Field]
+Name = "partner"
+Type = "uuid"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/dating/db.rs"
+Line = 34
+Column = 9

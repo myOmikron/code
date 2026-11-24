@@ -20,6 +20,7 @@ Name | Type
 `budget_lean` | number
 `interests` | [Array&lt;Interest&gt;](Interest.md)
 `your_type` | boolean
+`seeks` | string
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

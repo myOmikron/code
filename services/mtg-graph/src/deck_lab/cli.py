@@ -602,10 +602,10 @@ def fill(
         flag = " " if low - 0.01 <= value <= high + 0.01 else "!"
         typer.echo(f" {flag} {bucket:<16}{before:>6} -> {value:<6}  target {low}-{high}")
 
-    typer.echo(f"\nADDING {len(result.chosen)}")
+    typer.echo(f"\nADDING {sum(card.quantity for card in result.chosen)}")
     for card in result.chosen:
         price = f"${card.price_usd:.2f}" if card.price_usd else "    —"
-        typer.echo(f"  {card.score:>5.1f}  {price:>8}  {card.name}")
+        typer.echo(f"  {card.score:>5.1f}  {price:>8}  {card.quantity:>2}x {card.name}")
 
 
 @app.command("eval")

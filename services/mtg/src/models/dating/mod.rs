@@ -10,6 +10,7 @@ use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm;
+use galvyn::rorm::conditions::Condition;
 use galvyn::rorm::db::Executor;
 use galvyn::rorm::db::executor::All;
 use galvyn::rorm::db::sql::value::Value;
@@ -311,6 +312,8 @@ pub fn profile_key(decks: &[ProfileDeck], answers: Option<&ProfileAnswers>) -> S
 pub struct Swipe {
     /// The Commander's oracle id
     pub commander: Uuid,
+    /// The second Commander, in poly mode
+    pub partner: Option<Uuid>,
     /// Where the date stands
     pub status: DateStatus,
     /// Swiped up
@@ -333,6 +336,7 @@ impl From<DatingSwipeModel> for Swipe {
     fn from(model: DatingSwipeModel) -> Self {
         Self {
             commander: model.commander,
+            partner: model.partner,
             status: model.status,
             super_like: model.super_like,
             came_back: model.came_back,
@@ -350,6 +354,8 @@ impl From<DatingSwipeModel> for Swipe {
 pub struct SwipeInsert {
     /// The Commander's oracle id
     pub commander: Uuid,
+    /// The second Commander, in poly mode
+    pub partner: Option<Uuid>,
     /// Where the date stands
     pub status: DateStatus,
     /// Swiped up
@@ -378,21 +384,49 @@ fn bounded<const N: usize>(value: Option<String>) -> Option<MaxStr<N>> {
     MaxStr::new(value).ok()
 }
 
+fn partner_is(partner: Option<Uuid>) -> Box<dyn Condition<'static>> {
+    match partner {
+        Some(partner) => DatingSwipeModel.partner.equals(Some(partner)).boxed(),
+        None => DatingSwipeModel.partner.is_none().boxed(),
+    }
+}
+
 impl Swipe {
-    /// Oracle ids of every Commander the account has swiped
+    /// Oracle ids of every Commander the account has swiped on its own
     #[instrument(name = "Swipe::swiped", skip(tx))]
     pub async fn swiped(
         tx: &mut Transaction,
         owner: AccountUuid,
     ) -> Result<Vec<Uuid>, rorm::Error> {
         let rows = rorm::query(&mut *tx, DatingSwipeModel.commander)
-            .condition(DatingSwipeModel.owner.equals(owner.into_inner()))
+            .condition(rorm::and![
+                DatingSwipeModel.owner.equals(owner.into_inner()),
+                DatingSwipeModel.partner.is_none(),
+            ])
             .all()
             .await?;
         Ok(rows)
     }
 
-    /// Record a swipe, replacing an earlier one on the same Commander
+    /// Oracle ids of every second Commander the account has swiped for `commander`
+    #[instrument(name = "Swipe::swiped_partners", skip(tx))]
+    pub async fn swiped_partners(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        commander: Uuid,
+    ) -> Result<Vec<Uuid>, rorm::Error> {
+        let rows = rorm::query(&mut *tx, DatingSwipeModel.partner)
+            .condition(rorm::and![
+                DatingSwipeModel.owner.equals(owner.into_inner()),
+                DatingSwipeModel.commander.equals(commander),
+                DatingSwipeModel.partner.is_some(),
+            ])
+            .all()
+            .await?;
+        Ok(rows.into_iter().flatten().collect())
+    }
+
+    /// Record a swipe, replacing an earlier one on the same Commander or pair
     #[instrument(name = "Swipe::record", skip(tx))]
     pub async fn record(
         tx: &mut Transaction,
@@ -403,6 +437,7 @@ impl Swipe {
             .condition(rorm::and![
                 DatingSwipeModel.owner.equals(owner.into_inner()),
                 DatingSwipeModel.commander.equals(insert.commander),
+                partner_is(insert.partner),
             ])
             .await?;
         let model = rorm::insert(&mut *tx, DatingSwipeModel)
@@ -410,6 +445,7 @@ impl Swipe {
                 uuid: Uuid::now_v7(),
                 owner: ForeignModelByField(owner.into_inner()),
                 commander: insert.commander,
+                partner: insert.partner,
                 status: insert.status,
                 super_like: insert.super_like,
                 score: insert.score,
@@ -422,12 +458,12 @@ impl Swipe {
         Ok(Swipe::from(model))
     }
 
-    /// Undo the newest swipe, returning its Commander
+    /// Undo the newest swipe, returning its Commander and second Commander
     #[instrument(name = "Swipe::rewind", skip(tx))]
     pub async fn rewind(
         tx: &mut Transaction,
         owner: AccountUuid,
-    ) -> Result<Option<Uuid>, rorm::Error> {
+    ) -> Result<Option<(Uuid, Option<Uuid>)>, rorm::Error> {
         let newest = rorm::query(&mut *tx, DatingSwipeModel)
             .condition(DatingSwipeModel.owner.equals(owner.into_inner()))
             .order_desc(DatingSwipeModel.created_at)
@@ -439,7 +475,7 @@ impl Swipe {
         rorm::delete(&mut *tx, DatingSwipeModel)
             .condition(DatingSwipeModel.uuid.equals(newest.uuid))
             .await?;
-        Ok(Some(newest.commander))
+        Ok(Some((newest.commander, newest.partner)))
     }
 
     /// How many super likes the account spent since `since`
@@ -495,12 +531,13 @@ impl Swipe {
         Ok(models.into_iter().map(Swipe::from).collect())
     }
 
-    /// Move a date to `status`, `None` when there is no date with that Commander
+    /// Move a date to `status`, `None` when there is no date with that Commander or pair
     #[instrument(name = "Swipe::set_status", skip(tx))]
     pub async fn set_status(
         tx: &mut Transaction,
         owner: AccountUuid,
         commander: Uuid,
+        partner: Option<Uuid>,
         status: DateStatus,
         came_back: bool,
     ) -> Result<Option<Swipe>, rorm::Error> {
@@ -508,6 +545,7 @@ impl Swipe {
             rorm::and![
                 DatingSwipeModel.owner.equals(owner.into_inner()),
                 DatingSwipeModel.commander.equals(commander),
+                partner_is(partner),
                 DatingSwipeModel.status.not_equals(DateStatus::Passed),
             ]
         };

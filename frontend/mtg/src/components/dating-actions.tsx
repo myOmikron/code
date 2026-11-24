@@ -31,8 +31,8 @@ export type DatingActionsProps = {
     canSwipe: boolean;
     /** Whether the last swipe can be taken back */
     canRewind: boolean;
-    /** Super Likes left today */
-    supers: number;
+    /** Super Likes left today, `null` where there are none, as in the partner stack */
+    supers: number | null;
     onSwipe: (direction: SwipeDirection) => void;
     onRewind: () => void;
 };
@@ -67,23 +67,25 @@ export function DatingActions({ canSwipe, canRewind, supers, onSwipe, onRewind }
                 <XMarkIcon className={"size-8 lg:size-7"} />
                 <kbd className={clsx(KEY, QUIET_KEY)}>←</kbd>
             </button>
-            <button
-                type={"button"}
-                onClick={() => onSwipe("up")}
-                disabled={!canSwipe || supers <= 0}
-                aria-label={t("button.super-like")}
-                className={clsx(ROUND, QUIET, SMALL, "relative text-sky-500")}
-            >
-                <StarIcon className={"size-5"} />
-                <span
-                    className={
-                        "absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-sky-500 text-[0.65rem] font-bold text-white lg:static lg:size-auto lg:bg-transparent lg:text-sm lg:text-sky-600 dark:lg:text-sky-400"
-                    }
+            {supers !== null && (
+                <button
+                    type={"button"}
+                    onClick={() => onSwipe("up")}
+                    disabled={!canSwipe || supers <= 0}
+                    aria-label={t("button.super-like")}
+                    className={clsx(ROUND, QUIET, SMALL, "relative text-sky-500")}
                 >
-                    {supers}
-                </span>
-                <kbd className={clsx(KEY, QUIET_KEY)}>↑</kbd>
-            </button>
+                    <StarIcon className={"size-5"} />
+                    <span
+                        className={
+                            "absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-sky-500 text-[0.65rem] font-bold text-white lg:static lg:size-auto lg:bg-transparent lg:text-sm lg:text-sky-600 dark:lg:text-sky-400"
+                        }
+                    >
+                        {supers}
+                    </span>
+                    <kbd className={clsx(KEY, QUIET_KEY)}>↑</kbd>
+                </button>
+            )}
             <button
                 type={"button"}
                 onClick={() => onSwipe("right")}

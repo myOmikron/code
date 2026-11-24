@@ -1002,14 +1002,61 @@ def test_saturation_leaves_other_types_alone():
     assert creature.provenance[-1].channel == "type_saturation"
 
 
-def test_saturation_never_demotes_lands():
-    """Land's target weight is zero and 'too many lands' is a cut question."""
-    land = _typed_candidate("Wastes", "Basic Land", 2.0)
+def test_lands_are_demoted_from_the_high_edge_on():
+    """At the high edge the next land is one too many; below it nothing moves."""
+    full = _typed_candidate("Command Tower", "Land", 2.0)
+    short = _typed_candidate("Command Tower", "Land", 2.0)
 
-    _, demoted = _apply_type_saturation([land], [_type_row("Land", 45, 30, 38)])
+    _, demoted = _apply_type_saturation([full], [_type_row("Land", 38, 30, 38)])
+    _, untouched = _apply_type_saturation([short], [_type_row("Land", 37, 30, 38)])
 
-    assert demoted == 0
-    assert len(land.provenance) == 1
+    assert demoted == 1
+    assert full.provenance[-1].channel == "type_saturation"
+    assert untouched == 0
+
+
+def test_a_short_type_lifts_its_cards_in_proportion():
+    """A multiplier on the reasons a card has, so no reason is invented."""
+    from deck_lab.suggestions import TYPE_GAP_BOOST, _apply_type_gap
+
+    strong = _typed_candidate("Archon", "Creature — Archon", 2.0)
+    weak = _typed_candidate("Bear", "Creature — Bear", 0.5)
+    spell = _typed_candidate("Animate Dead", "Enchantment — Aura", 2.0)
+
+    rows = [
+        _type_row("Creature", 12, 24, 36),
+        _type_row("Enchantment", 6, 5, 9),
+        _type_row("Land", 34, 31, 38),
+    ]
+
+    _, lifted = _apply_type_gap([strong, weak, spell], rows)
+
+    # Creature is fully short, the other two rows are met: lift 1 - 1/3.
+    assert lifted == 2
+    assert strong.score() == pytest.approx(2.0 * (1 + TYPE_GAP_BOOST * 2 / 3))
+    assert weak.score() == pytest.approx(0.5 * (1 + TYPE_GAP_BOOST * 2 / 3))
+    assert spell.score() == pytest.approx(2.0)
+
+
+def test_a_deck_short_on_everything_gets_no_lift():
+    from deck_lab.suggestions import _apply_type_gap
+
+    bear = _typed_candidate("Bear", "Creature — Bear", 1.0)
+    rows = [_type_row("Creature", 0, 24, 36), _type_row("Land", 0, 31, 38)]
+
+    _, lifted = _apply_type_gap([bear], rows)
+
+    assert lifted == 0
+
+
+def test_a_short_land_count_is_left_to_the_basics_channel():
+    from deck_lab.suggestions import _apply_type_gap
+
+    land = _typed_candidate("Command Tower", "Land", 2.0)
+
+    _, lifted = _apply_type_gap([land], [_type_row("Land", 20, 30, 38)])
+
+    assert lifted == 0
 
 
 def test_saturated_creature_sinks_but_survives():

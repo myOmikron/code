@@ -2205,6 +2205,37 @@ export interface CurrentRoundResponse {
      */
     timer?: RoundTimerResponse | null;
 }
+/**
+ * The second Commander of a pair date
+ * @export
+ * @interface DatePartnerResponse
+ */
+export interface DatePartnerResponse {
+    /**
+     * Color identity letters
+     */
+    color_identity: string;
+    /**
+     * Oracle id
+     */
+    commander: string;
+    /**
+     * Art crop url
+     */
+    image_art_crop?: string | null;
+    /**
+     * Full card image url
+     */
+    image_normal?: string | null;
+    /**
+     * Card name
+     */
+    name: string;
+    /**
+     * The Default printing, to add it to a deck
+     */
+    printing?: string | null;
+}
 
 /**
  * Where a date stands
@@ -2265,6 +2296,10 @@ export interface DateResponse {
      */
     open_date?: string | null;
     /**
+     * The second Commander of a pair
+     */
+    partner?: DatePartnerResponse | null;
+    /**
      * The Default printing, to add it to a deck
      */
     printing?: string | null;
@@ -2272,6 +2307,10 @@ export interface DateResponse {
      * Why a rejection happened
      */
     reason?: RejectReason | null;
+    /**
+     * What second Commander a lone Commander looks for
+     */
+    seeks?: Seeks | null;
     /**
      * The interest both sides share
      */
@@ -2425,11 +2464,15 @@ export interface DatesResponse {
     shots: Array<DateResponse>;
 }
 /**
- * The dating-profile questions
+ * The account's own preferences; each one given wins over its decks
  * @export
  * @interface DatingAnswers
  */
 export interface DatingAnswers {
+    /**
+     * Theme ids the account said no to
+     */
+    avoided?: Array<string>;
     /**
      * Preferred bracket, 1 to 5
      */
@@ -2442,6 +2485,10 @@ export interface DatingAnswers {
      * Colors as letters of WUBRG
      */
     colors: string;
+    /**
+     * Preferred salt, 0 to 4
+     */
+    salt?: number | null;
 }
 /**
  * A Commander in the stack
@@ -2465,6 +2512,10 @@ export interface DatingCardResponse {
      * Art crop url
      */
     image_art_crop?: string | null;
+    /**
+     * The back face's full image url, for two-faced cards
+     */
+    image_back_normal?: string | null;
     /**
      * Full card image url
      */
@@ -2490,6 +2541,10 @@ export interface DatingCardResponse {
      */
     printing?: string | null;
     /**
+     * What second Commander it looks for
+     */
+    seeks?: Seeks | null;
+    /**
      * Type line
      */
     type_line: string;
@@ -2498,6 +2553,8 @@ export interface DatingCardResponse {
      */
     your_type: boolean;
 }
+
+
 /**
  * What Commanders see of the account
  * @export
@@ -2566,6 +2623,10 @@ export interface DatingStackRequest {
      * Commanders the client still holds, unswiped
      */
     pending: Array<string>;
+    /**
+     * Only Commanders that take a second one
+     */
+    poly?: boolean;
     /**
      * Only Commanders with all of these colors, as letters of WUBRG
      */
@@ -6485,6 +6546,48 @@ export interface ParticipantResponse {
     uuid: string;
 }
 /**
+ * Asks for the next second Commanders of a lead
+ * @export
+ * @interface PartnerStackRequest
+ */
+export interface PartnerStackRequest {
+    /**
+     * Only pairs within these colors, as letters of WUBRG
+     */
+    colors?: string | null;
+    /**
+     * The lead's oracle id
+     */
+    commander: string;
+    /**
+     * Second Commanders the client still holds, unswiped
+     */
+    pending: Array<string>;
+    /**
+     * Only pairs with all of these colors, as letters of WUBRG
+     */
+    required_colors?: string | null;
+}
+/**
+ * The next second Commanders of a lead
+ * @export
+ * @interface PartnerStackResponse
+ */
+export interface PartnerStackResponse {
+    /**
+     * The second Commanders, in order
+     */
+    commanders: Array<DatingCardResponse>;
+    /**
+     * The lead
+     */
+    lead: DatingCardResponse;
+    /**
+     * Unswiped ones left
+     */
+    remaining: number;
+}
+/**
  * An OIDC login waiting for its username step
  * @export
  * @interface PendingOidcLogin
@@ -7344,6 +7447,10 @@ export const RejectDimension = {
     * How salty the account&#39;s Commanders are
     */
     Salt: 'Salt',
+    /**
+    * A theme the account said no to
+    */
+    Avoided: 'Avoided',
 } as const;
 export type RejectDimension = typeof RejectDimension[keyof typeof RejectDimension];
 
@@ -7665,6 +7772,10 @@ export interface RewindResponse {
      * The Commander whose swipe was undone, `None` without any swipe
      */
     commander?: string | null;
+    /**
+     * The second Commander of an undone pair swipe
+     */
+    partner?: string | null;
 }
 
 /**
@@ -8117,6 +8228,31 @@ export interface SeatResponse {
      */
     seat: number;
 }
+
+/**
+ * What second Commander a Commander looks for
+ * @export
+ */
+export const Seeks = {
+    /**
+    * Another Commander with a matching partner ability
+    */
+    Partner: 'Partner',
+    /**
+    * A Background
+    */
+    Background: 'Background',
+    /**
+    * A Time Lord Doctor
+    */
+    Doctor: 'Doctor',
+    /**
+    * A Doctor&#39;s companion
+    */
+    Companion: 'Companion',
+} as const;
+export type Seeks = typeof Seeks[keyof typeof Seeks];
+
 /**
  * @type SendBugReport200Response
  * 
@@ -9402,6 +9538,10 @@ export interface SwipeRequest {
      * Which way
      */
     kind: SwipeKind;
+    /**
+     * The second Commander swiped for it, in poly mode
+     */
+    partner?: string | null;
 }
 
 
@@ -9538,6 +9678,10 @@ export interface ThemePrefs {
  * @interface ThemeStrength
  */
 export interface ThemeStrength {
+    /**
+     * Whether the account said no to it
+     */
+    avoided: boolean;
     /**
      * The theme's label
      */

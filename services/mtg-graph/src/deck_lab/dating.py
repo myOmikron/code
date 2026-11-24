@@ -10,6 +10,7 @@ import hashlib
 import math
 import random
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from functools import cache
 from statistics import fmean, median
 from typing import Annotated, Literal
@@ -61,6 +62,84 @@ YOUR_TYPE_SAMPLE = 40
 
 TAG_THEMES: dict[str, str] = {slug: theme for theme, slug in THEME_TAG_SLUGS.items()}
 
+# What a commander looks for in a second commander.
+Seeks = Literal["partner", "background", "doctor", "companion"]
+
+
+@dataclass(frozen=True, slots=True)
+class Pairing:
+    """How a commander can share the command zone, read from its rules text."""
+
+    partner: bool = False
+    partner_with: str | None = None
+    group: str | None = None
+    chooses_background: bool = False
+    background: bool = False
+    companion: bool = False
+    doctor: bool = False
+
+    @property
+    def seeks(self) -> Seeks | None:
+        """What it looks for; a Background never leads."""
+        if self.chooses_background:
+            return "background"
+        if self.companion:
+            return "doctor"
+        if self.doctor:
+            return "companion"
+        if self.partner or self.partner_with or self.group:
+            return "partner"
+        return None
+
+
+def _rule_line(line: str) -> str:
+    return line.split("(", 1)[0].strip()
+
+
+def pairing(row: dict) -> Pairing:
+    """The pairing abilities of a pool row."""
+    type_line = row.get("type_line") or ""
+    found: dict[str, object] = {
+        "background": "Background" in type_line and "Enchantment" in type_line,
+        "doctor": "Time Lord Doctor" in type_line,
+    }
+    for raw in (row.get("oracle_text") or "").replace(" // ", "\n").split("\n"):
+        line = _rule_line(raw).replace("’", "'")
+        if line == "Partner":
+            found["partner"] = True
+        elif line.startswith("Partner with "):
+            found["partner_with"] = line.removeprefix("Partner with ").strip()
+        elif line.startswith("Partner—"):
+            found["group"] = line.removeprefix("Partner—").strip()
+        elif line == "Friends forever":
+            found["group"] = "Friends forever"
+        elif line == "Choose a Background":
+            found["chooses_background"] = True
+        elif line == "Doctor's companion":
+            found["companion"] = True
+    return Pairing(**found)  # type: ignore[arg-type]
+
+
+def _front_name(row: dict) -> str:
+    return (row.get("name") or "").split(" // ", 1)[0]
+
+
+def can_pair(lead: dict, other: dict) -> bool:
+    """Whether the two may share the command zone."""
+    if lead["oracle_id"] == other["oracle_id"]:
+        return False
+    a, b = pairing(lead), pairing(other)
+    if a.partner_with or b.partner_with:
+        return a.partner_with == _front_name(other) or b.partner_with == _front_name(lead)
+    return (
+        (a.partner and b.partner)
+        or (a.group is not None and a.group == b.group)
+        or (a.chooses_background and b.background)
+        or (a.background and b.chooses_background)
+        or (a.companion and b.doctor)
+        or (a.doctor and b.companion)
+    )
+
 
 class Interest(BaseModel):
     """One EDHREC tag of a commander, mapped onto our themes where possible."""
@@ -99,6 +178,7 @@ class BlindCard(BaseModel):
 
     oracle_id: str
     name: str
+    quantity: int = 1
 
 
 class BlindDate(BaseModel):
@@ -127,6 +207,7 @@ class DatingCommander(BaseModel):
     budget_lean: float | None
     interests: list[Interest]
     your_type: bool
+    seeks: Seeks | None = None
 
 
 class DatingDeck(BaseModel):
@@ -262,6 +343,7 @@ def commander_card(row: dict, *, your_type: bool = False) -> DatingCommander:
         budget_lean=budget_lean(row.get("budget")),
         interests=interests(row),
         your_type=your_type,
+        seeks=pairing(row).seeks,
     )
 
 
@@ -462,6 +544,7 @@ def stack(
     seed: int,
     only: set[str] | None = None,
     required: set[str] | None = None,
+    judge: Callable[[dict], DatingCommander] = commander_card,
 ) -> list[DatingCommander]:
     """The pool in one fixed popularity-weighted order per seed, without the excluded cards.
 
@@ -477,7 +560,7 @@ def stack(
 
     def fit(row: dict) -> float:
         if row["oracle_id"] not in fits:
-            fits[row["oracle_id"]] = score(profile, commander_card(row))
+            fits[row["oracle_id"]] = score(profile, judge(row))
         return fits[row["oracle_id"]]
 
     out: list[DatingCommander] = []
@@ -490,6 +573,70 @@ def stack(
         if pick["oracle_id"] not in exclude:
             out.append(commander_card(pick, your_type=your_type))
     return out
+
+
+def _mean(values: Iterable[float | None]) -> float | None:
+    known = [value for value in values if value is not None]
+    return fmean(known) if known else None
+
+
+def pair_card(lead: dict, other: dict) -> DatingCommander:
+    """Both commanders as one date: shared colors, interests and averaged facts."""
+    a, b = commander_card(lead), commander_card(other)
+    identity = set(a.color_identity) | set(b.color_identity)
+    merged: dict[str, Interest] = {}
+    for interest in sorted(a.interests + b.interests, key=lambda found: -found.share):
+        merged.setdefault(interest.theme or interest.label, interest)
+    mapped = [interest for interest in merged.values() if interest.theme is not None]
+    rest = [interest for interest in merged.values() if interest.theme is None]
+    return b.model_copy(
+        update={
+            "color_identity": [color for color in "WUBRG" if color in identity],
+            "salt": _mean((a.salt, b.salt)),
+            "decks": a.decks + b.decks,
+            "bracket": _mean((a.bracket, b.bracket)),
+            "budget_lean": _mean((a.budget_lean, b.budget_lean)),
+            "interests": (mapped + rest)[:INTERESTS_SHOWN],
+        }
+    )
+
+
+def pair_filter(
+    lead: dict, other: dict, colors: set[str] | None, required: set[str] | None
+) -> bool:
+    """Whether the pair's combined colors pass the color filter."""
+    identity = set(lead.get("color_identity") or []) | set(other.get("color_identity") or [])
+    paired = {"oracle_id": other["oracle_id"], "color_identity": identity}
+    return in_filter(paired, colors, None, required)
+
+
+def partner_stack(
+    lead: dict,
+    candidates: Iterable[dict],
+    profile: DatingProfile,
+    *,
+    exclude: set[str],
+    colors: set[str] | None,
+    required: set[str] | None,
+    count: int,
+    seed: int,
+) -> tuple[list[DatingCommander], int]:
+    """Every legal second commander for `lead`, in stack order, and how many are left."""
+    legal = [
+        row
+        for row in candidates
+        if can_pair(lead, row) and pair_filter(lead, row, colors, required)
+    ]
+    cards = stack(
+        legal,
+        profile,
+        exclude=exclude,
+        colors=None,
+        count=count,
+        seed=seed,
+        judge=lambda row: pair_card(lead, row),
+    )
+    return cards, sum(1 for row in legal if row["oracle_id"] not in exclude)
 
 
 def _order_key(row: dict, seed: int) -> float:
@@ -572,7 +719,7 @@ def roll_themes(plan: DatePlan, row: dict, rng: random.Random) -> list[RolledThe
 
 
 def split_fill(
-    chosen: list[tuple[str, str]],
+    chosen: list[tuple[str, str, int]],
     lands: set[str],
     fitting: set[str],
     inclusion: dict[str, float],
@@ -583,13 +730,21 @@ def split_fill(
     """Lands and the surest picks go in now, until `open_slots` are left for swiping.
 
     The rest of the fill comes back as well, for a player who skips the swiping.
+    A stack of basics can split between the two.
     """
-    keep = max(0, slots - open_slots)
-    land_cards = [(oid, name) for oid, name in chosen if oid in lands]
+    room = max(0, slots - open_slots)
+    land_cards = [card for card in chosen if card[0] in lands]
     others = sorted(
-        ((oid, name) for oid, name in chosen if oid not in lands),
+        (card for card in chosen if card[0] not in lands),
         key=lambda card: (card[0] not in fitting, -inclusion.get(card[0], 0.0)),
     )
-    ordered = [BlindCard(oracle_id=oid, name=name) for oid, name in land_cards + others]
-    now = ordered[:keep]
-    return now, ordered[keep:], slots - len(now)
+    now: list[BlindCard] = []
+    later: list[BlindCard] = []
+    for oid, name, quantity in land_cards + others:
+        taken = min(quantity, room)
+        room -= taken
+        if taken:
+            now.append(BlindCard(oracle_id=oid, name=name, quantity=taken))
+        if quantity > taken:
+            later.append(BlindCard(oracle_id=oid, name=name, quantity=quantity - taken))
+    return now, later, slots - sum(card.quantity for card in now)

@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { GraphApi } from "src/api/graph";
 import { BracketRulesResponse } from "src/api/generated";
-import { FillResult } from "src/api/graph-generated";
+import { FillResult, FilledCard } from "src/api/graph-generated";
 import { BracketBreakMark } from "src/components/bracket-break-mark";
 import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { DeckAdvisorNotesDisclosure } from "src/components/deck-advisor-notes-disclosure";
@@ -51,6 +51,16 @@ export type DeckFillDialogProps = {
     /** What the deck's claimed bracket asks, `undefined` when it claims none */
     claim: BracketRulesResponse | undefined;
 };
+
+/**
+ * How many copies the fill adds of a card, several only for basics
+ *
+ * @param card a card of the fill
+ * @returns its copies
+ */
+function copies(card: FilledCard): number {
+    return card.quantity ?? 1;
+}
 
 /** What the dialog knows right now */
 type FillState =
@@ -107,7 +117,8 @@ export function DeckFillDialog({
     // on full resolution instead never resolves for a name the catalog can't
     // place, or one whose lookup failed, leaving Accept disabled forever;
     // `accept()` already tolerates filing the subset that did resolve.
-    const placed = chosen.filter((card) => cards.has(card.name)).length;
+    const placed = chosen.filter((card) => cards.has(card.name)).reduce((sum, card) => sum + copies(card), 0);
+    const total = chosen.reduce((sum, card) => sum + copies(card), 0);
     const candidates = useMemo(() => [...cards].map(([name, printing]) => ({ name, printing: printing.id })), [cards]);
     const marks = useBracketFillMarks(counts, claim, candidates);
 
@@ -175,21 +186,23 @@ export function DeckFillDialog({
      * Files every proposed card into the mainboard, in one transaction
      */
     async function accept() {
-        const printings = chosen
-            .map((card) => cards.get(card.name))
-            .filter((printing): printing is NonNullable<typeof printing> => printing !== undefined);
-        if (printings.length === 0) return;
+        const entries = chosen.flatMap((card) => {
+            const printing = cards.get(card.name);
+            if (printing === undefined) return [];
+            return [
+                {
+                    printing: printing.id,
+                    quantity: copies(card),
+                    zone: "Main" as const,
+                    foil: defaultFoil(printing.finishes),
+                },
+            ];
+        });
+        if (entries.length === 0) return;
+        const amount = entries.reduce((sum, entry) => sum + entry.quantity, 0);
         setAccepting(true);
         try {
-            await Api.decks.cards.import(deckUuid, {
-                cards: printings.map((printing) => ({
-                    printing: printing.id,
-                    quantity: 1,
-                    zone: "Main",
-                    foil: defaultFoil(printing.finishes),
-                })),
-                mode: "Fill",
-            });
+            await Api.decks.cards.import(deckUuid, { cards: entries, mode: "Fill" });
 
             // Read before `onClose()`: the dialog's exit animation moves these
             // rows, so their rects have to be taken while they still hold the
@@ -216,9 +229,9 @@ export function DeckFillDialog({
             // today's behaviour, so accepting a fill never depends on the
             // gimmick actually playing.
             if (pile !== null && rows.length > 0 && to !== undefined && flightCards.length > 0) {
-                setFlight({ cards: flightCards, to, amount: printings.length });
+                setFlight({ cards: flightCards, to, amount });
             } else {
-                notify.success(t("toast.cards-filled", { amount: printings.length }));
+                notify.success(t("toast.cards-filled", { amount }));
                 onFilled();
             }
         } finally {
@@ -246,7 +259,7 @@ export function DeckFillDialog({
                     )}
                     {fill.state === "ready" && chosen.length > 0 && (
                         <div className={"flex flex-col"}>
-                            <Text>{t("description.fill", { amount: chosen.length })}</Text>
+                            <Text>{t("description.fill", { amount: total })}</Text>
                             <div className={"mt-3"}>
                                 <FillCoverage
                                     coverage={fill.result.coverage}
@@ -298,6 +311,13 @@ export function DeckFillDialog({
                                                     }
                                                 >
                                                     <span className={"truncate"}>{card.name}</span>
+                                                    {copies(card) > 1 && (
+                                                        <span
+                                                            className={"text-zinc-500 tabular-nums dark:text-zinc-400"}
+                                                        >
+                                                            {`×${copies(card)}`}
+                                                        </span>
+                                                    )}
                                                     {printing !== undefined && printing.manaCost !== "" && (
                                                         <ManaCost value={printing.manaCost} className={"text-xs"} />
                                                     )}

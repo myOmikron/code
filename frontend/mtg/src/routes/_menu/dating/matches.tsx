@@ -1,5 +1,6 @@
 import { ArrowLeftIcon } from "@heroicons/react/20/solid";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
+import clsx from "clsx";
 import { Badge, Button, Heading, Subheading, Text } from "components";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,9 +11,9 @@ import { DatingStartDialog } from "src/components/dating-start-dialog";
 import { ManaCost } from "src/components/mana-cost";
 import { RequireAccount } from "src/components/require-account";
 import i18n from "src/i18n";
-import { manaSymbols, rejectionKey } from "src/utils/dating";
+import { manaSymbols, rejectionKey, sortColors } from "src/utils/dating";
 import { pickLine, useDatingLines } from "src/utils/dating-lines";
-import { useStartDeck } from "src/utils/use-start-deck";
+import { pairName, useStartDeck } from "src/utils/use-start-deck";
 
 export const Route = createFileRoute("/_menu/dating/matches")({
     loader: async () => {
@@ -42,10 +43,13 @@ function RouteComponent() {
         name: date.name,
         printing: date.printing,
         art: date.image_art_crop,
+        partner: date.partner,
     });
 
+    const keyOf = (date: DateResponse) => `${date.commander}:${date.partner?.commander ?? ""}`;
+
     const act = async (date: DateResponse, action: () => Promise<unknown>) => {
-        setBusy(date.commander);
+        setBusy(keyOf(date));
         try {
             await action();
             await router.invalidate();
@@ -56,31 +60,45 @@ function RouteComponent() {
 
     const row = (date: DateResponse) => {
         const matched = date.status === DateStatus.Matched;
-        const art = date.image_art_crop ?? date.image_normal ?? null;
+        const faces = [date, ...(date.partner ? [date.partner] : [])];
+        const identity = [...new Set([...date.color_identity, ...(date.partner?.color_identity ?? "")])].join("");
+        const seed = date.partner?.commander ?? date.commander;
         return (
-            <li key={date.commander} className={"flex items-center gap-3 py-3"}>
-                <span className={"size-14 shrink-0 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"}>
-                    {art !== null && (
-                        <img
-                            src={art}
-                            alt={t("accessibility.art", { name: date.name })}
-                            crossOrigin={"anonymous"}
-                            className={"size-full object-cover object-[center_35%]"}
-                        />
-                    )}
+            <li key={keyOf(date)} className={"flex items-center gap-3 py-3"}>
+                <span className={"flex shrink-0"}>
+                    {faces.map((face, index) => (
+                        <span
+                            key={face.commander}
+                            className={clsx(
+                                "size-14 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800",
+                                index > 0 && "-ml-6 ring-2 ring-white dark:ring-zinc-900",
+                            )}
+                        >
+                            {(face.image_art_crop ?? face.image_normal) && (
+                                <img
+                                    src={face.image_art_crop ?? face.image_normal ?? undefined}
+                                    alt={t("accessibility.art", { name: face.name })}
+                                    crossOrigin={"anonymous"}
+                                    className={"size-full object-cover object-[center_35%]"}
+                                />
+                            )}
+                        </span>
+                    ))}
                 </span>
                 <div className={"flex min-w-0 flex-1 flex-col gap-0.5"}>
                     <span className={"flex items-center gap-2"}>
-                        <span className={"truncate font-semibold text-zinc-950 dark:text-white"}>{date.name}</span>
-                        {date.color_identity !== "" && <ManaCost value={manaSymbols(date.color_identity)} />}
+                        <span className={"truncate font-semibold text-zinc-950 dark:text-white"}>
+                            {pairName(date.name, date.partner)}
+                        </span>
+                        {identity !== "" && <ManaCost value={manaSymbols(sortColors(identity))} />}
                     </span>
                     {matched && date.shared && (
                         <Text className={"truncate text-xs"}>{t("description.shared", { shared: date.shared })}</Text>
                     )}
                     {date.status === DateStatus.Rejected && date.reason && (
                         <Text className={"truncate text-xs"}>
-                            {pickLine(lines?.[date.name]?.reject, date.commander) ??
-                                t(rejectionKey(date.reason, date.commander), { detail: date.reason.detail ?? "" })}
+                            {(date.partner ? null : pickLine(lines?.[date.name]?.reject, date.commander)) ??
+                                t(rejectionKey(date.reason, seed), { detail: date.reason.detail ?? "" })}
                         </Text>
                     )}
                     {date.status === DateStatus.Unmatched && (
@@ -94,7 +112,7 @@ function RouteComponent() {
                         <Button
                             plain={true}
                             disabled={busy !== null}
-                            onClick={() => act(date, () => Api.dating.unmatch(date.commander))}
+                            onClick={() => act(date, () => Api.dating.unmatch(date.commander, date.partner?.commander))}
                         >
                             {t("button.unmatch")}
                         </Button>
@@ -102,9 +120,16 @@ function RouteComponent() {
                         <Button
                             outline={true}
                             disabled={busy !== null}
-                            onClick={() => act(date, () => Api.dating.comeBack(date.commander))}
+                            onClick={() =>
+                                act(date, () => Api.dating.comeBack(date.commander, date.partner?.commander))
+                            }
                         >
                             {t("button.come-back")}
+                        </Button>
+                    )}
+                    {matched && date.seeks && (
+                        <Button outline={true} href={"/dating"} search={{ with: date.commander }}>
+                            {t(`button.find-${date.seeks.toLowerCase()}`)}
                         </Button>
                     )}
                     {date.open_date ? (
@@ -149,7 +174,7 @@ function RouteComponent() {
                 </section>
             </div>
             <DatingStartDialog
-                name={starting?.name ?? null}
+                name={starting === null ? null : pairName(starting.name, starting.partner)}
                 busy={busy !== null}
                 onClose={() => setStarting(null)}
                 onStart={(mode) => {

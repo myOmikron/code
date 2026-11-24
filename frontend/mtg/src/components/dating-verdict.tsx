@@ -1,11 +1,12 @@
 import { HeartIcon } from "@heroicons/react/24/solid";
+import clsx from "clsx";
 import { Button } from "components";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
-import type { RejectReason } from "src/api/generated";
+import type { RejectReason, Seeks } from "src/api/generated";
 import { ManaCost } from "src/components/mana-cost";
 import { PrimaryButton } from "src/components/primary-button";
-import { manaSymbols, matchKey, pityKey, rejectionKey } from "src/utils/dating";
+import { manaSymbols, matchKey, pairMatchKey, pityKey, rejectionKey } from "src/utils/dating";
 import { pickLine } from "src/utils/dating-lines";
 import type { CommanderLines } from "src/utils/dating-lines";
 import type { StartMode } from "src/utils/use-start-deck";
@@ -17,6 +18,28 @@ export type MatchKind = "like" | "super" | "comeback" | "pity";
 export type Verdict =
     { kind: "match"; how: MatchKind; shared: string | null } | { kind: "reject"; reason: RejectReason | null };
 
+/** The second Commander of a pair date */
+export type VerdictPartner = {
+    /** Oracle id, which picks the line */
+    commander: string;
+    /** Card name */
+    name: string;
+    /** Art crop url */
+    art: string | null;
+};
+
+/** The button that opens the partner stack */
+export type FindPartner = {
+    /** What the lead looks for, which names the button */
+    seeks: Seeks;
+    /** Open the partner stack */
+    onFind: () => void;
+};
+
+/** The ghost button under the primary action */
+const GHOST =
+    "h-11 rounded-(--radius-control) border border-white/30 font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-400 disabled:opacity-50";
+
 /**
  * The properties for {@link DatingVerdict}
  */
@@ -27,6 +50,10 @@ export type DatingVerdictProps = {
     name: string;
     /** Art crop url */
     art: string | null;
+    /** The second Commander, when the date is about a pair */
+    partner?: VerdictPartner | null;
+    /** Offered on a lone match in poly mode */
+    findPartner?: FindPartner | null;
     /** The verdict */
     verdict: Verdict;
     /** Whether a button's request is running */
@@ -47,13 +74,26 @@ export type DatingVerdictProps = {
  * @returns the overlay
  */
 export function DatingVerdict(props: DatingVerdictProps) {
-    const { commander, name, art, verdict, busy, onKeepSwiping, onStartDeck, onComeBack, lines } = props;
+    const { commander, name, art, partner, findPartner, verdict, busy, onKeepSwiping, onStartDeck, onComeBack } = props;
     const [t] = useTranslation("dating");
     const match = verdict.kind === "match";
+    const lines = partner ? null : props.lines;
 
     let title: string;
     let line: string;
-    if (verdict.kind === "match") {
+    if (partner && verdict.kind === "match") {
+        title = verdict.how === "comeback" ? t("heading.second-chance") : t("heading.pair-match");
+        line =
+            verdict.how === "comeback"
+                ? t("description.second-chance", { name: partner.name })
+                : t(pairMatchKey(partner.commander), { name, partner: partner.name });
+    } else if (partner && verdict.kind === "reject") {
+        title = t("heading.passed", { name: partner.name });
+        line =
+            verdict.reason === null
+                ? ""
+                : t(rejectionKey(verdict.reason, partner.commander), { detail: verdict.reason.detail ?? "" });
+    } else if (verdict.kind === "match") {
         title =
             verdict.how === "super"
                 ? t("heading.super-match")
@@ -104,22 +144,26 @@ export function DatingVerdict(props: DatingVerdictProps) {
                         <HeartIcon className={"size-12 text-lime-400"} />
                     </span>
                 )}
-                <span
-                    className={
-                        match
-                            ? "-ml-5 size-28 overflow-hidden rounded-full border-4 border-lime-400 bg-zinc-800"
-                            : "size-28 overflow-hidden rounded-full border-4 border-zinc-600 bg-zinc-800 grayscale"
-                    }
-                >
-                    {art !== null && (
-                        <img
-                            src={art}
-                            alt={t("accessibility.art", { name })}
-                            crossOrigin={"anonymous"}
-                            className={"size-full object-cover object-[center_35%]"}
-                        />
-                    )}
-                </span>
+                {[{ name, art }, ...(partner ? [partner] : [])].map((face, index) => (
+                    <span
+                        key={face.name}
+                        className={clsx(
+                            "size-28 overflow-hidden rounded-full border-4 bg-zinc-800",
+                            match ? "border-lime-400" : "border-zinc-600",
+                            (match || index > 0) && "-ml-5",
+                            !match && (!partner || index > 0) && "grayscale",
+                        )}
+                    >
+                        {face.art !== null && (
+                            <img
+                                src={face.art}
+                                alt={t("accessibility.art", { name: face.name })}
+                                crossOrigin={"anonymous"}
+                                className={"size-full object-cover object-[center_35%]"}
+                            />
+                        )}
+                    </span>
+                ))}
             </motion.div>
 
             <h2 className={match ? "text-4xl font-extrabold text-lime-400" : "text-3xl font-extrabold"}>{title}</h2>
@@ -144,27 +188,29 @@ export function DatingVerdict(props: DatingVerdictProps) {
             <div className={"flex w-full max-w-xs flex-col gap-3"}>
                 {match ? (
                     <>
-                        <PrimaryButton onClick={() => onStartDeck("date")} disabled={busy}>
-                            {t("button.plan-date")}
-                        </PrimaryButton>
-                        <button
-                            type={"button"}
-                            onClick={() => onStartDeck("blind")}
-                            disabled={busy}
-                            className={
-                                "h-11 rounded-(--radius-control) border border-white/30 font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-400 disabled:opacity-50"
-                            }
-                        >
+                        {findPartner && (
+                            <PrimaryButton onClick={findPartner.onFind} disabled={busy}>
+                                {t(`button.find-${findPartner.seeks.toLowerCase()}`)}
+                            </PrimaryButton>
+                        )}
+                        {findPartner ? (
+                            <button
+                                type={"button"}
+                                onClick={() => onStartDeck("date")}
+                                disabled={busy}
+                                className={GHOST}
+                            >
+                                {t("button.plan-date")}
+                            </button>
+                        ) : (
+                            <PrimaryButton onClick={() => onStartDeck("date")} disabled={busy}>
+                                {t("button.plan-date")}
+                            </PrimaryButton>
+                        )}
+                        <button type={"button"} onClick={() => onStartDeck("blind")} disabled={busy} className={GHOST}>
                             {t("button.blind-date")}
                         </button>
-                        <button
-                            type={"button"}
-                            onClick={() => onStartDeck("build")}
-                            disabled={busy}
-                            className={
-                                "h-11 rounded-(--radius-control) border border-white/30 font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime-400 disabled:opacity-50"
-                            }
-                        >
+                        <button type={"button"} onClick={() => onStartDeck("build")} disabled={busy} className={GHOST}>
                             {t("button.just-build")}
                         </button>
                     </>

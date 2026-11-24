@@ -547,6 +547,7 @@
         "why-typal-is": "Ist ein {{type}} — {{share}} deines Decks",
         "why-typal-makes": "Erzeugt {{type}} — {{share}} deines Decks",
         "why-type-saturation": "Deck hat {{amount}} Karten vom Typ {{type}}, Ziel {{low}}–{{high}}",
+        "why-type-gap": "Deck hat {{amount}} Karten vom Typ {{type}}, Ziel {{low}}–{{high}}",
         "with-mdfcs": "mit MDFCs"
     },
     "toast": {
