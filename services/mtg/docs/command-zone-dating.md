@@ -56,10 +56,12 @@ Target rejection rate among likes is about 30%, with the threshold measured agai
 real profiles, not guessed.
 
 **Profile.** A server-side snapshot, rebuilt on opening when a deck changed since. Players
-set colors, bracket, budget and salt on "My dating profile"; a set value wins over the decks
-until reset. Themes marked "not my thing" leave the profile and squash the themes score by the
-Commander's share in them, squared; such a rejection has its own reason ("Not your thing").
-Migration 0083 drops old answers wherever decks were overriding them.
+set colors, bracket, budget and salt on "My dating profile" (or in the filter sheet's "Always"
+part); a set value wins over the decks until reset to "From my decks". Themes marked "not my
+thing" leave the profile and squash the themes score by the Commander's share in them, squared;
+such a rejection has its own reason ("Not your thing"). The sheet's "For now" part (colors, sets)
+is not stored; poly mode sits under "Always". Migration 0083 drops old answers wherever decks
+were overriding them.
 It is private.
 
 **Lines.** `frontend/mtg/src/assets/dating-lines/{en,de}.json`, keyed by card name, loaded lazily per

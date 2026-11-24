@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeftIcon, ChatBubbleLeftRightIcon, UserCircleIcon } from "@heroicons/react/20/solid";
-import { Button, EmptyState, Heading, Text, notify } from "components";
+import { EmptyState, Text, notify } from "components";
 import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,9 +9,8 @@ import type { DatingCardResponse } from "src/api/generated";
 import { DatingActions } from "src/components/dating-actions";
 import { DatingBioDialog } from "src/components/dating-bio-dialog";
 import { DatingCard } from "src/components/dating-card";
-import { DatingColorFilter } from "src/components/dating-color-filter";
-import { DatingPolyToggle } from "src/components/dating-poly-toggle";
-import { DatingSetFilter } from "src/components/dating-set-filter";
+import { DatingFilterSheet } from "src/components/dating-filter-sheet";
+import { DatingHeader } from "src/components/dating-header";
 import { DatingVerdict } from "src/components/dating-verdict";
 import type { Verdict } from "src/components/dating-verdict";
 import { PrimaryButton } from "src/components/primary-button";
@@ -61,6 +59,8 @@ function RouteComponent() {
     const [colors, setColors] = useState<Map<Color, ColorChoice>>(new Map());
     const [sets, setSets] = useState<string[]>([]);
     const [filtering, setFiltering] = useState(false);
+    const [sheet, setSheet] = useState(false);
+    const preferencesChanged = useRef(false);
     const [exit, setExit] = useState<SwipeDirection | null>(null);
     const [last, setLast] = useState<{ card: DatingCardResponse; kind: SwipeKind } | null>(null);
     const [bio, setBio] = useState<DatingCardResponse | null>(null);
@@ -110,7 +110,7 @@ function RouteComponent() {
         if (leadId === undefined) setLead(null);
     }, [leadId]);
 
-    useEffect(() => {
+    const restart = useCallback(() => {
         let cancelled = false;
         setLoading(true);
         setExhausted(false);
@@ -124,6 +124,15 @@ function RouteComponent() {
             cancelled = true;
         };
     }, [load]);
+
+    useEffect(() => restart(), [restart]);
+
+    const closeSheet = () => {
+        setSheet(false);
+        if (!preferencesChanged.current) return;
+        preferencesChanged.current = false;
+        restart();
+    };
 
     useEffect(() => {
         if (loading || exhausted || refilling.current || stack.length > REFILL_AT) return;
@@ -242,7 +251,7 @@ function RouteComponent() {
             arrowdown: () => flip(),
             backspace: () => rewind(),
         },
-        date === null && bio === null && !profileNeeded && !filtering,
+        date === null && bio === null && !profileNeeded && !filtering && !sheet,
     );
 
     const top = stack[0];
@@ -251,74 +260,25 @@ function RouteComponent() {
 
     return (
         <RequireAccount>
+            {/* Full bleed: the page pads itself, so phones get a wider card and thrown cards are clipped */}
             <div
+                data-full-bleed={""}
                 className={
-                    "mx-auto flex h-[calc(100dvh-5rem)] min-h-[34rem] w-full max-w-md flex-col gap-2 px-4 pt-2 pb-4 lg:h-[calc(100dvh-9rem)] lg:min-h-[30rem] lg:max-w-none lg:gap-5 lg:p-0"
+                    "mx-auto flex h-[calc(100dvh-5rem)] min-h-[34rem] w-full max-w-md flex-col gap-2 p-4 lg:h-[calc(100dvh-4rem)] lg:min-h-[35rem] lg:max-w-6xl lg:gap-5 lg:p-10"
                 }
             >
-                <header className={"flex flex-wrap items-center gap-x-2 gap-y-2 lg:flex-nowrap lg:gap-x-5"}>
-                    {pairing ? (
-                        <div className={"flex min-w-0 flex-1 items-center gap-2"}>
-                            <Button plain={true} onClick={leavePartners} aria-label={t("button.back-to-commanders")}>
-                                <ArrowLeftIcon />
-                            </Button>
-                            {lead !== null && (
-                                <>
-                                    <span
-                                        className={
-                                            "size-9 shrink-0 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
-                                        }
-                                    >
-                                        {lead.image_art_crop && (
-                                            <img
-                                                src={lead.image_art_crop}
-                                                alt={""}
-                                                crossOrigin={"anonymous"}
-                                                className={"size-full object-cover object-[center_35%]"}
-                                            />
-                                        )}
-                                    </span>
-                                    <Heading className={"min-w-0 truncate"}>
-                                        {t(`heading.find-${(lead.seeks ?? "Partner").toLowerCase()}`, {
-                                            name: lead.name,
-                                        })}
-                                    </Heading>
-                                </>
-                            )}
-                        </div>
-                    ) : (
-                        <Heading className={"min-w-0 flex-1"}>{t("heading.title")}</Heading>
-                    )}
-                    {!profileNeeded && (
-                        <>
-                            <div className={"order-last w-full lg:order-none lg:w-auto"}>
-                                <DatingColorFilter choices={colors} onToggle={toggleColor} />
-                            </div>
-                            <span
-                                aria-hidden={true}
-                                className={"hidden h-6 w-px bg-zinc-950/10 lg:block dark:bg-white/10"}
-                            />
-                            {!pairing && (
-                                <>
-                                    <DatingSetFilter sets={sets} onSets={setSets} onPicking={setFiltering} />
-                                    <DatingPolyToggle poly={poly} onPoly={togglePoly} />
-                                    <span
-                                        aria-hidden={true}
-                                        className={"hidden h-6 w-px bg-zinc-950/10 lg:block dark:bg-white/10"}
-                                    />
-                                </>
-                            )}
-                        </>
-                    )}
-                    <div className={"flex items-center"}>
-                        <Button plain={true} href={"/dating/profile"} aria-label={t("button.profile")}>
-                            <UserCircleIcon />
-                        </Button>
-                        <Button plain={true} href={"/dating/matches"} aria-label={t("button.matches")}>
-                            <ChatBubbleLeftRightIcon />
-                        </Button>
-                    </div>
-                </header>
+                <DatingHeader
+                    pairing={pairing ? { lead, onLeave: leavePartners } : undefined}
+                    profileNeeded={profileNeeded}
+                    colors={colors}
+                    onToggleColor={toggleColor}
+                    sets={sets}
+                    onSets={setSets}
+                    onPicking={setFiltering}
+                    poly={poly}
+                    onPoly={togglePoly}
+                    onFilters={() => setSheet(true)}
+                />
 
                 <div className={"relative isolate min-h-0 flex-1 lg:mx-auto lg:w-full lg:max-w-5xl"}>
                     {loading ? (
@@ -397,6 +357,17 @@ function RouteComponent() {
                     />
                 )}
             </div>
+
+            <DatingFilterSheet
+                open={sheet}
+                onClose={closeSheet}
+                colors={colors}
+                onToggleColor={toggleColor}
+                session={pairing ? null : { sets, onSets: setSets, poly, onPoly: togglePoly }}
+                onPreferences={() => {
+                    preferencesChanged.current = true;
+                }}
+            />
 
             <DatingBioDialog
                 card={bio}
