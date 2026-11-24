@@ -254,7 +254,9 @@ function Row({ row, level, spells, scale, onSetLevel }: RowProps) {
             <div
                 role={"group"}
                 aria-label={t("accessibility.theme-level", { name: row.label })}
-                className={"grid grid-cols-4 gap-0.5 rounded-(--radius-pill) bg-zinc-950/5 p-0.5 dark:bg-white/10"}
+                className={
+                    "grid grid-cols-[repeat(4,minmax(min-content,1fr))] gap-0.5 rounded-(--radius-pill) bg-zinc-950/5 p-0.5 dark:bg-white/10"
+                }
             >
                 {THEME_LEVELS.map((step) => {
                     const pressed = level === step;
@@ -271,7 +273,7 @@ function Row({ row, level, spells, scale, onSetLevel }: RowProps) {
                             // the opinion — the only path back to neutral.
                             onClick={() => onSetLevel(pressed ? null : step)}
                             className={clsx(
-                                "min-w-0 truncate rounded-(--radius-pill) px-1 py-0.5 text-xs/5 font-medium transition focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--color-accent)",
+                                "rounded-(--radius-pill) px-1.5 py-0.5 text-xs/5 font-medium whitespace-nowrap transition focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--color-accent)",
                                 pressed
                                     ? clsx(
                                           "bg-(--surface-card) shadow-(--shadow-card-sm)",

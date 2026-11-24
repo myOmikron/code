@@ -6,6 +6,28 @@ export type Move =
     | { kind: "add"; oracle_id: string; name: string; suggestion: Suggestion; badges: Array<Badge>; fact: string }
     | { kind: "cut"; oracle_id: string; name: string; cut: CutCandidate; badges: Array<Badge>; fact: string };
 
+/** Which moves the gallery offers: `auto` lets the card count decide */
+export type AdvisorMode = "auto" | "add" | "cut" | "swap";
+
+/** The modes a reader can pick, in menu order */
+export const ADVISOR_MODES: ReadonlyArray<AdvisorMode> = ["auto", "add", "cut", "swap"];
+
+/**
+ * The count the gallery is shaped by: the real one in `auto`, otherwise one
+ * that asks for the picked kind of move
+ *
+ * @param mode the picked mode
+ * @param diff cards in the deck minus the size it is built to
+ *
+ * @returns under zero for adds, over zero for cuts, zero for swaps
+ */
+export function modeDiff(mode: AdvisorMode, diff: number): number {
+    if (mode === "add") return -1;
+    if (mode === "cut") return 1;
+    if (mode === "swap") return 0;
+    return diff;
+}
+
 /** How many cuts the gallery shows: the service ranks every card in the deck */
 const SHOWN_CUTS = 30;
 
