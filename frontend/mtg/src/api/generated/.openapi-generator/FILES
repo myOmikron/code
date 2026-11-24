@@ -103,6 +103,7 @@ docs/CreateScannerSessionRequest.md
 docs/CreateTournament200Response.md
 docs/CreateWatchListRequest.md
 docs/CurrentRoundResponse.md
+docs/DatePartnerResponse.md
 docs/DateProgress.md
 docs/DateResponse.md
 docs/DateSessionResponse.md
@@ -300,6 +301,8 @@ docs/PairTournamentRound200Response.md
 docs/PairedRoundResponse.md
 docs/ParticipantDeckResponse.md
 docs/ParticipantResponse.md
+docs/PartnerStackRequest.md
+docs/PartnerStackResponse.md
 docs/PendingOidcLogin.md
 docs/PhysicalDeckResponse.md
 docs/PhysicalDeckValueResponse.md
@@ -372,6 +375,7 @@ docs/ScannerSessionEntryResponse.md
 docs/ScannerSessionResponse.md
 docs/SearchPublicDecksResponse.md
 docs/SeatResponse.md
+docs/Seeks.md
 docs/SendBugReport200Response.md
 docs/SendBugReportErrors.md
 docs/SendBugReportRequest.md

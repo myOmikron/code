@@ -14,6 +14,8 @@ import { applyBlindDate, rollBlindDate, surpriseMe } from "src/utils/blind-date"
 type BlindSearch = {
     /** The Commander's oracle id */
     commander: string;
+    /** The second Commander's oracle id, for a pair */
+    partner?: string;
     /** Its name, for the reveal */
     name: string;
     /** Its art crop, for the reveal */
@@ -23,6 +25,7 @@ type BlindSearch = {
 export const Route = createFileRoute("/_menu/dating/blind/$deckUuid")({
     validateSearch: (search: Record<string, unknown>): BlindSearch => ({
         commander: typeof search.commander === "string" ? search.commander : "",
+        partner: typeof search.partner === "string" ? search.partner : undefined,
         name: typeof search.name === "string" ? search.name : "",
         art: typeof search.art === "string" ? search.art : undefined,
     }),
@@ -40,7 +43,7 @@ export const Route = createFileRoute("/_menu/dating/blind/$deckUuid")({
  */
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
-    const { commander, name, art } = Route.useSearch();
+    const { commander, partner, name, art } = Route.useSearch();
     const profile = Route.useLoaderData();
     const navigate = useNavigate();
     const [t] = useTranslation("dating");
@@ -53,14 +56,14 @@ function RouteComponent() {
         if (started.current) return;
         started.current = true;
         const bracket = profile.bracket ?? null;
-        rollBlindDate(commander, bracket)
+        rollBlindDate(commander, partner ?? null, bracket)
             .then(async (date) => {
                 const added = await applyBlindDate(deckUuid, date, bracket);
                 setDate(date);
                 setState({ kind: "revealed", themes: date.themes, added });
             })
             .catch(() => setState({ kind: "failed" }));
-    }, [commander, deckUuid, profile.bracket]);
+    }, [commander, partner, deckUuid, profile.bracket]);
 
     const openDeck = () => navigate({ to: "/decks/$deckUuid/cards", params: { deckUuid } });
 

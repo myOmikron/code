@@ -21,6 +21,7 @@ import {
     DateSessionResponse,
     DatingAnswers,
     DatingStackRequest,
+    PartnerStackRequest,
     SwipeRequest,
     ThemeLevel,
     CreateGlobalTagRequest,
@@ -741,11 +742,16 @@ export const Api = {
     // server-side and the client is handed numbers rather than the whole shelf.
     dating: {
         stack: async (req: DatingStackRequest) => handleError(defaultApi.getDatingStack({ DatingStackRequest: req })),
+        partners: async (req: PartnerStackRequest) =>
+            handleError(defaultApi.getPartnerStack({ PartnerStackRequest: req })),
         swipe: async (req: SwipeRequest) => quietSessionRead(defaultApi.swipeCommander({ SwipeRequest: req })),
         rewind: async () => handleError(defaultApi.rewindSwipe()),
         dates: async () => handleError(defaultApi.getDates()),
-        comeBack: async (commander: UUID) => handleError(defaultApi.comeBackDate({ commander })),
-        unmatch: async (commander: UUID) => handleError(defaultApi.unmatchDate({ commander })),
+        // `partner` names the second Commander of a pair date.
+        comeBack: async (commander: UUID, partner?: UUID | null) =>
+            handleError(defaultApi.comeBackDate({ commander, partner })),
+        unmatch: async (commander: UUID, partner?: UUID | null) =>
+            handleError(defaultApi.unmatchDate({ commander, partner })),
         resetPasses: async () => handleError(defaultApi.resetDatingPasses()),
         sets: async () => handleError(defaultApi.getDatingSets()),
         profile: async () => handleError(defaultApi.getDatingProfile()),

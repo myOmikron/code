@@ -8,6 +8,7 @@ use std::hash::Hasher;
 
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
+use galvyn::core::re_exports::axum::extract::Query;
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::core::re_exports::time::Time;
 use galvyn::core::stuff::api_error::ApiError;
@@ -25,6 +26,8 @@ use uuid::Uuid;
 
 use crate::http::handler_frontend::dating::schema::AnswerDateRequest;
 use crate::http::handler_frontend::dating::schema::BringThemeRequest;
+use crate::http::handler_frontend::dating::schema::DatePartnerQuery;
+use crate::http::handler_frontend::dating::schema::DatePartnerResponse;
 use crate::http::handler_frontend::dating::schema::DateResponse;
 use crate::http::handler_frontend::dating::schema::DateSessionResponse;
 use crate::http::handler_frontend::dating::schema::DateThemeResponse;
@@ -38,6 +41,8 @@ use crate::http::handler_frontend::dating::schema::DatingStackRequest;
 use crate::http::handler_frontend::dating::schema::DatingStackResponse;
 use crate::http::handler_frontend::dating::schema::InterestResponse;
 use crate::http::handler_frontend::dating::schema::LeanDirection;
+use crate::http::handler_frontend::dating::schema::PartnerStackRequest;
+use crate::http::handler_frontend::dating::schema::PartnerStackResponse;
 use crate::http::handler_frontend::dating::schema::RejectDimension;
 use crate::http::handler_frontend::dating::schema::RejectReason;
 use crate::http::handler_frontend::dating::schema::RewindResponse;
@@ -67,6 +72,8 @@ use crate::models::dating::profile_key;
 use crate::models::dating::read_commander_printings;
 use crate::models::dating::read_profile_decks;
 use crate::models::dating::remote;
+use crate::models::dating::remote::StackCommander;
+use crate::models::dating::remote::StackFilter;
 use crate::models::deck::DeckAccess;
 use crate::models::deck::DeckUuid;
 
@@ -163,7 +170,21 @@ fn reason(
     })
 }
 
-fn date_response(swipe: Swipe, printing: Option<&CommanderPrinting>) -> DateResponse {
+fn date_response(swipe: Swipe, printings: &HashMap<Uuid, CommanderPrinting>) -> DateResponse {
+    let printing = printings.get(&swipe.commander);
+    let partner = swipe.partner.map(|partner| {
+        let printing = printings.get(&partner);
+        DatePartnerResponse {
+            commander: partner,
+            printing: printing.map(|p| p.printing),
+            name: printing.map(|p| p.name.clone()).unwrap_or_default(),
+            color_identity: printing
+                .map(|p| p.color_identity.clone())
+                .unwrap_or_default(),
+            image_art_crop: printing.and_then(|p| p.image_art_crop.clone()),
+            image_normal: printing.and_then(|p| p.image_normal.clone()),
+        }
+    });
     DateResponse {
         commander: swipe.commander,
         printing: printing.map(|p| p.printing),
@@ -187,7 +208,57 @@ fn date_response(swipe: Swipe, printing: Option<&CommanderPrinting>) -> DateResp
         shared: swipe.shared,
         created_at: SchemaDateTime(swipe.created_at),
         open_date: None,
+        partner,
+        seeks: None,
     }
+}
+
+fn card_response(
+    commander: StackCommander,
+    printings: &HashMap<Uuid, CommanderPrinting>,
+) -> DatingCardResponse {
+    let printing = printings.get(&commander.oracle_id);
+    DatingCardResponse {
+        commander: commander.oracle_id,
+        printing: printing.map(|p| p.printing),
+        name: commander.name,
+        color_identity: commander.color_identity.concat(),
+        image_art_crop: printing.and_then(|p| p.image_art_crop.clone()),
+        image_normal: printing.and_then(|p| p.image_normal.clone()),
+        type_line: commander.type_line,
+        oracle_text: commander.oracle_text,
+        edhrec_rank: commander.edhrec_rank,
+        price_eur: commander.price_eur,
+        interests: commander
+            .interests
+            .into_iter()
+            .map(|interest| InterestResponse {
+                label: interest.label,
+                theme: interest.theme,
+            })
+            .collect(),
+        your_type: commander.your_type,
+        seeks: commander.seeks,
+    }
+}
+
+fn check_colors(colors: Option<&str>, required: Option<&str>) -> ApiResult<()> {
+    if [colors, required]
+        .into_iter()
+        .flatten()
+        .any(|colors| !letters_only(colors))
+    {
+        return Err(ApiError::bad_request("Colors must be letters of WUBRG"));
+    }
+    Ok(())
+}
+
+/// A stack's seed: the same all day for one account, so a reload resumes
+fn stack_seed(owner: AccountUuid) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    owner.into_inner().hash(&mut hasher);
+    OffsetDateTime::now_utc().date().hash(&mut hasher);
+    hasher.finish() >> 11
 }
 
 /// The next Commanders to swipe
@@ -201,13 +272,7 @@ pub async fn get_dating_stack(
     }
     let colors = request.colors.map(MaxStr::into_inner);
     let required = request.required_colors.map(MaxStr::into_inner);
-    if [&colors, &required]
-        .into_iter()
-        .flatten()
-        .any(|colors| !letters_only(colors))
-    {
-        return Err(ApiError::bad_request("Colors must be letters of WUBRG"));
-    }
+    check_colors(colors.as_deref(), required.as_deref())?;
     if request.sets.len() > MAX_FILTER_SETS {
         return Err(ApiError::bad_request("Too many sets"));
     }
@@ -239,18 +304,18 @@ pub async fn get_dating_stack(
     let seen: HashSet<Uuid> = exclude.iter().copied().collect();
     exclude.extend(request.pending.iter().filter(|id| !seen.contains(id)));
 
-    let mut hasher = DefaultHasher::new();
-    account.uuid.into_inner().hash(&mut hasher);
-    OffsetDateTime::now_utc().date().hash(&mut hasher);
-
+    let filter = StackFilter {
+        colors: colors.as_deref(),
+        required: required.as_deref().unwrap_or_default(),
+        only: only.as_deref(),
+        poly: request.poly,
+    };
     let stack = remote::stack(
         &profile,
         &exclude,
-        colors.as_deref(),
-        required.as_deref().unwrap_or_default(),
-        only.as_deref(),
+        filter,
         STACK_SIZE,
-        hasher.finish() >> 11,
+        stack_seed(account.uuid),
     )
     .await
     .map_err(advisor_error)?;
@@ -260,40 +325,72 @@ pub async fn get_dating_stack(
     let printings = read_commander_printings(&mut tx, &ids).await?;
     tx.commit().await?;
 
-    let commanders = stack
-        .commanders
-        .into_iter()
-        .map(|commander| {
-            let printing = printings.get(&commander.oracle_id);
-            DatingCardResponse {
-                commander: commander.oracle_id,
-                printing: printing.map(|p| p.printing),
-                name: commander.name,
-                color_identity: commander.color_identity.concat(),
-                image_art_crop: printing.and_then(|p| p.image_art_crop.clone()),
-                image_normal: printing.and_then(|p| p.image_normal.clone()),
-                type_line: commander.type_line,
-                oracle_text: commander.oracle_text,
-                edhrec_rank: commander.edhrec_rank,
-                price_eur: commander.price_eur,
-                interests: commander
-                    .interests
-                    .into_iter()
-                    .map(|interest| InterestResponse {
-                        label: interest.label,
-                        theme: interest.theme,
-                    })
-                    .collect(),
-                your_type: commander.your_type,
-            }
-        })
-        .collect();
-
     Ok(ApiJson(DatingStackResponse {
-        commanders,
+        commanders: stack
+            .commanders
+            .into_iter()
+            .map(|commander| card_response(commander, &printings))
+            .collect(),
         remaining: stack.remaining,
         super_likes_left,
         profile_needed: false,
+    }))
+}
+
+/// The next second Commanders a lead can share the command zone with
+#[post("/partners")]
+pub async fn get_partner_stack(
+    account: Account,
+    ApiJson(request): ApiJson<PartnerStackRequest>,
+) -> ApiResult<ApiJson<PartnerStackResponse>> {
+    if request.pending.len() > MAX_PENDING {
+        return Err(ApiError::bad_request("Too many pending Commanders"));
+    }
+    let colors = request.colors.map(MaxStr::into_inner);
+    let required = request.required_colors.map(MaxStr::into_inner);
+    check_colors(colors.as_deref(), required.as_deref())?;
+    let profile = current_profile(account.uuid).await?.unwrap_or_default();
+
+    let mut tx = Database::global().start_transaction().await?;
+    let mut exclude = Swipe::swiped_partners(&mut tx, account.uuid, request.commander).await?;
+    tx.commit().await?;
+    let seen: HashSet<Uuid> = exclude.iter().copied().collect();
+    exclude.extend(request.pending.iter().filter(|id| !seen.contains(id)));
+
+    let filter = StackFilter {
+        colors: colors.as_deref(),
+        required: required.as_deref().unwrap_or_default(),
+        only: None,
+        poly: true,
+    };
+    let Some(stack) = remote::partners(
+        &profile,
+        request.commander,
+        &exclude,
+        filter,
+        STACK_SIZE,
+        stack_seed(account.uuid),
+    )
+    .await
+    .map_err(advisor_error)?
+    else {
+        return Err(ApiError::bad_request("Commander is not in the dating pool"));
+    };
+
+    let mut ids: Vec<Uuid> = stack.commanders.iter().map(|c| c.oracle_id).collect();
+    ids.push(stack.lead.oracle_id);
+    let mut tx = Database::global().start_transaction().await?;
+    let printings = read_commander_printings(&mut tx, &ids).await?;
+    tx.commit().await?;
+
+    Ok(ApiJson(PartnerStackResponse {
+        lead: card_response(stack.lead, &printings),
+        commanders: stack
+            .commanders
+            .into_iter()
+            .map(|commander| card_response(commander, &printings))
+            .collect(),
+        remaining: stack.remaining,
     }))
 }
 
@@ -315,11 +412,15 @@ pub async fn swipe_commander(
     if request.kind == SwipeKind::SuperLike && left <= 0 {
         return Err(ApiError::bad_request("No super like left today"));
     }
+    if request.kind == SwipeKind::SuperLike && request.partner.is_some() {
+        return Err(ApiError::bad_request("Super likes are for leads only"));
+    }
 
     let mut pity = false;
     let insert = match request.kind {
         SwipeKind::Pass => SwipeInsert {
             commander: request.commander,
+            partner: request.partner,
             status: DateStatus::Passed,
             super_like: false,
             score: 0.0,
@@ -333,17 +434,20 @@ pub async fn swipe_commander(
                 Some(snapshot) => snapshot,
                 None => current_profile(account.uuid).await?.unwrap_or_default(),
             };
-            let Some(verdict) = remote::verdict(&profile, request.commander)
+            let Some(verdict) = remote::verdict(&profile, request.commander, request.partner)
                 .await
                 .map_err(advisor_error)?
             else {
-                return Err(ApiError::bad_request("Commander is not in the dating pool"));
+                return Err(ApiError::bad_request(
+                    "Commander is not in the dating pool, or the two cannot pair",
+                ));
             };
             let super_like = request.kind == SwipeKind::SuperLike;
             pity = denied && !super_like && !verdict.is_match;
             let matched = super_like || verdict.is_match || pity;
             SwipeInsert {
                 commander: request.commander,
+                partner: request.partner,
                 status: if matched {
                     DateStatus::Matched
                 } else {
@@ -386,9 +490,12 @@ fn pity_due(recent: &[DateStatus]) -> bool {
 #[delete("/swipes/last")]
 pub async fn rewind_swipe(account: Account) -> ApiResult<ApiJson<RewindResponse>> {
     let mut tx = Database::global().start_transaction().await?;
-    let commander = Swipe::rewind(&mut tx, account.uuid).await?;
+    let undone = Swipe::rewind(&mut tx, account.uuid).await?;
     tx.commit().await?;
-    Ok(ApiJson(RewindResponse { commander }))
+    Ok(ApiJson(RewindResponse {
+        commander: undone.map(|(commander, _)| commander),
+        partner: undone.and_then(|(_, partner)| partner),
+    }))
 }
 
 /// Matches and the Commanders that said no
@@ -401,19 +508,37 @@ pub async fn get_dates(account: Account) -> ApiResult<ApiJson<DatesResponse>> {
         .into_iter()
         .map(|date| (date.commander, date.deck.into_inner()))
         .collect();
-    let ids: Vec<Uuid> = dates.iter().map(|date| date.commander).collect();
+    let ids: Vec<Uuid> = dates
+        .iter()
+        .flat_map(|date| [Some(date.commander), date.partner])
+        .flatten()
+        .collect();
     let printings: HashMap<Uuid, CommanderPrinting> =
         read_commander_printings(&mut tx, &ids).await?;
     tx.commit().await?;
 
+    let lone: Vec<Uuid> = dates
+        .iter()
+        .filter(|date| date.partner.is_none() && date.status == DateStatus::Matched)
+        .map(|date| date.commander)
+        .collect();
+    let seeks = remote::seeks(&lone).await.unwrap_or_else(|error| {
+        warn!(%error, "The advisor did not say which Commanders take a second");
+        HashMap::new()
+    });
+
     let mut matches = Vec::new();
     let mut shots = Vec::new();
     for date in dates {
-        let printing = printings.get(&date.commander);
         let matched = date.status == DateStatus::Matched;
         let open_date = open.get(&date.commander).copied();
-        let mut response = date_response(date, printing);
+        let lone = date.partner.is_none();
+        let commander = date.commander;
+        let mut response = date_response(date, &printings);
         response.open_date = open_date;
+        if lone {
+            response.seeks = seeks.get(&commander).copied();
+        }
         if matched {
             matches.push(response);
         } else {
@@ -426,18 +551,21 @@ pub async fn get_dates(account: Account) -> ApiResult<ApiJson<DatesResponse>> {
 async fn move_date(
     account: Account,
     commander: Uuid,
+    partner: Option<Uuid>,
     status: DateStatus,
     came_back: bool,
 ) -> ApiResult<ApiJson<DateResponse>> {
     let mut tx = Database::global().start_transaction().await?;
-    let Some(date) = Swipe::set_status(&mut tx, account.uuid, commander, status, came_back).await?
+    let Some(date) =
+        Swipe::set_status(&mut tx, account.uuid, commander, partner, status, came_back).await?
     else {
         tx.rollback().await?;
         return Err(ApiError::bad_request("Request was denied"));
     };
-    let printings = read_commander_printings(&mut tx, &[commander]).await?;
+    let ids: Vec<Uuid> = [Some(commander), partner].into_iter().flatten().collect();
+    let printings = read_commander_printings(&mut tx, &ids).await?;
     tx.commit().await?;
-    Ok(ApiJson(date_response(date, printings.get(&commander))))
+    Ok(ApiJson(date_response(date, &printings)))
 }
 
 /// "No, come back": a rejection or unmatch becomes a match
@@ -445,8 +573,9 @@ async fn move_date(
 pub async fn come_back_date(
     account: Account,
     Path(commander): Path<Uuid>,
+    Query(query): Query<DatePartnerQuery>,
 ) -> ApiResult<ApiJson<DateResponse>> {
-    move_date(account, commander, DateStatus::Matched, true).await
+    move_date(account, commander, query.partner, DateStatus::Matched, true).await
 }
 
 /// End a match
@@ -454,8 +583,16 @@ pub async fn come_back_date(
 pub async fn unmatch_date(
     account: Account,
     Path(commander): Path<Uuid>,
+    Query(query): Query<DatePartnerQuery>,
 ) -> ApiResult<ApiJson<DateResponse>> {
-    move_date(account, commander, DateStatus::Unmatched, false).await
+    move_date(
+        account,
+        commander,
+        query.partner,
+        DateStatus::Unmatched,
+        false,
+    )
+    .await
 }
 
 /// The sets the stack can be filtered by

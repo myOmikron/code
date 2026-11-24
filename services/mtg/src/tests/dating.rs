@@ -162,3 +162,59 @@ fn a_deck_without_a_date_has_none() {
         assert_eq!(response.status, StatusCode::BAD_REQUEST);
     });
 }
+
+#[test]
+fn a_pair_swipe_stands_beside_the_lead_swipe() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let mut session = TestClient::logged_in(&member).await;
+        let lead = Uuid::new_v4();
+        let partner = Uuid::new_v4();
+
+        for body in [
+            json!({ "commander": lead, "partner": partner, "kind": "Pass" }),
+            json!({ "commander": lead, "kind": "Pass" }),
+        ] {
+            session
+                .json(Method::POST, &api("dating/swipes"), &body)
+                .await
+                .ok_json();
+        }
+
+        let lone = session
+            .json(Method::DELETE, &api("dating/swipes/last"), &json!(null))
+            .await
+            .ok_json();
+        assert_eq!(lone["commander"], json!(lead));
+        assert_eq!(lone["partner"], json!(null));
+
+        let pair = session
+            .json(Method::DELETE, &api("dating/swipes/last"), &json!(null))
+            .await
+            .ok_json();
+        assert_eq!(pair["commander"], json!(lead));
+        assert_eq!(pair["partner"], json!(partner));
+    });
+}
+
+#[test]
+fn a_second_commander_takes_no_super_like() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let mut session = TestClient::logged_in(&member).await;
+
+        let response = session
+            .json(
+                Method::POST,
+                &api("dating/swipes"),
+                &json!({
+                    "commander": Uuid::new_v4(),
+                    "partner": Uuid::new_v4(),
+                    "kind": "SuperLike",
+                }),
+            )
+            .await;
+
+        assert_eq!(response.status, StatusCode::BAD_REQUEST);
+    });
+}

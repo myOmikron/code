@@ -4293,6 +4293,64 @@
                 }
             }
         },
+        "/api/frontend/v1/dating/partners": {
+            "post": {
+                "summary": "The next second Commanders a lead can share the command zone with",
+                "description": "The next second Commanders a lead can share the command zone with",
+                "operationId": "get_partner_stack",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PartnerStackRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PartnerStackResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/dating/sets": {
             "get": {
                 "summary": "The sets the stack can be filtered by",
@@ -4516,6 +4574,17 @@
                             "format": "uuid"
                         },
                         "style": "simple"
+                    },
+                    {
+                        "in": "query",
+                        "name": "partner",
+                        "schema": {
+                            "nullable": true,
+                            "description": "The second Commander, for a pair",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "form"
                     }
                 ],
                 "responses": {
@@ -4577,6 +4646,17 @@
                             "format": "uuid"
                         },
                         "style": "simple"
+                    },
+                    {
+                        "in": "query",
+                        "name": "partner",
+                        "schema": {
+                            "nullable": true,
+                            "description": "The second Commander, for a pair",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "form"
                     }
                 ],
                 "responses": {
@@ -19910,6 +19990,46 @@
                     "number"
                 ]
             },
+            "DatePartnerResponse": {
+                "description": "The second Commander of a pair date",
+                "type": "object",
+                "properties": {
+                    "color_identity": {
+                        "description": "Color identity letters",
+                        "type": "string"
+                    },
+                    "commander": {
+                        "description": "Oracle id",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "image_art_crop": {
+                        "nullable": true,
+                        "description": "Art crop url",
+                        "type": "string"
+                    },
+                    "image_normal": {
+                        "nullable": true,
+                        "description": "Full card image url",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "Card name",
+                        "type": "string"
+                    },
+                    "printing": {
+                        "nullable": true,
+                        "description": "The Default printing, to add it to a deck",
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "color_identity",
+                    "commander",
+                    "name"
+                ]
+            },
             "DateProgress": {
                 "description": "Where a date stands",
                 "oneOf": [
@@ -19981,6 +20101,15 @@
                         "type": "string",
                         "format": "uuid"
                     },
+                    "partner": {
+                        "nullable": true,
+                        "description": "The second Commander of a pair",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DatePartnerResponse"
+                            }
+                        ]
+                    },
                     "printing": {
                         "nullable": true,
                         "description": "The Default printing, to add it to a deck",
@@ -19993,6 +20122,15 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/RejectReason"
+                            }
+                        ]
+                    },
+                    "seeks": {
+                        "nullable": true,
+                        "description": "What second Commander a lone Commander looks for",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Seeks"
                             }
                         ]
                     },
@@ -20227,9 +20365,17 @@
                 ]
             },
             "DatingAnswers": {
-                "description": "The dating-profile questions",
+                "description": "The account's own preferences; each one given wins over its decks",
                 "type": "object",
                 "properties": {
+                    "avoided": {
+                        "description": "Theme ids the account said no to",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MaxStr_64"
+                        }
+                    },
                     "bracket": {
                         "nullable": true,
                         "description": "Preferred bracket, 1 to 5",
@@ -20249,6 +20395,12 @@
                                 "$ref": "#/components/schemas/MaxStr_8"
                             }
                         ]
+                    },
+                    "salt": {
+                        "nullable": true,
+                        "description": "Preferred salt, 0 to 4",
+                        "type": "number",
+                        "format": "double"
                     }
                 },
                 "required": [
@@ -20277,6 +20429,11 @@
                     "image_art_crop": {
                         "nullable": true,
                         "description": "Art crop url",
+                        "type": "string"
+                    },
+                    "image_back_normal": {
+                        "nullable": true,
+                        "description": "The back face's full image url, for two-faced cards",
                         "type": "string"
                     },
                     "image_normal": {
@@ -20310,6 +20467,15 @@
                         "description": "The Default printing, to add it to a deck",
                         "type": "string",
                         "format": "uuid"
+                    },
+                    "seeks": {
+                        "nullable": true,
+                        "description": "What second Commander it looks for",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Seeks"
+                            }
+                        ]
                     },
                     "type_line": {
                         "description": "Type line",
@@ -20432,6 +20598,11 @@
                             "type": "string",
                             "format": "uuid"
                         }
+                    },
+                    "poly": {
+                        "description": "Only Commanders that take a second one",
+                        "default": false,
+                        "type": "boolean"
                     },
                     "required_colors": {
                         "nullable": true,
@@ -26027,6 +26198,78 @@
                 "type": "string",
                 "format": "uuid"
             },
+            "PartnerStackRequest": {
+                "description": "Asks for the next second Commanders of a lead",
+                "type": "object",
+                "properties": {
+                    "colors": {
+                        "nullable": true,
+                        "description": "Only pairs within these colors, as letters of WUBRG",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_8"
+                            }
+                        ]
+                    },
+                    "commander": {
+                        "description": "The lead's oracle id",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "pending": {
+                        "description": "Second Commanders the client still holds, unswiped",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    "required_colors": {
+                        "nullable": true,
+                        "description": "Only pairs with all of these colors, as letters of WUBRG",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_8"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "commander",
+                    "pending"
+                ]
+            },
+            "PartnerStackResponse": {
+                "description": "The next second Commanders of a lead",
+                "type": "object",
+                "properties": {
+                    "commanders": {
+                        "description": "The second Commanders, in order",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DatingCardResponse"
+                        }
+                    },
+                    "lead": {
+                        "description": "The lead",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DatingCardResponse"
+                            }
+                        ]
+                    },
+                    "remaining": {
+                        "description": "Unswiped ones left",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "commanders",
+                    "lead",
+                    "remaining"
+                ]
+            },
             "PendingOidcLogin": {
                 "description": "An OIDC login waiting for its username step",
                 "type": "object",
@@ -27222,6 +27465,13 @@
                         "enum": [
                             "Salt"
                         ]
+                    },
+                    {
+                        "description": "A theme the account said no to",
+                        "type": "string",
+                        "enum": [
+                            "Avoided"
+                        ]
                     }
                 ]
             },
@@ -27660,6 +27910,12 @@
                     "commander": {
                         "nullable": true,
                         "description": "The Commander whose swipe was undone, `None` without any swipe",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "partner": {
+                        "nullable": true,
+                        "description": "The second Commander of an undone pair swipe",
                         "type": "string",
                         "format": "uuid"
                     }
@@ -28335,6 +28591,39 @@
                     "name",
                     "participant",
                     "seat"
+                ]
+            },
+            "Seeks": {
+                "description": "What second Commander a Commander looks for",
+                "oneOf": [
+                    {
+                        "description": "Another Commander with a matching partner ability",
+                        "type": "string",
+                        "enum": [
+                            "Partner"
+                        ]
+                    },
+                    {
+                        "description": "A Background",
+                        "type": "string",
+                        "enum": [
+                            "Background"
+                        ]
+                    },
+                    {
+                        "description": "A Time Lord Doctor",
+                        "type": "string",
+                        "enum": [
+                            "Doctor"
+                        ]
+                    },
+                    {
+                        "description": "A Doctor's companion",
+                        "type": "string",
+                        "enum": [
+                            "Companion"
+                        ]
+                    }
                 ]
             },
             "SendBugReportErrors": {
@@ -30077,6 +30366,12 @@
                                 "$ref": "#/components/schemas/SwipeKind"
                             }
                         ]
+                    },
+                    "partner": {
+                        "nullable": true,
+                        "description": "The second Commander swiped for it, in poly mode",
+                        "type": "string",
+                        "format": "uuid"
                     }
                 },
                 "required": [
@@ -30256,6 +30551,10 @@
                 "description": "How strongly the account plays a theme",
                 "type": "object",
                 "properties": {
+                    "avoided": {
+                        "description": "Whether the account said no to it",
+                        "type": "boolean"
+                    },
                     "label": {
                         "description": "The theme's label",
                         "type": "string"
@@ -30271,6 +30570,7 @@
                     }
                 },
                 "required": [
+                    "avoided",
                     "label",
                     "strength",
                     "theme"

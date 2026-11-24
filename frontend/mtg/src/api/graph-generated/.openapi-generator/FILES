@@ -25,8 +25,11 @@ docs/DatingBlindRequest.md
 docs/DatingCommander.md
 docs/DatingDateRequest.md
 docs/DatingDeck.md
+docs/DatingPartnersRequest.md
+docs/DatingPartnersResponse.md
 docs/DatingProfile.md
 docs/DatingProfileRequest.md
+docs/DatingSeeksRequest.md
 docs/DatingStackRequest.md
 docs/DatingStackResponse.md
 docs/DatingVerdict.md

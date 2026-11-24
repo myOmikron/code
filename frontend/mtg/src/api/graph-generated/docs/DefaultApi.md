@@ -9,7 +9,9 @@ All URIs are relative to */api/graph*
 | [**postCombos**](DefaultApi.md#postcombos) | **POST** /combos | Post Combos |
 | [**postDatingBlind**](DefaultApi.md#postdatingblind) | **POST** /dating/blind | Post Dating Blind |
 | [**postDatingDate**](DefaultApi.md#postdatingdate) | **POST** /dating/date | Post Dating Date |
+| [**postDatingPartners**](DefaultApi.md#postdatingpartners) | **POST** /dating/partners | Post Dating Partners |
 | [**postDatingProfile**](DefaultApi.md#postdatingprofile) | **POST** /dating/profile | Post Dating Profile |
+| [**postDatingSeeks**](DefaultApi.md#postdatingseeks) | **POST** /dating/seeks | Post Dating Seeks |
 | [**postDatingStack**](DefaultApi.md#postdatingstack) | **POST** /dating/stack | Post Dating Stack |
 | [**postDatingVerdict**](DefaultApi.md#postdatingverdict) | **POST** /dating/verdict | Post Dating Verdict |
 | [**postDiagnostics**](DefaultApi.md#postdiagnostics) | **POST** /diagnostics | Post Diagnostics |
@@ -344,6 +346,74 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## postDatingPartners
+
+> DatingPartnersResponse postDatingPartners(DatingPartnersRequest)
+
+Post Dating Partners
+
+The next second commanders a lead can share the command zone with.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { PostDatingPartnersRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // DatingPartnersRequest
+    DatingPartnersRequest: ...,
+  } satisfies PostDatingPartnersRequest;
+
+  try {
+    const data = await api.postDatingPartners(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **DatingPartnersRequest** | [DatingPartnersRequest](DatingPartnersRequest.md) |  | |
+
+### Return type
+
+[**DatingPartnersResponse**](DatingPartnersResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## postDatingProfile
 
 > DatingProfile postDatingProfile(DatingProfileRequest)
@@ -392,6 +462,74 @@ example().catch(console.error);
 ### Return type
 
 [**DatingProfile**](DatingProfile.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## postDatingSeeks
+
+> { [key: string]: string | undefined; } postDatingSeeks(DatingSeeksRequest)
+
+Post Dating Seeks
+
+What second commander each of them looks for; ones that look for none are left out.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { PostDatingSeeksRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // DatingSeeksRequest
+    DatingSeeksRequest: ...,
+  } satisfies PostDatingSeeksRequest;
+
+  try {
+    const data = await api.postDatingSeeks(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **DatingSeeksRequest** | [DatingSeeksRequest](DatingSeeksRequest.md) |  | |
+
+### Return type
+
+**{ [key: string]: string | undefined; }**
 
 ### Authorization
 

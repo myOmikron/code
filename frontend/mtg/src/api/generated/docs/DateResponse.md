@@ -15,8 +15,10 @@ Name | Type
 `image_normal` | string
 `name` | string
 `open_date` | string
+`partner` | [DatePartnerResponse](DatePartnerResponse.md)
 `printing` | string
 `reason` | [RejectReason](RejectReason.md)
+`seeks` | [Seeks](Seeks.md)
 `shared` | string
 `status` | [DateStatus](DateStatus.md)
 `super_like` | boolean

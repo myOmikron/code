@@ -411,3 +411,137 @@ def test_blind_endpoint_fills_and_splits(pool, monkeypatch):
     assert data["add_now"][0]["oracle_id"] == "c0"
     assert len(data["add_later"]) == 6
     assert data["open_slots"] == 35
+
+
+BAELOTH = {
+    "oracle_text": "Creatures your opponents control are goaded.\nChoose a Background (reminder)",
+    "color_identity": ["R"],
+}
+GIANTS = {
+    "oracle_text": "Commander creatures you own have base power and toughness 10/10.",
+    "type_line": "Legendary Enchantment — Background",
+    "color_identity": ["G"],
+    "tags": None,
+    "tag_labels": None,
+    "tag_counts": None,
+    "decks": None,
+    "salt": None,
+    "budget": None,
+    "brackets": None,
+}
+PARTNER = {"oracle_text": "Flying\nPartner (You can have two commanders if both have partner.)"}
+
+
+def test_pairing_reads_every_kind():
+    assert dating.pairing(row("b", **BAELOTH)).seeks == "background"
+    assert dating.pairing(row("g", **GIANTS)).seeks is None
+    assert dating.pairing(row("g", **GIANTS)).background
+    assert dating.pairing(row("t", **PARTNER)).seeks == "partner"
+    doctor = row("d", type_line="Legendary Creature — Time Lord Doctor")
+    assert dating.pairing(doctor).seeks == "companion"
+    assert dating.pairing(row("c", oracle_text="Doctor’s companion (reminder)")).seeks == "doctor"
+    assert dating.pairing(row("s", oracle_text="Partner—Survivors (reminder)")).group == "Survivors"
+    assert dating.pairing(row("x")).seeks is None
+
+
+def test_only_legal_pairs_can_share_the_command_zone():
+    baeloth, giants = row("baeloth", **BAELOTH), row("giants", **GIANTS)
+    tymna, thrasios = row("tymna", **PARTNER), row("thrasios", **PARTNER)
+    pir = row("pir", name="Pir", oracle_text="Partner with Toothy (reminder)")
+    toothy = row("toothy", name="Toothy", oracle_text="Partner with Pir")
+    survivor = row("ellie", oracle_text="Partner—Survivors")
+    friend = row("sophina", oracle_text="Partner—Friends forever")
+
+    assert dating.can_pair(baeloth, giants)
+    assert dating.can_pair(giants, baeloth)
+    assert dating.can_pair(tymna, thrasios)
+    assert dating.can_pair(pir, toothy)
+    assert not dating.can_pair(pir, tymna)
+    assert not dating.can_pair(tymna, baeloth)
+    assert not dating.can_pair(survivor, friend)
+    assert not dating.can_pair(tymna, tymna)
+
+
+def test_a_pair_shares_colors_and_averages_what_is_known():
+    pair = dating.pair_card(row("baeloth", **BAELOTH, salt=2.0), row("giants", **GIANTS))
+
+    assert pair.oracle_id == "giants"
+    assert pair.color_identity == ["R", "G"]
+    assert pair.salt == 2.0
+    assert [interest.label for interest in pair.interests] == ["Aristocrats", "Tokens", "Ramp"]
+
+
+def test_the_partner_stack_holds_only_legal_partners_within_the_colors():
+    lead = row("baeloth", **BAELOTH)
+    candidates = [
+        row("giants", **GIANTS),
+        row("blue", **(GIANTS | {"color_identity": ["U"]})),
+        row("tymna", **PARTNER),
+    ]
+
+    cards, remaining = dating.partner_stack(
+        lead,
+        candidates,
+        profile(),
+        exclude=set(),
+        colors={"R", "G"},
+        required=None,
+        count=5,
+        seed=0,
+    )
+
+    assert [card.oracle_id for card in cards] == ["giants"]
+    assert remaining == 1
+
+
+@pytest.fixture
+def poly_pool(monkeypatch):
+    rows = [row("baeloth", **BAELOTH), row("teysa")]
+    pairable = [row("baeloth", **BAELOTH), row("giants", **GIANTS)]
+    from deck_lab import graph
+
+    monkeypatch.setattr(graph, "dating_pool", lambda: rows)
+    monkeypatch.setattr(graph, "dating_pairable", lambda: pairable)
+    dating_pool_cache.clear()
+    yield rows
+    dating_pool_cache.clear()
+
+
+def test_poly_stack_keeps_only_commanders_that_take_a_second(poly_pool):
+    body = {"profile": profile().model_dump(), "poly": True, "count": 5}
+
+    data = client.post("/dating/stack", json=body).json()
+
+    assert [card["oracle_id"] for card in data["commanders"]] == ["baeloth"]
+    assert data["commanders"][0]["seeks"] == "background"
+
+
+def test_partners_endpoint_offers_backgrounds(poly_pool):
+    body = {"profile": profile().model_dump(), "commander": "baeloth", "count": 5}
+
+    data = client.post("/dating/partners", json=body).json()
+
+    assert [card["oracle_id"] for card in data["commanders"]] == ["giants"]
+    assert data["lead"]["oracle_id"] == "baeloth"
+
+
+def test_verdict_endpoint_judges_the_pair(poly_pool):
+    body = {"profile": profile().model_dump(), "commander": "baeloth", "partner": "giants"}
+
+    response = client.post("/dating/verdict", json=body)
+
+    assert response.status_code == 200
+    assert response.json()["dimension"] == "colors"
+    assert response.json()["detail"] == "RG"
+
+
+def test_verdict_endpoint_refuses_an_illegal_pair(poly_pool):
+    body = {"profile": profile().model_dump(), "commander": "teysa", "partner": "giants"}
+
+    assert client.post("/dating/verdict", json=body).status_code == 404
+
+
+def test_seeks_endpoint_names_what_each_lead_looks_for(poly_pool):
+    data = client.post("/dating/seeks", json={"commanders": ["baeloth", "teysa"]}).json()
+
+    assert data == {"baeloth": "background"}

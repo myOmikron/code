@@ -7,7 +7,9 @@ import {
     nextColorChoice,
     manaSymbols,
     matchKey,
+    pairMatchKey,
     rejectionKey,
+    sortColors,
     swipeDirection,
 } from "src/utils/dating";
 
@@ -80,5 +82,19 @@ describe("colors", () => {
         expect(nextColorChoice(undefined)).toBe("excluded");
         expect(nextColorChoice("excluded")).toBe("required");
         expect(nextColorChoice("required")).toBeUndefined();
+    });
+});
+
+describe("sortColors", () => {
+    it("puts a pair's colors in WUBRG order", () => {
+        expect(sortColors("GR")).toBe("RG");
+        expect(sortColors("")).toBe("");
+    });
+});
+
+describe("pairMatchKey", () => {
+    it("picks a stable pair line", () => {
+        expect(pairMatchKey("giants")).toBe(pairMatchKey("giants"));
+        expect(pairMatchKey("giants")).toMatch(/^description\.pair-match-[1-3]$/);
     });
 });

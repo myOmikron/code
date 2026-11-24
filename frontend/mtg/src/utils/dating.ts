@@ -81,6 +81,16 @@ export function matchKey(seed: string): string {
 }
 
 /**
+ * The locale key of a pair match's line.
+ *
+ * @param seed the second Commander's oracle id
+ * @returns a `description.pair-match-…` key of the dating namespace
+ */
+export function pairMatchKey(seed: string): string {
+    return `description.pair-match-${lineVariant(seed)}`;
+}
+
+/**
  * The pity match line for a Commander, the same one every time.
  *
  * @param seed the Commander's oracle id
@@ -98,6 +108,16 @@ export function pityKey(seed: string): string {
  */
 export function manaSymbols(letters: string): string {
     return [...letters].map((letter) => `{${letter}}`).join("");
+}
+
+/**
+ * Puts color letters in WUBRG order.
+ *
+ * @param letters color letters, e.g. `"GR"`
+ * @returns e.g. `"RG"`
+ */
+export function sortColors(letters: string): string {
+    return COLORS.filter((color) => letters.includes(color)).join("");
 }
 
 /** What the color filter says about one color; unset means the color is allowed */
@@ -131,4 +151,33 @@ export function colorFilter(choices: ReadonlyMap<Color, ColorChoice>): {
         colors: allowed.length === COLORS.length ? null : allowed.join(""),
         required: required.length === 0 ? null : required.join(""),
     };
+}
+
+/** The `localStorage` key of poly mode */
+const POLY_KEY = "mtg.dating.poly";
+
+/**
+ * Whether poly mode was on last time.
+ *
+ * @returns `false` when the browser kept nothing
+ */
+export function loadPoly(): boolean {
+    try {
+        return localStorage.getItem(POLY_KEY) === "true";
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Remembers poly mode for this browser.
+ *
+ * @param poly whether it is on
+ */
+export function savePoly(poly: boolean): void {
+    try {
+        localStorage.setItem(POLY_KEY, String(poly));
+    } catch {
+        // storage unavailable: the toggle is forgotten
+    }
 }
