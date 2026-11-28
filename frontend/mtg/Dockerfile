@@ -1,7 +1,7 @@
 # The card index and the fine-tuned OCR models, which no build can produce: they come from ~450000
 # reference scans and hours of training on the machine that holds them. Built and pushed by hand
 # with `just mtg-assets`, pinned here so a release records which index it shipped.
-ARG MTG_ASSETS_VERSION=v1
+ARG MTG_ASSETS_VERSION=v2
 FROM ghcr.io/myomikron/mtg/assets:${MTG_ASSETS_VERSION} AS scanner-assets
 
 FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS build-frontend

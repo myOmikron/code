@@ -1,15 +1,15 @@
 //! Nearest-neighbour search over the packed reference index.
 //!
 //! The index is a flat int8 matrix, searched exhaustively. That is a deliberate choice over an
-//! approximate structure: 111k rows of 128 int8 is 14 MB and one query is 14 million multiply
-//! adds, which a typed-array loop does in a few milliseconds. An ANN index would save little,
+//! approximate structure: 450k rows of 128 int8 is 58 MB and one query is 58 million multiply
+//! adds, which a typed-array loop does in tens of milliseconds. An ANN index would save little,
 //! cost recall, and add a build step whose correctness is much harder to verify.
 //!
 //! The index is also the scanner's card detector of last resort. A quad that rectified into a
 //! piece of playmat has no near neighbour here, so a low best score is the signal that the
 //! detection was wrong, not that the card is unknown.
-import { EMBEDDING_DIM, PREPROCESSING } from "./embedding";
-import type { Preprocessing } from "./embedding";
+import { DEFAULT_EMBEDDING_MODEL, EMBEDDING_MODELS } from "./embedding-models";
+import type { EmbeddingModel, Preprocessing } from "./embedding-models";
 
 /**
  * What the index says about one printing
@@ -48,7 +48,10 @@ export type IndexManifest = {
     formatVersion: number;
     /** Content hash of the payload files; part of their URL so a rebuilt index invalidates */
     version?: string;
+    /** Which {@link EmbeddingModel} the vectors come from; must match the one embedding queries */
     model: string;
+    /** Base name of the ONNX file the vectors come from, absent on indexes packed before it was kept */
+    modelFile?: string;
     /** Which preprocessing the vectors were built with; must match what the app applies */
     preprocessing?: string;
     sourceDim: number;
@@ -99,7 +102,7 @@ export type EmbeddingIndex = {
     /**
      * Projects a pooled embedding into the index space and returns it L2 normalized
      *
-     * @param embedding a vector of length EMBEDDING_DIM
+     * @param embedding a vector of the model's pooled length
      * @returns the projected, normalized vector
      */
     project(embedding: Float32Array): Float32Array;
@@ -241,24 +244,61 @@ export function nameKey(name: string): string {
 }
 
 /**
+ * What the queries an index will answer are made with
+ */
+export type IndexExpectation = {
+    /** The model embedding the queries, the default model when absent */
+    model?: EmbeddingModel;
+    /** The preprocessing applied to the queries, the model's own when absent */
+    preprocessing?: Preprocessing;
+    /** Base name of the ONNX file embedding the queries, the model's served file when absent */
+    modelFile?: string;
+};
+
+/**
+ * Refuses an index whose vectors were not made the way the queries will be.
+ *
+ * A query from one model compared against another model's vectors does not fail by itself: it
+ * returns cards, just the wrong ones. Every property that puts a vector into a different space is
+ * therefore checked here, before anything is searched.
+ *
+ * @param manifest the index's manifest
+ * @param expected how the queries are made
+ */
+export function checkIndexPairing(manifest: IndexManifest, expected: IndexExpectation = {}): void {
+    const spec = EMBEDDING_MODELS[expected.model ?? DEFAULT_EMBEDDING_MODEL];
+    const preprocessing = expected.preprocessing ?? spec.preprocessing;
+    const modelFile = expected.modelFile ?? spec.file;
+    if (manifest.model !== spec.id) {
+        throw new Error(
+            `Index gehört zum Modell "${manifest.model ?? "unbekannt"}", die Anfragen kommen von "${spec.id}"`,
+        );
+    }
+    if (manifest.modelFile !== undefined && manifest.modelFile !== modelFile) {
+        throw new Error(`Index wurde mit "${manifest.modelFile}" gebaut, die Anfragen kommen von "${modelFile}"`);
+    }
+    if (manifest.preprocessing !== preprocessing) {
+        throw new Error(
+            `Index wurde mit "${manifest.preprocessing ?? "unbekannt"}" gebaut, die App erwartet "${preprocessing}"`,
+        );
+    }
+    if (manifest.sourceDim !== spec.dim) {
+        throw new Error(`Index erwartet ${manifest.sourceDim} Eingangsdimensionen, das Modell liefert ${spec.dim}`);
+    }
+}
+
+/**
  * Builds a searchable index from the packed files.
  *
  * @param buffers
- * @param expected which preprocessing the caller applies to its queries
+ * @param expected how the caller makes its queries; see {@link checkIndexPairing}
  * @returns the index
  */
-export function createEmbeddingIndex(buffers: IndexBuffers, expected: Preprocessing = PREPROCESSING): EmbeddingIndex {
+export function createEmbeddingIndex(buffers: IndexBuffers, expected: IndexExpectation = {}): EmbeddingIndex {
     const { manifest, cards } = buffers;
     const { dim, count, sourceDim, scale } = manifest;
 
-    if (manifest.preprocessing !== expected) {
-        throw new Error(
-            `Index wurde mit "${manifest.preprocessing ?? "unbekannt"}" gebaut, die App erwartet "${expected}"`,
-        );
-    }
-    if (sourceDim !== EMBEDDING_DIM) {
-        throw new Error(`Index erwartet ${sourceDim} Eingangsdimensionen, das Modell liefert ${EMBEDDING_DIM}`);
-    }
+    checkIndexPairing(manifest, expected);
     const projection = new Float32Array(buffers.projection);
     if (projection.length !== (dim + 1) * sourceDim) {
         throw new Error(`projection.f32 hat ${projection.length} Werte, erwartet ${(dim + 1) * sourceDim}`);

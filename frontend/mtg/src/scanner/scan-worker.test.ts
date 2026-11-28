@@ -33,7 +33,12 @@ beforeEach(() => {
     vi.clearAllMocks();
     mocks.backend = "wasm";
     mocks.loadIndex.mockResolvedValue({ manifest: { count: 1 }, warm: mocks.warm });
-    mocks.loadModel.mockImplementation(async () => ({ backend: mocks.backend, runtime: "test", notes: [] }));
+    mocks.loadModel.mockImplementation(async (_progress, _strategy, model = "dinov2-small") => ({
+        model,
+        backend: mocks.backend,
+        runtime: "test",
+        notes: [],
+    }));
     mocks.loadCv.mockResolvedValue({});
     mocks.loadOcr.mockResolvedValue({});
     mocks.variant = 0;
@@ -97,10 +102,10 @@ describe("live worker scheduling", () => {
         });
         mocks.loadModel.mockImplementationOnce(async () => {
             expect(mocks.loadCv).not.toHaveBeenCalled();
-            return { backend: "wasm", runtime: "test", notes: [] };
+            return { model: "dinov2-small", backend: "wasm", runtime: "test", notes: [] };
         });
         await scan();
-        expect(mocks.loadModel).toHaveBeenCalledWith(expect.any(Function), "off");
+        expect(mocks.loadModel).toHaveBeenCalledWith(expect.any(Function), "off", "dinov2-small");
         expect(mocks.loadCv).toHaveBeenCalledOnce();
         expect(mocks.loadOcr).not.toHaveBeenCalled();
         expect(mocks.warm).not.toHaveBeenCalled();
@@ -177,5 +182,41 @@ describe("live worker scheduling", () => {
         expect(result.preview).toBeNull();
         expect(mocks.confirm).not.toHaveBeenCalled();
         expect(mocks.seen).not.toHaveBeenCalled();
+    });
+});
+
+describe("embedding model", () => {
+    /**
+     * Loads the worker with mock engines
+     *
+     * @returns the worker's scope
+     */
+    async function worker() {
+        const scope = {
+            postMessage: vi.fn(),
+            onmessage: undefined as unknown as (event: { data: unknown }) => Promise<void>,
+        };
+        vi.stubGlobal("self", scope);
+        vi.stubGlobal("navigator", { userAgent: "Android AppleWebKit/537.36 Chrome/130" });
+        await import("./scan-worker");
+        return scope;
+    }
+
+    it("loads the requested model with its own index and reports it", async () => {
+        const scope = await worker();
+        await scope.onmessage({ data: { type: "load", id: 1, model: "dhv-embed" } });
+        expect(mocks.loadIndex).toHaveBeenCalledWith(expect.any(Function), "dhv-embed");
+        expect(mocks.loadModel).toHaveBeenCalledWith(expect.any(Function), "full", "dhv-embed");
+        expect(scope.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "ready", model: "dhv-embed" }));
+    });
+
+    it("refuses a load for another model than the one it holds", async () => {
+        const scope = await worker();
+        await scope.onmessage({ data: { type: "load", id: 1 } });
+        await scope.onmessage({ data: { type: "load", id: 2, model: "dhv-embed" } });
+        expect(scope.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({ type: "error", id: 2, message: expect.stringContaining("dinov2-small") }),
+        );
+        expect(mocks.loadModel).toHaveBeenCalledOnce();
     });
 });

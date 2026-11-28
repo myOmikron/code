@@ -8,6 +8,7 @@ import { Api } from "src/api/api";
 import type { CollectionOverviewResponse, ScannerSessionResponse } from "src/api/generated";
 import { ContextMenu, useContextMenu } from "src/components/context-menu";
 import type { ContextMenuSection } from "src/components/context-menu";
+import { ScanModelSwitch } from "src/components/scan-model-switch";
 import { SessionBufferList } from "src/components/session-buffer-list";
 import { SessionDialog } from "src/components/session-dialog";
 import { SessionTile } from "src/components/session-tile";
@@ -241,7 +242,8 @@ function ScanStartRoute() {
                     </ul>
                 ))}
 
-            <div>
+            <div className={"flex flex-col items-start gap-4"}>
+                <ScanModelSwitch className={"w-full max-w-xs"} />
                 <Button plain onClick={() => void navigate({ to: "/scan/bench" })}>
                     {t("button.new-scanner-bench")}
                 </Button>

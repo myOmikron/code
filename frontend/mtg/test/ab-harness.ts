@@ -6,32 +6,30 @@
 //! what it is good for is the difference between two variants measured on the same rows, which
 //! is what a change has to earn.
 //!
+//! Each model is measured the way this harness always measured it: DINOv2 by its CLS half only,
+//! any other model by the whole vector it returns.
+//!
 //! Usage: node test/ab-harness.mjs <photoDir> <decklist> [--variant none|balance] [--distractors 6000]
+//!            [--model dinov2-small|dhv-embed] [--model-file F] [--cache DIR]
 import { createReadStream } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { createInterface } from "node:readline";
-import { dirname, extname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import ort from "onnxruntime-node";
+import { extname, join } from "node:path";
 import sharp from "sharp";
 import { detectCardsIn, rectifyCardIn, refineToCardEdge, shrinkQuad } from "../src/scanner/card-detect";
 import type { RgbaImage } from "../src/scanner/card-detect";
-import { greyWorldBalance, IMAGE_SIZE, poolHidden, preprocess } from "../src/scanner/embedding";
+import { greyWorldBalance, prepareForModel } from "../src/scanner/embedding";
 import { equaliseLocalContrast } from "../src/scanner/image-quality";
+import { cacheDir as chosenCache, chosenModel, createNodeEmbedder, modelFile, option } from "../scripts/node-scanner";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const cacheDir = join(here, "..", ".cache", "scryfall");
-const modelPath = join(here, "..", ".cache", "models", "model.onnx");
+const cacheDir = chosenCache();
 
 /** Trim fractions tried per quad when the sleeve edge is not located properly. */
 const BLIND_INSETS = [0, 0.04];
-/** Only the CLS half of the stored vector is used: the patch mean measured clearly worse. */
+/** Only the CLS half of DINOv2's stored vector is used: the patch mean measured clearly worse. */
 const CLS_DIM = 384;
-
-function option(flag: string, fallback: string): string {
-    const index = process.argv.indexOf(flag);
-    return index === -1 ? fallback : process.argv[index + 1];
-}
+const spec = chosenModel();
+const vectorDim = spec.id === "dinov2-small" ? CLS_DIM : spec.dim;
 
 const [photoDir, decklistPath] = process.argv.slice(2).filter((value) => !value.startsWith("--"));
 const variant = option("--variant", "none");
@@ -54,7 +52,7 @@ type Face = { image: string; name: string; set: string; collectorNumber: string 
 async function prepare(image: RgbaImage): Promise<Float32Array> {
     let prepared = features.has("balance") ? greyWorldBalance(image) : image;
     if (features.has("clahe")) prepared = await equaliseLocalContrast(prepared);
-    return preprocess(prepared);
+    return prepareForModel(prepared, spec.preprocessing);
 }
 
 async function readImage(path: string, rotate = false): Promise<RgbaImage> {
@@ -90,32 +88,25 @@ async function main(): Promise<void> {
     for (let row = 0; row < faces.length && chosen.length < distractorCount + wanted.size; row += stride) {
         if (!seen.has(row)) chosen.push(faces[row]);
     }
-    process.stdout.write(
-        `Variante "${variant}"  Teilindex ${chosen.length} Zeilen (${wanted.size} aus dem Deck)\n`,
-    );
+    process.stdout.write(`Variante "${variant}"  Teilindex ${chosen.length} Zeilen (${wanted.size} aus dem Deck)\n`);
 
-    const session = await ort.InferenceSession.create(modelPath, { intraOpNumThreads: 12 });
-    const inputName = session.inputNames[0];
-    const outputName = session.outputNames[0];
+    const embedder = await createNodeEmbedder(spec, modelFile(spec));
+    process.stdout.write(`Modell ${spec.id} (${embedder.file}), ${vectorDim} Dimensionen\n`);
 
     const embed = async (image: RgbaImage): Promise<Float32Array> => {
-        const output = await session.run({
-            [inputName]: new ort.Tensor("float32", await prepare(image), [1, 3, IMAGE_SIZE, IMAGE_SIZE]),
-        });
-        const tensor = output[outputName];
-        const pooled = poolHidden(tensor.data as Float32Array, 1, tensor.dims[1] as number)[0];
-        const vector = pooled.slice(0, CLS_DIM);
+        const pooled = (await embedder.embedPrepared([await prepare(image)]))[0];
+        const vector = pooled.slice(0, vectorDim);
         let norm = 0;
-        for (let d = 0; d < CLS_DIM; d += 1) norm += vector[d] * vector[d];
+        for (let d = 0; d < vectorDim; d += 1) norm += vector[d] * vector[d];
         norm = Math.sqrt(norm) || 1;
-        for (let d = 0; d < CLS_DIM; d += 1) vector[d] /= norm;
+        for (let d = 0; d < vectorDim; d += 1) vector[d] /= norm;
         return vector;
     };
 
     const started = Date.now();
-    const matrix = new Float32Array(chosen.length * CLS_DIM);
+    const matrix = new Float32Array(chosen.length * vectorDim);
     for (const [row, face] of chosen.entries()) {
-        matrix.set(await embed(await readImage(join(cacheDir, face.image))), row * CLS_DIM);
+        matrix.set(await embed(await readImage(join(cacheDir, face.image))), row * vectorDim);
         if (row % 500 === 0) {
             process.stderr.write(`\rReferenzen ${row}/${chosen.length}   `);
         }
@@ -126,9 +117,9 @@ async function main(): Promise<void> {
         let best = -Infinity;
         let bestRow = 0;
         for (let row = 0; row < chosen.length; row += 1) {
-            const offset = row * CLS_DIM;
+            const offset = row * vectorDim;
             let sum = 0;
-            for (let d = 0; d < CLS_DIM; d += 1) sum += query[d] * matrix[offset + d];
+            for (let d = 0; d < vectorDim; d += 1) sum += query[d] * matrix[offset + d];
             if (sum > best) {
                 best = sum;
                 bestRow = row;

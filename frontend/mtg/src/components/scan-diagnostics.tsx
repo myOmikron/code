@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import type { LiveFrameResult, ScannerStatus } from "src/scanner/scan-client";
 import { retryWebGpu } from "src/scanner/scan-client";
 import { conservativeScanner } from "src/scanner/runtime-policy";
+import { ScanModelSwitch } from "src/components/scan-model-switch";
 
 /**
  * The properties for {@link ScanDiagnostics}
@@ -107,10 +108,21 @@ export function ScanDiagnostics({ open, onClose, status, frame, cropRef }: ScanD
                     <DescriptionList>
                         {status ? (
                             <>
+                                <DescriptionTerm>{t("label.diagnostics-model")}</DescriptionTerm>
+                                <DescriptionDetails>{status.model}</DescriptionDetails>
+
                                 <DescriptionTerm>{t("label.diagnostics-backend")}</DescriptionTerm>
                                 <DescriptionDetails>{`${status.backend} · ${status.strategy} · ORT ${status.runtime}`}</DescriptionDetails>
                             </>
                         ) : null}
+
+                        <DescriptionTerm>{t("label.diagnostics-embed")}</DescriptionTerm>
+                        <DescriptionDetails>
+                            {t("label.embed-average", {
+                                count: frame?.embedAverage.runs ?? 0,
+                                milliseconds: (frame?.embedAverage.milliseconds ?? 0).toFixed(0),
+                            })}
+                        </DescriptionDetails>
 
                         <DescriptionTerm>{t("label.diagnostics-crop")}</DescriptionTerm>
                         <DescriptionDetails>
@@ -159,6 +171,7 @@ export function ScanDiagnostics({ open, onClose, status, frame, cropRef }: ScanD
                         </Text>
                     ))}
                 </div>
+                <ScanModelSwitch className={"mt-6"} />
             </DialogBody>
             <DialogActions>
                 {status?.backend === "wasm" && !conservativeScanner() ? (

@@ -91,7 +91,7 @@ mtg-assets-push version:
     docker push ghcr.io/myomikron/mtg/assets:{{ version }}
 
 # Build the mtg frontend image against a given asset image
-mtg-frontend-build version="v1":
+mtg-frontend-build version="v2":
     docker build -t mtg-nginx:local -f frontend/mtg/Dockerfile \
         --build-arg MTG_ASSETS_VERSION={{ version }} .
 

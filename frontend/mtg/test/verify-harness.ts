@@ -8,34 +8,32 @@
 //! ORB is rotation invariant, so the four orientations only matter for building the shortlist.
 //! Verification runs on the unrotated crops.
 //!
-//! Usage: node test/verify-harness.mjs <photoDir> <decklist> [--candidates 20] [--crops 2]
-import { gunzipSync } from "node:zlib";
+//! Usage: node test/verify-harness.mjs <photoDir> <decklist|labels.json> [--candidates 20] [--crops 2]
+//!            [--recall-only] [--model dinov2-small|dhv-embed] [--model-file F] [--index DIR] [--cache DIR]
 import { createReadStream } from "node:fs";
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
-import { dirname, extname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import ort from "onnxruntime-node";
+import { extname, join } from "node:path";
 import sharp from "sharp";
 import { detectCardsIn, rectifyCardIn, shrinkQuad } from "../src/scanner/card-detect";
 import type { RgbaImage } from "../src/scanner/card-detect";
-import { IMAGE_SIZE, poolHidden, prepareForModel } from "../src/scanner/embedding";
-import { createEmbeddingIndex } from "../src/scanner/embedding-index";
 import { describeCard, discriminatePrintings, verifyAgainst } from "../src/scanner/feature-verify";
 import { MIN_ACCEPT_INLIERS } from "../src/scanner/scan-decision";
 import type { CardFeatures } from "../src/scanner/feature-verify";
+import {
+    cacheDir as chosenCache,
+    chosenModel,
+    createNodeEmbedder,
+    indexDir,
+    loadIndex,
+    modelFile,
+    option,
+} from "../scripts/node-scanner";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const indexDir = join(here, "..", "public", "data", "scan-index");
-const cacheDir = join(here, "..", ".cache", "scryfall");
-const modelPath = join(here, "..", ".cache", "models", "model.onnx");
+const cacheDir = chosenCache();
 
 /** Trim fractions tried per quad, covering an unsleeved card and common sleeve thicknesses. */
 const INSETS = [0, 0.04];
-function option(flag: string, fallback: string): string {
-    const index = process.argv.indexOf(flag);
-    return index === -1 ? fallback : process.argv[index + 1];
-}
 
 const [photoDir, truthPath] = process.argv.slice(2).filter((value) => !value.startsWith("--"));
 const candidateCount = Number(option("--candidates", "20"));
@@ -95,7 +93,7 @@ async function main(): Promise<void> {
 
     if (labelled) {
         for (const label of JSON.parse(truth) as Label[]) {
-            if (label.status !== "ok" || !label.name) continue;
+            if ((label.status ?? "ok") !== "ok" || !label.name) continue;
             labels.set(label.file, label);
             wanted.add(`${(label.set ?? "").toLowerCase()}/${(label.number ?? "").toUpperCase()}`);
             wantedNames.add(label.name.split(" //")[0].toLowerCase());
@@ -110,13 +108,12 @@ async function main(): Promise<void> {
         }
     }
 
-    const manifest = JSON.parse(await readFile(join(indexDir, "manifest.json"), "utf8"));
-    const index = createEmbeddingIndex({
-        manifest,
-        projection: (await readFile(join(indexDir, "projection.f32"))).buffer as ArrayBuffer,
-        vectors: (await readFile(join(indexDir, "vectors.i8"))).buffer as ArrayBuffer,
-        cards: JSON.parse(gunzipSync(await readFile(join(indexDir, "cards.json.gz"))).toString("utf8")),
-    });
+    const spec = chosenModel();
+    const embedder = await createNodeEmbedder(spec, modelFile(spec));
+    const index = await loadIndex(indexDir(spec), embedder);
+    process.stdout.write(
+        `Modell ${spec.id} (${embedder.file}), Index ${indexDir(spec)}: ${index.manifest.count} × ${index.manifest.dim}\n`,
+    );
 
     const imagePaths = new Map<string, string>();
     const byName = new Map<string, [string, { score: number; name: string; set: string; number: string }][]>();
@@ -141,16 +138,14 @@ async function main(): Promise<void> {
     }
     if (oracleShortlist) process.stdout.write(`Orakel-Shortlist: ${oracle.length} Drucke\n`);
 
-    const session = await ort.InferenceSession.create(modelPath, { intraOpNumThreads: 12 });
-    const inputName = session.inputNames[0];
-    const outputName = session.outputNames[0];
-
+    let embedRuns = 0;
+    let embedMilliseconds = 0;
     const embed = async (image: RgbaImage): Promise<Float32Array> => {
-        const output = await session.run({
-            [inputName]: new ort.Tensor("float32", await prepareForModel(image), [1, 3, IMAGE_SIZE, IMAGE_SIZE]),
-        });
-        const tensor = output[outputName];
-        return poolHidden(tensor.data as Float32Array, 1, tensor.dims[1] as number)[0];
+        const started = performance.now();
+        const vector = await embedder.embed(image);
+        embedMilliseconds += performance.now() - started;
+        embedRuns += 1;
+        return vector;
     };
 
     const referenceFeatures = new Map<string, CardFeatures>();
@@ -194,6 +189,7 @@ async function main(): Promise<void> {
     let declined = 0;
     let declinedCorrect = 0;
     const recallCounts = new Map<number, number>();
+    const printingRecallCounts = new Map<number, number>();
     const poolSizes: number[] = [];
     const foundPrintings = new Set<string>();
     const failures: string[] = [];
@@ -242,9 +238,22 @@ async function main(): Promise<void> {
 
         const ranked = [...pool.entries()].sort((a, b) => b[1].score - a[1].score);
         if (recallOnly) {
-            const rank = ranked.findIndex(([, entry]) => wantedNames.has(entry.name.split(" //")[0].toLowerCase()));
+            const label = labels.get(file);
+            const expectedName = label?.name?.split(" //")[0].toLowerCase();
+            const expectedPrinting = `${(label?.set ?? "").toLowerCase()}/${(label?.number ?? "").toUpperCase()}`;
+            const rank = ranked.findIndex(([, entry]) => {
+                const name = entry.name.split(" //")[0].toLowerCase();
+                return labelled ? name === expectedName : wantedNames.has(name);
+            });
+            const printingRank = ranked.findIndex(([, entry]) => {
+                const printing = `${entry.set}/${entry.number.toUpperCase()}`;
+                return labelled ? printing === expectedPrinting : wanted.has(printing);
+            });
             for (const depth of RECALL_DEPTHS) {
                 if (rank >= 0 && rank < depth) recallCounts.set(depth, (recallCounts.get(depth) ?? 0) + 1);
+                if (printingRank >= 0 && printingRank < depth) {
+                    printingRecallCounts.set(depth, (printingRecallCounts.get(depth) ?? 0) + 1);
+                }
             }
             poolSizes.push(ranked.length);
             continue;
@@ -319,7 +328,9 @@ async function main(): Promise<void> {
             const references = await Promise.all(tied.map((candidate) => loadReference(candidate.key)));
             const usable = tied
                 .map((candidate, index) => ({ candidate, reference: references[index] }))
-                .filter((pair): pair is { candidate: (typeof tied)[0]; reference: RgbaImage } => pair.reference !== null);
+                .filter(
+                    (pair): pair is { candidate: (typeof tied)[0]; reference: RgbaImage } => pair.reference !== null,
+                );
             if (usable.length > 1) {
                 const decision = await discriminatePrintings(
                     queryImages[usable[0].candidate.queryIndex],
@@ -376,10 +387,17 @@ async function main(): Promise<void> {
     if (recallOnly) {
         const average = poolSizes.reduce((sum, value) => sum + value, 0) / Math.max(poolSizes.length, 1);
         process.stdout.write(`Kandidatenpool im Mittel ${average.toFixed(0)} Einträge\n`);
+        process.stdout.write(`           Name      Druck\n`);
         for (const depth of RECALL_DEPTHS) {
-            process.stdout.write(`recall@${String(depth).padStart(3)}  ${recallCounts.get(depth) ?? 0}/${files.length}\n`);
+            process.stdout.write(
+                `recall@${String(depth).padStart(3)}  ${`${recallCounts.get(depth) ?? 0}/${files.length}`.padEnd(9)} ` +
+                    `${printingRecallCounts.get(depth) ?? 0}/${files.length}\n`,
+            );
         }
-        process.stdout.write(`${(elapsed / Math.max(files.length, 1)).toFixed(2)} s pro Foto\n`);
+        process.stdout.write(
+            `${(elapsed / Math.max(files.length, 1)).toFixed(2)} s pro Foto, ` +
+                `Einbettung ${(embedMilliseconds / Math.max(embedRuns, 1)).toFixed(1)} ms pro Lauf (${embedRuns} Läufe)\n`,
+        );
         return;
     }
     process.stdout.write(
@@ -393,7 +411,8 @@ async function main(): Promise<void> {
             `davon Druck richtig        ${printingHits}/${offered || 1}\n` +
             `davon per Maske entschieden ${discriminated}\n` +
             `${labelled ? "verschiedene Drucke richtig" : "Deck-Drucke abgedeckt     "}  ${foundPrintings.size}/${wanted.size}\n` +
-            `${(elapsed / Math.max(files.length, 1)).toFixed(2)} s pro Foto\n`,
+            `${(elapsed / Math.max(files.length, 1)).toFixed(2)} s pro Foto, ` +
+            `Einbettung ${(embedMilliseconds / Math.max(embedRuns, 1)).toFixed(1)} ms pro Lauf (${embedRuns} Läufe)\n`,
     );
     if (printingMisses.length) {
         process.stdout.write(`\nName richtig, Druck falsch (${printingMisses.length}):\n`);

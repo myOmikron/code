@@ -10,14 +10,23 @@ import type { CardQuad, RgbaImage } from "./card-detect";
 import { createEmbeddingIndex } from "./embedding-index";
 import type { EmbeddingIndex, IndexManifest, IndexMatch } from "./embedding-index";
 import type { Embedder } from "./embedder";
+import { DEFAULT_EMBEDDING_MODEL, EMBEDDING_MODELS } from "./embedding-models";
+import type { EmbeddingModel } from "./embedding-models";
 import { describeCard, discriminatePrintings, verifyAgainst } from "./feature-verify";
 import type { CardFeatures } from "./feature-verify";
 import { loadReferenceImage } from "./reference-images";
 import { decideScan } from "./scan-decision";
 import type { ScanOutcome } from "./scan-decision";
 
-/** Where the packed index is served from. */
-const INDEX_ROOT = "/data/scan-index";
+/**
+ * Where a model's packed index is served from
+ *
+ * @param model the model whose vectors the index holds
+ * @returns the directory URL, without a trailing slash
+ */
+export function indexRoot(model: EmbeddingModel): string {
+    return `/data/${EMBEDDING_MODELS[model].index}`;
+}
 /** Trim fractions tried per quad: none for a bare card, a little for a sleeved one. */
 const INSETS = [0, 0.04];
 /** Quads examined per frame, best-scoring first. */
@@ -45,6 +54,8 @@ export type ScanReport = {
     quad: CardQuad | null;
     /** Per-stage milliseconds, so a slow device can be diagnosed rather than guessed at */
     timings: { detect: number; embed: number; search: number; verify: number; total: number };
+    /** How many model runs `timings.embed` is the sum of */
+    embeddings: number;
     /** How many printings were verified against */
     verified: number;
 };
@@ -126,12 +137,17 @@ async function fetchMaybeGzippedJson(url: string, onChunk: (bytes: number) => vo
 }
 
 /**
- * Loads the packed index.
+ * Loads a model's packed index.
  *
  * @param onProgress receives a short status per file
+ * @param model the model the queries will come from, which picks the index and is checked against it
  * @returns the searchable index
  */
-export async function loadScanIndex(onProgress?: (progress: ScanLoadProgress) => void): Promise<LoadedIndex> {
+export async function loadScanIndex(
+    onProgress?: (progress: ScanLoadProgress) => void,
+    model: EmbeddingModel = DEFAULT_EMBEDDING_MODEL,
+): Promise<LoadedIndex> {
+    const root = indexRoot(model);
     let loaded = 0;
     let total = 0;
     const report = (stage: ScanLoadStage) => onProgress?.({ stage, loaded, total, detail: "" });
@@ -152,10 +168,10 @@ export async function loadScanIndex(onProgress?: (progress: ScanLoadProgress) =>
     // Generated, not committed, and an hour of inference to rebuild, so it is the one asset the
     // dev container cannot quietly fix for itself. Saying which command produces it beats a
     // JSON parse error on an HTML 404 page.
-    const entry = await fetch(`${INDEX_ROOT}/manifest.json`);
+    const entry = await fetch(`${root}/manifest.json`);
     if (!entry.ok) {
         throw new Error(
-            `Der Scan-Index fehlt unter ${INDEX_ROOT} (HTTP ${entry.status}) — ` +
+            `Der Scan-Index fehlt unter ${root} (HTTP ${entry.status}) — ` +
                 `"pnpm run scan:embed" und "pnpm run scan:pack" erzeugen ihn`,
         );
     }
@@ -170,23 +186,20 @@ export async function loadScanIndex(onProgress?: (progress: ScanLoadProgress) =>
 
     report("projection");
     const projection = await fetchCounted(
-        `${INDEX_ROOT}/projection.f32${version}`,
+        `${root}/projection.f32${version}`,
         count("projection", sizes["projection.f32"] ?? 0),
     );
 
     report("vectors");
-    const vectors = await fetchCounted(
-        `${INDEX_ROOT}/vectors.i8${version}`,
-        count("vectors", sizes["vectors.i8"] ?? 0),
-    );
+    const vectors = await fetchCounted(`${root}/vectors.i8${version}`, count("vectors", sizes["vectors.i8"] ?? 0));
 
     report("cards");
     const cards = (await fetchMaybeGzippedJson(
-        `${INDEX_ROOT}/cards.json.gz${version}`,
+        `${root}/cards.json.gz${version}`,
         count("cards", sizes["cards.json.gz"] ?? 0),
     )) as Parameters<typeof createEmbeddingIndex>[0]["cards"];
 
-    const index = createEmbeddingIndex({ manifest, projection, vectors, cards });
+    const index = createEmbeddingIndex({ manifest, projection, vectors, cards }, { model });
     return Object.assign(index, { manifest });
 }
 
@@ -201,6 +214,7 @@ export async function loadScanIndex(onProgress?: (progress: ScanLoadProgress) =>
 export async function scanFrame(pixels: RgbaImage, index: LoadedIndex, embedder: Embedder): Promise<ScanReport> {
     const started = performance.now();
     const timings = { detect: 0, embed: 0, search: 0, verify: 0, total: 0 };
+    let embeddings = 0;
 
     const cards = await detectCardsIn(pixels);
     timings.detect = performance.now() - started;
@@ -210,6 +224,7 @@ export async function scanFrame(pixels: RgbaImage, index: LoadedIndex, embedder:
             outcome: { status: "unrecognised", reason: "no-card", bestInliers: 0 },
             quad: null,
             timings,
+            embeddings: 0,
             verified: 0,
         };
     }
@@ -231,6 +246,7 @@ export async function scanFrame(pixels: RgbaImage, index: LoadedIndex, embedder:
                 const embedStarted = performance.now();
                 const vector = await embedder.embed(rectified);
                 timings.embed += performance.now() - embedStarted;
+                embeddings += 1;
 
                 const searchStarted = performance.now();
                 for (const match of index.search(index.project(vector), 8)) {
@@ -315,6 +331,7 @@ export async function scanFrame(pixels: RgbaImage, index: LoadedIndex, embedder:
         ),
         quad: crops[0]?.quad ?? null,
         timings,
+        embeddings,
         verified: verified.length,
     };
 }

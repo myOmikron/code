@@ -14,17 +14,20 @@ import { gunzipSync } from "node:zlib";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import ort from "onnxruntime-node";
 import sharp from "sharp";
 import { detectCardsIn, rectifyCardIn, shrinkQuad } from "../src/scanner/card-detect";
 import type { RgbaImage } from "../src/scanner/card-detect";
-import { IMAGE_SIZE, PREPROCESSING, poolHidden, prepareForModel } from "../src/scanner/embedding";
 import type { Preprocessing } from "../src/scanner/embedding";
-import { createEmbeddingIndex } from "../src/scanner/embedding-index";
 import type { IndexMatch } from "../src/scanner/embedding-index";
+import {
+    chosenModel,
+    createNodeEmbedder,
+    indexDir as servedIndex,
+    loadIndex,
+    modelFile,
+} from "../scripts/node-scanner";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const modelPath = join(here, "..", ".cache", "models", "model.onnx");
 
 /**
  * One entry of the hand-written label file
@@ -46,8 +49,9 @@ const resultLimit = Number(option("--limit", "5"));
  * different spaces, so a mismatch measures nothing. `createEmbeddingIndex` is told what this run
  * applies and refuses the pairing if the manifest disagrees.
  */
-const variant = option("--preprocessing", PREPROCESSING) as Preprocessing;
-const indexDir = option("--index", join(here, "..", "public", "data", "scan-index"));
+const spec = chosenModel();
+const variant = option("--preprocessing", spec.preprocessing) as Preprocessing;
+const indexDir = servedIndex(spec);
 const labelFile = option("--labels", join(here, "dataset", "labels.json"));
 const imagesDir = option("--images", join(here, "dataset", "images"));
 
@@ -79,36 +83,12 @@ async function readImage(path: string): Promise<RgbaImage> {
 }
 
 async function main(): Promise<void> {
-    const manifest = JSON.parse(await readFile(join(indexDir, "manifest.json"), "utf8"));
-    const index = createEmbeddingIndex(
-        {
-            manifest,
-            projection: (await readFile(join(indexDir, "projection.f32"))).buffer as ArrayBuffer,
-            vectors: (await readFile(join(indexDir, "vectors.i8"))).buffer as ArrayBuffer,
-            cards: JSON.parse(gunzipSync(await readFile(join(indexDir, "cards.json.gz"))).toString("utf8")),
-        },
-        variant,
-    );
+    const embedder = await createNodeEmbedder(spec, modelFile(spec), 12, variant);
+    const index = await loadIndex(indexDir, embedder);
+    const manifest = index.manifest;
     process.stdout.write(`Index: ${manifest.count} Printings, ${manifest.dim} Dimensionen\n\n`);
 
-    const session = await ort.InferenceSession.create(modelPath, { intraOpNumThreads: 12 });
-    const inputName = session.inputNames[0];
-    const outputName = session.outputNames[0];
-
-    /**
-     * Embeds one rectified card
-     *
-     * @param image
-     * @returns the pooled vector
-     */
-    const embed = async (image: RgbaImage): Promise<Float32Array> => {
-        const input = await prepareForModel(image, variant);
-        const output = await session.run({
-            [inputName]: new ort.Tensor("float32", input, [1, 3, IMAGE_SIZE, IMAGE_SIZE]),
-        });
-        const tensor = output[outputName];
-        return poolHidden(tensor.data as Float32Array, 1, tensor.dims[1] as number)[0];
-    };
+    const embed = (image: RgbaImage): Promise<Float32Array> => embedder.embed(image);
 
     const labels: Label[] = JSON.parse(await readFile(labelFile, "utf8"));
     let nameTop1 = 0;

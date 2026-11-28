@@ -4,26 +4,12 @@
 //! frames the design needs before it will confirm, multiplied by what a frame costs on their
 //! device. This walks the real `previewFrame` over a photo, frame by frame, and reports both.
 //!
-//! Usage: node test/live-timing.mjs <photo> [--frames 12] [--width 1080]
-import { gunzipSync } from "node:zlib";
-import { readFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import ort from "onnxruntime-node";
+//! Usage: node test/live-timing.mjs <photo> [--frames 12] [--width 1080] [--model M] [--model-file F] [--index DIR]
+import { join } from "node:path";
 import sharp from "sharp";
-import { IMAGE_SIZE, poolHidden, prepareForModel } from "../src/scanner/embedding";
-import { createEmbeddingIndex } from "../src/scanner/embedding-index";
 import { createAgreementTracker, createVariantSelector, previewFrame } from "../src/scanner/live-pipeline";
 import type { Embedder } from "../src/scanner/embedder";
-import type { RgbaImage } from "../src/scanner/card-detect";
-
-const here = dirname(fileURLToPath(import.meta.url));
-const indexDir = join(here, "..", "public", "data", "scan-index");
-
-function option(flag: string, fallback: string): string {
-    const index = process.argv.indexOf(flag);
-    return index === -1 ? fallback : process.argv[index + 1];
-}
+import { chosenModel, createNodeEmbedder, indexDir, loadIndex, modelFile, option } from "../scripts/node-scanner";
 
 const photo = process.argv[2];
 if (!photo) throw new Error("Aufruf: live-timing.mjs <foto|--labels datei --images ordner>");
@@ -32,30 +18,16 @@ const imagesDir = option("--images", "");
 const frameCount = Number(option("--frames", "12"));
 const width = Number(option("--width", "1080"));
 
-const manifest = JSON.parse(await readFile(join(indexDir, "manifest.json"), "utf8"));
-const index = createEmbeddingIndex({
-    manifest,
-    projection: (await readFile(join(indexDir, "projection.f32"))).buffer as ArrayBuffer,
-    vectors: (await readFile(join(indexDir, "vectors.i8"))).buffer as ArrayBuffer,
-    cards: JSON.parse(gunzipSync(await readFile(join(indexDir, "cards.json.gz"))).toString("utf8")),
-});
-
-const session = await ort.InferenceSession.create(join(here, "..", ".cache", "models", "model.onnx"), {
-    intraOpNumThreads: 4,
-});
-const inputName = session.inputNames[0];
-const outputName = session.outputNames[0];
+const spec = chosenModel();
+const session = await createNodeEmbedder(spec, modelFile(spec), 4);
+const index = await loadIndex(indexDir(spec), session);
 
 const embedder: Embedder = {
+    model: spec.id,
     backend: "wasm",
+    runtime: "node",
     notes: [],
-    async embed(image: RgbaImage): Promise<Float32Array> {
-        const output = await session.run({
-            [inputName]: new ort.Tensor("float32", await prepareForModel(image), [1, 3, IMAGE_SIZE, IMAGE_SIZE]),
-        });
-        const tensor = output[outputName];
-        return poolHidden(tensor.data as Float32Array, 1, tensor.dims[1] as number)[0];
-    },
+    embed: (image) => session.embed(image),
 };
 
 if (labelFile) {

@@ -10,52 +10,87 @@ would represent each vector more accurately but would distort the dot product, b
 squared scale of each dimension would then weight the sum. One factor keeps the integer dot
 product proportional to the real one.
 
-Usage: python3 scripts/pack-embedding-index.py [--dim 128] [--sample 50000]
-           [--preprocessing clahe4+area224] [--out public/data/scan-index]
+Which model, model file, pooling and preprocessing the vectors come from is read from the
+builder's sidecar JSON and carried into the manifest, which the app checks against what it
+embeds its queries with.
+
+Usage: python3 scripts/pack-embedding-index.py [--vectors .cache/embeddings/dhv-embed.bilinear.f32]
+           [--dim 128] [--projection pca|identity] [--sample 50000] [--cache DIR] [--out DIR]
+       without --vectors: [--preprocessing clahe4+area224|area224] picks a DINOv2 vector file
+       under <cache>/embeddings, as before
 """
 
 import argparse
 import gzip
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
-CACHE = HERE.parent / ".cache" / "scryfall"
-OUTPUT = HERE.parent / "public" / "data" / "scan-index"
-SOURCE_DIM = 768
+PUBLIC_DATA = HERE.parent / "public" / "data"
+DINOV2 = {"model": "dinov2-small", "pooling": "cls+patchmean", "dim": 768, "index": "scan-index"}
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dim", type=int, default=128, help="target dimension after PCA")
+    parser.add_argument("--dim", type=int, default=128, help="target dimension after the projection")
+    parser.add_argument(
+        "--projection",
+        default="pca",
+        choices=["pca", "identity"],
+        help="identity keeps the raw vectors as they are and needs --dim equal to their length",
+    )
     parser.add_argument("--sample", type=int, default=50000, help="vectors used to fit the PCA")
     parser.add_argument("--seed", type=int, default=17)
     parser.add_argument(
         "--preprocessing",
         default="clahe4+area224",
         choices=["clahe4+area224", "area224"],
-        help="which variant's vectors to pack; each has its own source file and manifest entry",
+        help="which DINOv2 variant's vectors to pack when --vectors is not given",
     )
-    parser.add_argument("--out", default=None, help="index directory, defaults to the shipped one")
+    parser.add_argument("--vectors", default=None, help="raw .f32 file; its .json sidecar names the model")
+    parser.add_argument(
+        "--cache",
+        default=os.environ.get("SCAN_CACHE", str(HERE.parent / ".cache" / "scryfall")),
+        help="reference cache holding faces.jsonl, or SCAN_CACHE",
+    )
+    parser.add_argument(
+        "--embeddings",
+        default=os.environ.get("SCAN_EMBEDDINGS"),
+        help="where DINOv2 vector files are looked up, or SCAN_EMBEDDINGS; defaults to <cache>/embeddings",
+    )
+    parser.add_argument("--out", default=None, help="index directory, defaults to the one the app serves")
     return parser.parse_args()
 
 
-def load_vectors(preprocessing):
-    slug = "clahe4" if preprocessing == "clahe4+area224" else "plain"
-    path = CACHE / "embeddings" / f"dinov2-small.{slug}.f32"
+def describe_vectors(args):
+    """Finds the raw vector file and what made it."""
+    if args.vectors:
+        path = Path(args.vectors)
+        meta = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
+        return path, meta
+    slug = "clahe4" if args.preprocessing == "clahe4+area224" else "plain"
+    embeddings = Path(args.embeddings) if args.embeddings else Path(args.cache) / "embeddings"
+    path = embeddings / f"dinov2-small.{slug}.f32"
+    meta = {**DINOV2, **json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))}
+    meta["preprocessing"] = args.preprocessing
+    return path, meta
+
+
+def load_vectors(path, source_dim):
     raw = np.fromfile(path, dtype=np.float32)
-    count = raw.size // SOURCE_DIM
-    if raw.size % SOURCE_DIM:
-        raise SystemExit(f"{path} enthält {raw.size} Werte, kein Vielfaches von {SOURCE_DIM}")
-    return raw[: count * SOURCE_DIM].reshape(count, SOURCE_DIM)
+    count = raw.size // source_dim
+    if raw.size % source_dim:
+        raise SystemExit(f"{path} enthält {raw.size} Werte, kein Vielfaches von {source_dim}")
+    return raw[: count * source_dim].reshape(count, source_dim)
 
 
-def load_faces(count):
+def load_faces(cache, count):
     faces = []
-    with open(CACHE / "faces.jsonl", encoding="utf-8") as handle:
+    with open(Path(cache) / "faces.jsonl", encoding="utf-8") as handle:
         for index, line in enumerate(handle):
             if index >= count:
                 break
@@ -80,18 +115,26 @@ def fit_pca(vectors, dim, sample_size, seed):
 
 def main():
     args = parse_args()
-    global OUTPUT
-    if args.out:
-        OUTPUT = Path(args.out)
-    OUTPUT.mkdir(parents=True, exist_ok=True)
+    path, meta = describe_vectors(args)
+    source_dim = meta["dim"]
+    output = Path(args.out) if args.out else PUBLIC_DATA / meta.get("index", DINOV2["index"])
+    output.mkdir(parents=True, exist_ok=True)
 
-    vectors = load_vectors(args.preprocessing)
+    vectors = load_vectors(path, source_dim)
     count = vectors.shape[0]
-    print(f"{count} Vektoren à {SOURCE_DIM}")
-    faces = load_faces(count)
+    print(f"{count} Vektoren à {source_dim} von {meta['model']} ({meta.get('modelFile', '?')}), {meta['preprocessing']}")
+    faces = load_faces(args.cache, count)
 
-    mean, components, explained = fit_pca(vectors, args.dim, args.sample, args.seed)
-    print(f"PCA {SOURCE_DIM} -> {args.dim}, erklärte Varianz {explained * 100:.1f}%")
+    if args.projection == "identity":
+        if args.dim != source_dim:
+            raise SystemExit(f"--projection identity braucht --dim {source_dim}")
+        mean = np.zeros(source_dim, dtype=np.float32)
+        components = np.eye(source_dim, dtype=np.float32)
+        explained = 1.0
+        print(f"keine Projektion, {source_dim} Dimensionen")
+    else:
+        mean, components, explained = fit_pca(vectors, args.dim, args.sample, args.seed)
+        print(f"PCA {source_dim} -> {args.dim}, erklärte Varianz {explained * 100:.1f}%")
 
     projected = (vectors - mean) @ components.T
     norms = np.linalg.norm(projected, axis=1, keepdims=True)
@@ -106,9 +149,9 @@ def main():
     fidelity = float((reconstructed * projected).sum(axis=1).mean())
     print(f"int8-Skala {scale:.2f}, mittlerer Kosinus zum float-Vektor {fidelity:.5f}")
 
-    (OUTPUT / "vectors.i8").write_bytes(quantised.tobytes())
+    (output / "vectors.i8").write_bytes(quantised.tobytes())
     projection = np.concatenate([mean.reshape(1, -1), components], axis=0).astype(np.float32)
-    (OUTPUT / "projection.f32").write_bytes(projection.tobytes())
+    (output / "projection.f32").write_bytes(projection.tobytes())
 
     # Short keys and no image url: the url follows from the id, so storing 111k of them would
     # add megabytes for information the client can derive.
@@ -138,7 +181,7 @@ def main():
     # mtime=0 rather than gzip's default of "now". The manifest's content hash is taken over these
     # bytes, and a timestamp in the header changes them on every run, so an unchanged catalogue
     # still got a new hash, a new URL and a fresh 85 MB download for everyone who already had it.
-    with open(OUTPUT / "cards.json.gz", "wb") as raw:
+    with open(output / "cards.json.gz", "wb") as raw:
         with gzip.GzipFile(fileobj=raw, mode="wb", mtime=0) as compressed:
             compressed.write(json.dumps(identity, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
 
@@ -147,17 +190,20 @@ def main():
     # whichever index the browser downloaded first, forever, and a rebuilt index never arrives.
     digest = hashlib.blake2b(digest_size=8)
     for name in ("vectors.i8", "projection.f32", "cards.json.gz"):
-        digest.update((OUTPUT / name).read_bytes())
+        digest.update((output / name).read_bytes())
 
     manifest = {
         "formatVersion": 1,
         "version": digest.hexdigest(),
-        "model": "dinov2-small",
-        "pooling": "cls+patchmean",
-        # Must match PREPROCESSING in src/scanner/embedding.ts. The app refuses an index whose
-        # vectors were built with different preprocessing than it applies to its queries.
-        "preprocessing": args.preprocessing,
-        "sourceDim": SOURCE_DIM,
+        # Must match the model's entry in EMBEDDING_MODELS in src/scanner/embedding.ts. The app
+        # refuses an index whose vectors were made by a different model, model file or
+        # preprocessing than its queries.
+        "model": meta["model"],
+        **({"modelFile": meta["modelFile"]} if meta.get("modelFile") else {}),
+        "pooling": meta["pooling"],
+        "preprocessing": meta["preprocessing"],
+        "projection": args.projection,
+        "sourceDim": source_dim,
         "dim": args.dim,
         "count": count,
         "scale": scale,
@@ -168,13 +214,13 @@ def main():
         # a mobile connection what they are agreeing to, and three extra round trips to learn it
         # would be paid on every visit.
         "bytes": {
-            name: (OUTPUT / name).stat().st_size for name in ("projection.f32", "vectors.i8", "cards.json.gz")
+            name: (output / name).stat().st_size for name in ("projection.f32", "vectors.i8", "cards.json.gz")
         },
     }
-    (OUTPUT / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    (output / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     for name in ("vectors.i8", "projection.f32", "cards.json.gz", "manifest.json"):
-        size = (OUTPUT / name).stat().st_size
+        size = (output / name).stat().st_size
         print(f"  {name:18} {size / 1e6:7.2f} MB")
 
 

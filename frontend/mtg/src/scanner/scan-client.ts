@@ -14,6 +14,8 @@ import type { IndexedPrinting } from "./embedding-index";
 import type { ScanLanguageChoice } from "./ocr";
 import type { FrameDetection, FrameTimings } from "./live-pipeline";
 import type { Shortcoming } from "./frame-gate";
+import { DEFAULT_EMBEDDING_MODEL, EMBEDDING_MODELS, isEmbeddingModel } from "./embedding-models";
+import type { EmbeddingModel } from "./embedding-models";
 
 export type { Shortcoming } from "./frame-gate";
 export type { ScanLanguage, ScanLanguageChoice } from "./ocr";
@@ -26,6 +28,8 @@ export type { ScanLoadProgress, ScanLoadStage } from "./pipeline";
  */
 export type ScannerStatus = {
     printings: number;
+    /** Which embedding model produces the shortlist */
+    model: EmbeddingModel;
     /** Which execution provider the model ended up on */
     backend: "webgpu" | "wasm";
     /** Which WebGPU arrangement this load tried */
@@ -99,6 +103,7 @@ function ensureWorker(): Worker {
         else if (message.type === "ready")
             resolver.resolve({
                 printings: message.printings,
+                model: message.model ?? DEFAULT_EMBEDDING_MODEL,
                 backend: message.backend,
                 strategy: message.strategy ?? "full",
                 runtime: message.runtime ?? "",
@@ -123,6 +128,7 @@ function ensureWorker(): Worker {
                 outcome: message.outcome,
                 milliseconds: message.milliseconds,
                 attempts: message.attempts,
+                embedAverage: message.embedAverage ?? { runs: 0, milliseconds: 0 },
                 shortcomings: message.shortcomings ?? [],
             } as never);
         else if (message.type === "printings") resolver.resolve(message.printings as never);
@@ -170,15 +176,67 @@ export function loadScanner(
     onProgress?: (progress: ScanLoadProgress) => void,
     language: ScanLanguageChoice = "auto",
 ): Promise<ScannerStatus> {
-    const strategy = plannedStrategy();
-    return request<ScannerStatus>((id) => ({ type: "load", id, strategy, language }), [], onProgress).then((status) => {
-        rememberStrategy(strategy, status);
-        return status;
-    });
+    const model = chosenEmbeddingModel();
+    const strategy = plannedStrategy(model);
+    return request<ScannerStatus>((id) => ({ type: "load", id, strategy, language, model }), [], onProgress).then(
+        (status) => {
+            rememberStrategy(strategy, status);
+            return status;
+        },
+    );
 }
 
 /** Where the WebGPU verdict for this device is kept between loads. */
 const STRATEGY_KEY = "scanner.webgpu-strategy.v2";
+
+/** Where this device's choice of embedding model is kept. */
+const MODEL_KEY = "scanner.embedding-model";
+
+/**
+ * Which embedding model this device scans with
+ *
+ * @returns the stored choice, the default model when none or an unknown one is stored
+ */
+export function chosenEmbeddingModel(): EmbeddingModel {
+    try {
+        const stored = localStorage.getItem(MODEL_KEY);
+        return isEmbeddingModel(stored) ? stored : DEFAULT_EMBEDDING_MODEL;
+    } catch {
+        return DEFAULT_EMBEDDING_MODEL;
+    }
+}
+
+/**
+ * Switches this device to another embedding model and reloads the page.
+ *
+ * The worker holds one model and the index built for it, so a switch starts a fresh worker, and
+ * a reload is what does that for every screen holding the old one's status.
+ *
+ * @param model the model to scan with from now on
+ */
+export function chooseEmbeddingModel(model: EmbeddingModel): void {
+    try {
+        if (model === DEFAULT_EMBEDDING_MODEL) localStorage.removeItem(MODEL_KEY);
+        else localStorage.setItem(MODEL_KEY, model);
+    } catch {
+        return;
+    }
+    window.location.reload();
+}
+
+/**
+ * Where the WebGPU verdict for one model is kept.
+ *
+ * Per model, because the verdict is about the inference library's kernels for that model's
+ * operators: a transformer failing on a GPU says nothing about a CNN. The default model keeps the
+ * key it always had, so no device loses its verdict.
+ *
+ * @param model the model the verdict is about
+ * @returns the storage key
+ */
+export function strategyKey(model: EmbeddingModel): string {
+    return model === DEFAULT_EMBEDDING_MODEL ? STRATEGY_KEY : `${STRATEGY_KEY}.${model}`;
+}
 
 /**
  * Retry WebGPU in a fresh page, since the runtime caches its first adapter.
@@ -186,7 +244,7 @@ const STRATEGY_KEY = "scanner.webgpu-strategy.v2";
  */
 export function retryWebGpu(): void {
     try {
-        localStorage.removeItem(STRATEGY_KEY);
+        localStorage.removeItem(strategyKey(chosenEmbeddingModel()));
     } catch {
         // If storage is blocked, plannedStrategy already starts with a full attempt.
     }
@@ -206,12 +264,13 @@ export function retryWebGpu(): void {
  * library, the fix will arrive as a new version of exactly that library, and a verdict that
  * outlived it would make sure the fix was never noticed.
  *
+ * @param model the model about to be loaded
  * @returns the arrangement to try
  */
-function plannedStrategy(): WebgpuStrategy {
+function plannedStrategy(model: EmbeddingModel): WebgpuStrategy {
     if (conservativeScanner()) return "off";
     try {
-        const [runtime, stored] = (localStorage.getItem(STRATEGY_KEY) ?? "").split(" ");
+        const [runtime, stored] = (localStorage.getItem(strategyKey(model)) ?? "").split(" ");
         if (runtime !== __SCANNER_RUNTIME_VERSION__) return "full";
         return stored === "no-subgroups" || stored === "no-subgroups-f16" || stored === "off" ? stored : "full";
     } catch {
@@ -231,7 +290,7 @@ function plannedStrategy(): WebgpuStrategy {
 function rememberStrategy(tried: WebgpuStrategy, status: ScannerStatus): void {
     try {
         const reached = status.backend === "webgpu" ? tried : nextStrategy(tried);
-        localStorage.setItem(STRATEGY_KEY, `${status.runtime} ${reached}`);
+        localStorage.setItem(strategyKey(status.model), `${status.runtime} ${reached}`);
     } catch {
         // Private mode and blocked storage are fine; it just costs the attempts again.
     }
@@ -267,6 +326,8 @@ export type LiveFrameResult = {
     timings: FrameTimings;
     /** Frames processed since the previous recognition or reset. */
     attempts: number;
+    /** Model runs of this scanner's live frames so far, and their mean duration */
+    embedAverage: { runs: number; milliseconds: number };
     /** Why the gate refused the card, worst first; such a frame has no preview or outcome */
     shortcomings: Shortcoming[];
     /** What the title bar read, empty when nothing legible was found */
@@ -350,9 +411,6 @@ export function resetLiveTracking(): void {
     ensureWorker().postMessage({ type: "reset", id: (nextId += 1) });
 }
 
-/** Where the packed index lives, mirrored from the pipeline so the page need not import it. */
-const INDEX_ROOT = "/data/scan-index";
-
 /**
  * What a first scan would have to download, and whether it already happened
  */
@@ -373,8 +431,9 @@ export type ScanDownload = {
  * @returns the size and whether it is already paid for
  */
 export async function inspectScanDownload(): Promise<ScanDownload> {
-    const response = await fetch(`${INDEX_ROOT}/manifest.json`);
-    if (!response.ok) throw new Error(`${INDEX_ROOT}/manifest.json: HTTP ${response.status}`);
+    const root = `/data/${EMBEDDING_MODELS[chosenEmbeddingModel()].index}`;
+    const response = await fetch(`${root}/manifest.json`);
+    if (!response.ok) throw new Error(`${root}/manifest.json: HTTP ${response.status}`);
     const manifest = (await response.json()) as { version?: string; bytes?: Record<string, number> };
     const total = Object.values(manifest.bytes ?? {}).reduce((sum, size) => sum + size, 0);
 
@@ -385,7 +444,7 @@ export async function inspectScanDownload(): Promise<ScanDownload> {
     const hits = await Promise.all(
         files.map((file) =>
             caches
-                .match(`${INDEX_ROOT}/${file}${version}`, { ignoreVary: true })
+                .match(`${root}/${file}${version}`, { ignoreVary: true })
                 .then((hit) => Boolean(hit))
                 .catch(() => false),
         ),

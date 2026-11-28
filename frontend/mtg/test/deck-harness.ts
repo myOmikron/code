@@ -14,18 +14,20 @@ import { gunzipSync } from "node:zlib";
 import { readFile, readdir } from "node:fs/promises";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import ort from "onnxruntime-node";
 import sharp from "sharp";
 import { detectCardsIn, rectifyCardIn, shrinkQuad } from "../src/scanner/card-detect";
 import type { RgbaImage } from "../src/scanner/card-detect";
-import { IMAGE_SIZE, PREPROCESSING, poolHidden, prepareForModel } from "../src/scanner/embedding";
 import type { Preprocessing } from "../src/scanner/embedding";
-import { createEmbeddingIndex } from "../src/scanner/embedding-index";
 import type { IndexMatch } from "../src/scanner/embedding-index";
+import {
+    chosenModel,
+    createNodeEmbedder,
+    indexDir as servedIndex,
+    loadIndex,
+    modelFile,
+} from "../scripts/node-scanner";
 
 const here = dirname(fileURLToPath(import.meta.url));
-
-const modelPath = join(here, "..", ".cache", "models", "model.onnx");
 
 /**
  * One line of a decklist
@@ -55,8 +57,9 @@ const rawHalf = option("--half", "both");
  * different spaces, so a mismatch is a measurement of nothing. `createEmbeddingIndex` is told
  * what this run applies and refuses the pairing if the manifest disagrees.
  */
-const variant = option("--preprocessing", PREPROCESSING) as Preprocessing;
-const indexDir = option("--index", join(here, "..", "public", "data", "scan-index"));
+const spec = chosenModel();
+const variant = option("--preprocessing", spec.preprocessing) as Preprocessing;
+const indexDir = servedIndex(spec);
 
 /**
  * Parses a decklist in the "1 Name (SET) NUMBER *F*" format.
@@ -99,16 +102,9 @@ async function readImage(path: string): Promise<RgbaImage> {
 async function main(): Promise<void> {
     if (!photoDir || !decklistPath) throw new Error("Aufruf: deck-harness.mjs <fotoOrdner> <deckliste>");
 
-    const manifest = JSON.parse(await readFile(join(indexDir, "manifest.json"), "utf8"));
-    const index = createEmbeddingIndex(
-        {
-            manifest,
-            projection: (await readFile(join(indexDir, "projection.f32"))).buffer as ArrayBuffer,
-            vectors: (await readFile(join(indexDir, "vectors.i8"))).buffer as ArrayBuffer,
-            cards: JSON.parse(gunzipSync(await readFile(join(indexDir, "cards.json.gz"))).toString("utf8")),
-        },
-        variant,
-    );
+    const embedder = await createNodeEmbedder(spec, modelFile(spec), 12, variant);
+    const index = await loadIndex(indexDir, embedder);
+    const manifest = index.manifest;
 
     let searchRaw: ((query: Float32Array, limit: number) => IndexMatch[]) | null = null;
     if (useRawVectors) {
@@ -191,22 +187,7 @@ async function main(): Promise<void> {
             `Deck ${wanted.length} Drucke, ${wantedNames.size} Namen.  ${files.length} Fotos\n\n`,
     );
 
-    const session = await ort.InferenceSession.create(modelPath, { intraOpNumThreads: 12 });
-    const inputName = session.inputNames[0];
-    const outputName = session.outputNames[0];
-
-    const embed = async (image: RgbaImage): Promise<Float32Array> => {
-        const output = await session.run({
-            [inputName]: new ort.Tensor("float32", await prepareForModel(image, variant), [
-                1,
-                3,
-                IMAGE_SIZE,
-                IMAGE_SIZE,
-            ]),
-        });
-        const tensor = output[outputName];
-        return poolHidden(tensor.data as Float32Array, 1, tensor.dims[1] as number)[0];
-    };
+    const embed = (image: RgbaImage): Promise<Float32Array> => embedder.embed(image);
 
     const foundPrintings = new Set<string>();
     const foundNames = new Set<string>();
