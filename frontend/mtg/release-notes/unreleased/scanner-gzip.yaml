@@ -1,0 +1,3 @@
+kind: improved
+de: Der Scanner lädt beim ersten Start deutlich weniger Daten herunter und ist dadurch schneller bereit.
+en: The scanner downloads much less data on its first start and is ready sooner.

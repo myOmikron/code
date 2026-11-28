@@ -57,6 +57,8 @@ RUN <<EOF
 set -e
 pnpm --dir frontend/mtg run build
 mv frontend/mtg/dist /frontend
+find /frontend -type f -size +1k \( -name '*.js' -o -name '*.mjs' -o -name '*.css' -o -name '*.html' \
+    -o -name '*.json' -o -name '*.svg' -o -name '*.wasm' -o -name '*.i8' \) -exec gzip -9 -k -n {} +
 EOF
 
 
