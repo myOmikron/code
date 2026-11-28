@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const targets: { postMessage: ReturnType<typeof vi.fn>; onmessage: (event: { data: unknown }) => void }[] = [];
+/** The parts of a Worker the scan client touches */
+type FakeWorker = {
+    postMessage: ReturnType<typeof vi.fn>;
+    terminate: ReturnType<typeof vi.fn>;
+    onmessage: (event: { data: unknown }) => void;
+    onerror: ((event: { message: string; preventDefault: () => void }) => void) | null;
+};
+
+const targets: FakeWorker[] = [];
 
 beforeEach(() => {
     vi.resetModules();
@@ -12,6 +20,8 @@ beforeEach(() => {
          */
         class {
             postMessage = vi.fn();
+            terminate = vi.fn();
+            onerror = null;
             onmessage = (_event: { data: unknown }) => {};
             /**
              *
@@ -82,5 +92,31 @@ describe("live frame progress", () => {
         await rejected;
         target.onmessage({ data: { type: "detected", id, detection: {} } });
         expect(detected).not.toHaveBeenCalled();
+    });
+});
+
+describe("worker startup", () => {
+    beforeEach(() => vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => undefined }));
+
+    it("fails the load when the worker never comes up, and starts a fresh one on retry", async () => {
+        const { loadScanner } = await import("./scan-client");
+        const first = loadScanner();
+        const rejected = expect(first).rejects.toThrow("Der Scanner konnte nicht starten: SyntaxError");
+        targets[0].onerror?.({ message: "SyntaxError", preventDefault: () => undefined });
+        await rejected;
+        expect(targets[0].terminate).toHaveBeenCalledOnce();
+
+        void loadScanner();
+        expect(targets).toHaveLength(2);
+    });
+
+    it("keeps a worker that already answered", async () => {
+        const { loadScanner } = await import("./scan-client");
+        void loadScanner();
+        const target = targets[0];
+        const { id } = target.postMessage.mock.calls[0][0];
+        target.onmessage({ data: { type: "progress", id, progress: { stage: "manifest" } } });
+        target.onerror?.({ message: "late", preventDefault: () => undefined });
+        expect(target.terminate).not.toHaveBeenCalled();
     });
 });
