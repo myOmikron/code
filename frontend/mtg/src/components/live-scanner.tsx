@@ -222,7 +222,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
     const shell = useRef<HTMLElement | null>(null);
     const [status, setStatus] = useState<ScannerStatus | null>(null);
     const [download, setDownload] = useState<ScanDownload | null>(null);
-    const [consented, setConsented] = useState(false);
+    const [consented, setConsented] = useState(0);
     const [progress, setProgress] = useState<ScanLoadProgress | null>(null);
     const [error, setError] = useState("");
     const [frame, setFrame] = useState<LiveFrameResult | null>(null);
@@ -714,7 +714,8 @@ export function LiveScanner({ session }: LiveScannerProps) {
                             error={error}
                             onConfirm={() => {
                                 void keepScanDataStored();
-                                setConsented(true);
+                                setError("");
+                                setConsented((attempt) => attempt + 1);
                             }}
                         />
                     ) : null}

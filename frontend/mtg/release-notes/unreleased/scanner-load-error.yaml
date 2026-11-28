@@ -1,0 +1,3 @@
+kind: fixed
+de: Der Scanner bleibt nach dem Herunterladen der Kartendaten nicht mehr hängen. Kann er auf einem Gerät nicht starten, nennt er den Grund und lässt sich erneut versuchen.
+en: The scanner no longer hangs after downloading the card data. If it cannot start on a device, it says why and can be tried again.

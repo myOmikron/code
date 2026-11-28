@@ -115,6 +115,15 @@ const worker = self as unknown as {
     onmessage: ((event: MessageEvent<IncomingMessage>) => void) | null;
 };
 
+/**
+ * Whether onnxruntime started this copy of the bundle as one of its WASM threads.
+ *
+ * The runtime starts its threads from the script it runs in, which is this whole bundle. Such a
+ * copy has to become the runtime's thread rather than a scanner: importing the runtime runs its
+ * thread setup, which replaces `onmessage`.
+ */
+const runtimeThread = (globalThis.self?.name ?? "").startsWith("em-pthread");
+
 let index: LoadedIndex | null = null;
 let embedder: Embedder | null = null;
 const agreement = createAgreementTracker();
@@ -441,3 +450,5 @@ worker.onmessage = async (event) => {
         });
     }
 };
+
+if (runtimeThread) void import("onnxruntime-web/webgpu");

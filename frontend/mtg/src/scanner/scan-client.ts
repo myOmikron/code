@@ -48,6 +48,24 @@ const listeners = new Map<number, (progress: ScanLoadProgress) => void>();
 const detectionListeners = new Map<number, (detection: FrameDetection) => void>();
 
 /**
+ * Drops a worker that never came up and fails everything that waited on it
+ *
+ * @param dead the worker to drop
+ * @param reason what the browser said went wrong
+ */
+function abandonWorker(dead: Worker, reason: string): void {
+    dead.terminate();
+    if (worker === dead) worker = null;
+    const error = new Error(
+        reason ? `Der Scanner konnte nicht starten: ${reason}` : "Der Scanner konnte nicht starten.",
+    );
+    for (const resolver of pending.values()) resolver.reject(error);
+    pending.clear();
+    listeners.clear();
+    detectionListeners.clear();
+}
+
+/**
  * Starts the worker on first use
  *
  * @returns the worker
@@ -55,7 +73,14 @@ const detectionListeners = new Map<number, (detection: FrameDetection) => void>(
 function ensureWorker(): Worker {
     if (worker) return worker;
     const created = new Worker(new URL("./scan-worker.ts", import.meta.url), { type: "module" });
+    let started = false;
+    created.onerror = (event) => {
+        if (started) return;
+        event.preventDefault();
+        abandonWorker(created, event.message);
+    };
     created.onmessage = (event) => {
+        started = true;
         const message = event.data;
         if (message.type === "detected") {
             detectionListeners.get(message.id)?.(message.detection);
