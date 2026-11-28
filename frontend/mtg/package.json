@@ -6,7 +6,7 @@
     "scripts": {
         "dev": "node scripts/setup-scanner-assets.mjs && node scripts/setup-ocr-assets.mjs && vite --host",
         "dev:mobile": "HTTPS=1 vite --host",
-        "build": "node scripts/setup-scanner-assets.mjs && node scripts/setup-ocr-assets.mjs && tsc && vite build --sourcemap true",
+        "build": "node scripts/setup-scanner-assets.mjs && node scripts/setup-ocr-assets.mjs && tsc && vite build",
         "preview": "vite preview",
         "format": "prettier --config .prettierrc.json --write src/",
         "format-check": "prettier --config .prettierrc.json --check src/",
