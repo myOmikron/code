@@ -4,10 +4,13 @@ const mocks = vi.hoisted(() => ({
     wasm: vi.fn(),
     gpu: vi.fn(),
     env: { wasm: { numThreads: 0 }, versions: { web: "test" } },
+    TensorShapes: [] as unknown[][],
 }));
 vi.mock("onnxruntime-web/wasm", () => ({
     env: mocks.env,
-    Tensor: vi.fn(),
+    Tensor: vi.fn(function (...args: unknown[]) {
+        mocks.TensorShapes.push(args);
+    }),
     InferenceSession: { create: mocks.wasm },
 }));
 vi.mock("onnxruntime-web/webgpu", () => ({
@@ -57,4 +60,23 @@ it("retains the WebGPU runtime on Android", async () => {
     );
     expect(mocks.wasm).not.toHaveBeenCalled();
     expect(mocks.env.wasm.numThreads).toBe(4);
+});
+
+it("loads dhv-embed from its own file with its own input geometry", async () => {
+    vi.stubGlobal("navigator", { userAgent: "iPhone AppleWebKit/605.1.15", hardwareConcurrency: 6 });
+    const session = {
+        inputNames: ["input"],
+        outputNames: ["embedding"],
+        run: vi.fn(async () => ({
+            embedding: { dims: [1, 256], getData: async () => new Float32Array(256).fill(1 / 16) },
+        })),
+        release: vi.fn(),
+    };
+    mocks.wasm.mockResolvedValue(session);
+    const { loadEmbedder } = await import("./embedder");
+    const model = await loadEmbedder(undefined, "full", "dhv-embed");
+    expect(model.model).toBe("dhv-embed");
+    expect(mocks.wasm).toHaveBeenCalledWith("/models/mtg_embed_fp32.onnx", expect.any(Object));
+    const shapes = (mocks.TensorShapes as unknown[][]).map((call) => call[2]);
+    expect(shapes).toContainEqual([1, 3, 448, 320]);
 });

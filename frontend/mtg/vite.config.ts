@@ -107,7 +107,7 @@ export default defineConfig({
                         // The manifest names the index build and carries the content hash the
                         // payload URLs below are keyed on, so it is the one file that must never
                         // come from the cache: a stale copy pins a stale index forever.
-                        urlPattern: /\/data\/scan-index\/manifest\.json$/,
+                        urlPattern: /\/data\/scan-index(-dhv)?\/manifest\.json$/,
                         handler: "NetworkFirst",
                         options: { cacheName: "scanner-entry" },
                     },
@@ -120,6 +120,15 @@ export default defineConfig({
                         handler: "CacheFirst",
                         options: {
                             cacheName: "scanner-index",
+                            cacheableResponse: { statuses: [200] },
+                            expiration: { maxEntries: 3 },
+                        },
+                    },
+                    {
+                        urlPattern: /\/data\/scan-index-dhv\/(vectors\.i8|projection\.f32|cards\.json\.gz)/,
+                        handler: "CacheFirst",
+                        options: {
+                            cacheName: "scanner-index-dhv",
                             cacheableResponse: { statuses: [200] },
                             expiration: { maxEntries: 3 },
                         },

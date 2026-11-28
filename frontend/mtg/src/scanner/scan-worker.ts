@@ -9,6 +9,8 @@ import { loadEmbedder } from "./embedder";
 import { conservativeScanner } from "./runtime-policy";
 import type { WebgpuStrategy } from "./webgpu-strategy";
 import type { Embedder } from "./embedder";
+import { DEFAULT_EMBEDDING_MODEL } from "./embedding-models";
+import type { EmbeddingModel } from "./embedding-models";
 import {
     confirmPreview,
     createAgreementTracker,
@@ -32,7 +34,13 @@ import type { FrameDetection, FrameTimings } from "./live-pipeline";
  * Anything the main thread may send
  */
 type IncomingMessage =
-    | { type: "load"; id: number; strategy?: WebgpuStrategy; language?: ScanLanguageChoice }
+    | {
+          type: "load";
+          id: number;
+          strategy?: WebgpuStrategy;
+          language?: ScanLanguageChoice;
+          model?: EmbeddingModel;
+      }
     | { type: "scan"; id: number; frame: ImageBitmap }
     | {
           type: "live";
@@ -58,6 +66,7 @@ type OutgoingMessage =
           type: "ready";
           id: number;
           printings: number;
+          model: EmbeddingModel;
           backend: Embedder["backend"];
           notes: string[];
           strategy: WebgpuStrategy;
@@ -90,6 +99,8 @@ type OutgoingMessage =
           /** Where the milliseconds went, for the debug view */
           timings: FrameTimings;
           attempts: number;
+          /** Model runs of this worker's live frames so far, and their mean duration */
+          embedAverage: { runs: number; milliseconds: number };
           /** Why the gate refused the card, worst first */
           shortcomings: Shortcoming[];
           /** The leading candidate by embedding alone, shown while the answer is still forming */
@@ -132,6 +143,9 @@ const variants = createVariantSelector();
 let named = false;
 let attempts = 0;
 let trackingGeneration = 0;
+/** Model runs over all live frames, for the mean the diagnostics show */
+let embedRuns = 0;
+let embedMilliseconds = 0;
 /** The rectified crop of the last frame that reached the model, for a Bug report */
 let lastCrop: RgbaImage | null = null;
 // Counted so the crop variants can be spread over frames rather than all tried in each one.
@@ -152,8 +166,9 @@ let loading: Promise<void> | null = null;
  *
  * @param strategy which WebGPU arrangement to try, from what earlier loads found out
  * @param language which cards are going to be held up, which picks the reader warmed alongside
+ * @param model which embedding model to run, which also picks its index
  */
-async function runLoad(strategy: WebgpuStrategy, language: ScanLanguageChoice): Promise<void> {
+async function runLoad(strategy: WebgpuStrategy, language: ScanLanguageChoice, model: EmbeddingModel): Promise<void> {
     const post = (progress: ScanLoadProgress) => {
         for (const waiting of loaders) worker.postMessage({ type: "progress", id: waiting, progress });
     };
@@ -161,8 +176,12 @@ async function runLoad(strategy: WebgpuStrategy, language: ScanLanguageChoice): 
     if (conservativeScanner()) {
         // Avoid overlapping catalogue JSON decoding, model compilation and two more WASM
         // runtimes. Live recognition also skips OCR to avoid adding its heap on the first frame.
-        index ??= await loadScanIndex(post);
-        embedder ??= await loadEmbedder((detail) => post({ stage: "model", loaded: 0, total: 0, detail }), "off");
+        index ??= await loadScanIndex(post, model);
+        embedder ??= await loadEmbedder(
+            (detail) => post({ stage: "model", loaded: 0, total: 0, detail }),
+            "off",
+            model,
+        );
         await loadOpenCv();
         return;
     }
@@ -192,8 +211,8 @@ async function runLoad(strategy: WebgpuStrategy, language: ScanLanguageChoice): 
     // catalogue is downloaded and parsed, the model is downloaded and handed to the inference
     // runtime, and running them in sequence simply added the two waits together.
     const [loadedIndex, loadedEmbedder] = await Promise.all([
-        index ?? loadScanIndex(postIndex),
-        embedder ?? loadEmbedder((detail) => post({ stage: "model", ...counted, detail }), strategy),
+        index ?? loadScanIndex(postIndex, model),
+        embedder ?? loadEmbedder((detail) => post({ stage: "model", ...counted, detail }), strategy, model),
     ]);
     index = loadedIndex;
     embedder = loadedEmbedder;
@@ -212,14 +231,23 @@ async function runLoad(strategy: WebgpuStrategy, language: ScanLanguageChoice): 
  * they only differ if the choice was changed between the two requests, and the next load picks
  * that up.
  *
+ * A request for a different model than the one loaded is refused rather than answered with the
+ * loaded one: its caller would search one model's index with another model's queries.
+ *
  * @param id the request being answered
  * @param strategy which WebGPU arrangement to try, from what earlier loads found out
  * @param language which cards are going to be held up, which picks the reader warmed alongside
+ * @param model which embedding model the caller expects
  */
-async function load(id: number, strategy: WebgpuStrategy, language: ScanLanguageChoice): Promise<void> {
+async function load(
+    id: number,
+    strategy: WebgpuStrategy,
+    language: ScanLanguageChoice,
+    model: EmbeddingModel,
+): Promise<void> {
     loaders.add(id);
     try {
-        loading ??= runLoad(strategy, language);
+        loading ??= runLoad(strategy, language, model);
         await loading;
     } catch (error) {
         // Cleared so a later attempt is a real attempt. Left set, a load that failed on a dropped
@@ -232,11 +260,15 @@ async function load(id: number, strategy: WebgpuStrategy, language: ScanLanguage
     }
 
     if (!index || !embedder) throw new Error("Der Scanner ist noch nicht bereit.");
+    if (embedder.model !== model) {
+        throw new Error(`Der Scanner läuft schon mit "${embedder.model}", nicht mit "${model}". Seite neu laden.`);
+    }
 
     worker.postMessage({
         type: "ready",
         id,
         printings: index.manifest.count,
+        model: embedder.model,
         backend: embedder.backend,
         notes: embedder.notes,
         strategy,
@@ -303,7 +335,12 @@ worker.onmessage = async (event) => {
     const message = event.data;
     try {
         if (message.type === "load") {
-            await load(message.id, message.strategy ?? "full", message.language ?? "auto");
+            await load(
+                message.id,
+                message.strategy ?? "full",
+                message.language ?? "auto",
+                message.model ?? DEFAULT_EMBEDDING_MODEL,
+            );
             return;
         }
 
@@ -371,6 +408,10 @@ worker.onmessage = async (event) => {
 
                 if (!skipped) named = preview.named;
                 if (!skipped && preview.crops.length > 0) lastCrop = preview.crops[0];
+                if (preview.timings.embed > 0) {
+                    embedRuns += 1;
+                    embedMilliseconds += preview.timings.embed;
+                }
 
                 // An isolated match must not become a collection entry. All backends require
                 // agreement across frames before geometric verification, including WASM.
@@ -424,6 +465,7 @@ worker.onmessage = async (event) => {
                         outcome,
                         milliseconds: performance.now() - started,
                         attempts,
+                        embedAverage: { runs: embedRuns, milliseconds: embedMilliseconds / Math.max(embedRuns, 1) },
                         shortcomings: preview.shortcomings,
                         timings: preview.timings,
                     },

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { HeadingLayout, Text } from "components";
 import { PrimaryButton } from "src/components/primary-button";
+import { ScanModelSwitch } from "src/components/scan-model-switch";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { loadScanner, scanFrame } from "src/scanner/scan-client";
@@ -68,6 +69,8 @@ function NewScannerRoute() {
             headingDescription={<Text>{t("description.new-scanner")}</Text>}
         >
             <div className="mt-6 flex flex-col gap-4">
+                <ScanModelSwitch className={"w-full max-w-xs"} />
+
                 <Text>
                     {status
                         ? t("label.scanner-ready", {
@@ -79,6 +82,9 @@ function NewScannerRoute() {
                           ? t(`label.stage-${progress}`)
                           : t("label.scanner-loading")}
                 </Text>
+                {status ? (
+                    <Text className="font-mono text-xs">{`${status.model} · ${status.backend} · ORT ${status.runtime}`}</Text>
+                ) : null}
 
                 <input
                     ref={fileInput}
@@ -127,7 +133,8 @@ function NewScannerRoute() {
 
                 {report ? (
                     <Text className="font-mono text-xs">
-                        {`detect ${report.timings.detect.toFixed(0)} · embed ${report.timings.embed.toFixed(0)} · ` +
+                        {`detect ${report.timings.detect.toFixed(0)} · embed ${report.timings.embed.toFixed(0)} ` +
+                            `(${report.embeddings} × ${(report.timings.embed / Math.max(report.embeddings, 1)).toFixed(0)}) · ` +
                             `search ${report.timings.search.toFixed(0)} · verify ${report.timings.verify.toFixed(0)} · ` +
                             `gesamt ${report.timings.total.toFixed(0)} ms · ${report.verified} geprüft`}
                     </Text>

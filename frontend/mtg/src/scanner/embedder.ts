@@ -9,25 +9,18 @@
 //! worth knowing when a device turns out to be slow.
 import type * as Ort from "onnxruntime-web/webgpu";
 import { conservativeScanner } from "./runtime-policy";
-import { EMBEDDING_DIM, IMAGE_SIZE, poolHidden, prepareForModel } from "./embedding";
+import { DEFAULT_EMBEDDING_MODEL, EMBEDDING_MODELS, inputSize, poolOutput, prepareForModel } from "./embedding";
+import type { EmbeddingModel } from "./embedding";
 import type { RgbaImage } from "./card-detect";
 import { probeWebGpu } from "./webgpu-probe";
 import type { WebgpuStrategy } from "./webgpu-strategy";
 
 /**
- * The exported model.
- *
- * Full precision, despite being twice the download of the half-precision export: that export is
- * broken. It fails during graph initialisation, in the browser and in Node alike, on a fusion
- * that refers to a tensor its own graph does not contain. Size is worth a lot here, but not a
- * model that cannot load.
- */
-const MODEL_PATH = "/models/dinov2-small.onnx";
-
-/**
  * A loaded embedder plus which backend it ended up on
  */
 export type Embedder = {
+    /** Which model this is, which decides the index it can be searched against */
+    model: EmbeddingModel;
     backend: "webgpu" | "wasm";
     /** Version of the inference runtime, which is what a verdict about a backend is tied to */
     runtime: string;
@@ -42,20 +35,31 @@ export type Embedder = {
     embed(image: RgbaImage): Promise<Float32Array>;
 };
 
-let pending: Promise<Embedder> | null = null;
+const pending = new Map<EmbeddingModel, Promise<Embedder>>();
 
 /**
- * Loads the model once, preferring WebGPU.
+ * Loads a model once, preferring WebGPU.
+ *
+ * DINOv2's full-precision export is served despite being twice the download of its half-precision
+ * one: that export fails during graph initialisation, in the browser and in Node alike, on a
+ * fusion that refers to a tensor its own graph does not contain.
  *
  * @param onProgress receives a short status while loading
  * @param strategy which WebGPU arrangement to try this time, from what the last run learned
+ * @param model which model to load
  * @returns the embedder
  */
 export async function loadEmbedder(
     onProgress?: (status: string) => void,
     strategy: WebgpuStrategy = "full",
+    model: EmbeddingModel = DEFAULT_EMBEDDING_MODEL,
 ): Promise<Embedder> {
-    pending ??= (async () => {
+    const spec = EMBEDDING_MODELS[model];
+    const modelPath = `/models/${spec.file}`;
+    const { width, height } = inputSize(spec.preprocessing);
+    const loading = pending.get(model);
+    if (loading) return loading;
+    const started = (async () => {
         const conservative = conservativeScanner();
         // Selecting the WASM provider from the WebGPU bundle still compiles JSEP.
         // Import the plain runtime instead so WebKit never initialises that module.
@@ -96,10 +100,10 @@ export async function loadEmbedder(
          */
         const runOnce = async (target: Ort.InferenceSession, input: Float32Array): Promise<Float32Array> => {
             const output = await target.run({
-                [target.inputNames[0]]: new ort.Tensor("float32", input, [1, 3, IMAGE_SIZE, IMAGE_SIZE]),
+                [target.inputNames[0]]: new ort.Tensor("float32", input, [1, 3, height, width]),
             });
-            const hidden = output[target.outputNames[0]];
-            return poolHidden(await readTensor(hidden), 1, hidden.dims[1] as number)[0];
+            const result = output[target.outputNames[0]];
+            return poolOutput(spec, await readTensor(result), result.dims)[0];
         };
 
         /**
@@ -109,7 +113,7 @@ export async function loadEmbedder(
          * @returns whether it is usable
          */
         const usable = (vector: Float32Array): string => {
-            if (vector.length !== EMBEDDING_DIM) return `${vector.length} statt ${EMBEDDING_DIM} Werten`;
+            if (vector.length !== spec.dim) return `${vector.length} statt ${spec.dim} Werten`;
             let norm = 0;
             for (const value of vector) norm += value * value;
             if (!Number.isFinite(norm)) return "nicht endliche Werte";
@@ -135,7 +139,7 @@ export async function loadEmbedder(
          * @returns model input
          */
         const probeInput = (): Float32Array => {
-            const input = new Float32Array(3 * IMAGE_SIZE * IMAGE_SIZE);
+            const input = new Float32Array(3 * width * height);
             for (let index = 0; index < input.length; index += 1) {
                 input[index] = 0.25 + 2.4 * Math.sin(index * 0.017) * Math.cos(index * 0.0031);
             }
@@ -237,7 +241,7 @@ export async function loadEmbedder(
             let candidate: Ort.InferenceSession | null = null;
             try {
                 onProgress?.(label);
-                candidate = await ort.InferenceSession.create(MODEL_PATH, {
+                candidate = await ort.InferenceSession.create(modelPath, {
                     executionProviders: [attempt.provider],
                     // Say where the results belong rather than relying on the default. Left to
                     // itself the WebGPU backend may keep them on the device.
@@ -285,6 +289,7 @@ export async function loadEmbedder(
         let current = session;
 
         const embedder: Embedder = {
+            model,
             backend,
             runtime: ort.env.versions.web ?? ort.env.versions.common,
             notes: reasons,
@@ -295,7 +300,7 @@ export async function loadEmbedder(
              * @returns the pooled, unit-length vector
              */
             async embed(image: RgbaImage): Promise<Float32Array> {
-                const input = await prepareForModel(image);
+                const input = await prepareForModel(image, spec.preprocessing);
                 let wrong: string;
                 try {
                     const vector = await runOnce(current, input);
@@ -315,7 +320,7 @@ export async function loadEmbedder(
                 if (backend === "wasm") throw new Error(`Modellausgabe unbrauchbar (wasm, ${wrong})`);
 
                 reasons.push(`webgpu: im Betrieb ausgefallen (${wrong}), weiter auf wasm`);
-                const replacement = await ort.InferenceSession.create(MODEL_PATH, {
+                const replacement = await ort.InferenceSession.create(modelPath, {
                     executionProviders: ["wasm"],
                     preferredOutputLocation: "cpu",
                 });
@@ -332,5 +337,6 @@ export async function loadEmbedder(
         };
         return embedder;
     })();
-    return pending;
+    pending.set(model, started);
+    return started;
 }

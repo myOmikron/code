@@ -120,3 +120,68 @@ describe("worker startup", () => {
         expect(target.terminate).not.toHaveBeenCalled();
     });
 });
+
+describe("embedding model choice", () => {
+    /**
+     * A localStorage over a plain map
+     *
+     * @param entries what is already stored
+     * @returns the stub and its map
+     */
+    function storage(entries: Record<string, string> = {}) {
+        const values = new Map(Object.entries(entries));
+        const stub = {
+            getItem: (key: string) => values.get(key) ?? null,
+            setItem: (key: string, value: string) => void values.set(key, value),
+            removeItem: (key: string) => void values.delete(key),
+        };
+        vi.stubGlobal("localStorage", stub);
+        return values;
+    }
+
+    it("scans with the default model until another is chosen, and ignores unknown values", async () => {
+        storage({ "scanner.embedding-model": "something-else" });
+        const { chosenEmbeddingModel } = await import("./scan-client");
+        expect(chosenEmbeddingModel()).toBe("dinov2-small");
+    });
+
+    it("stores the choice per device and reloads so the worker starts over", async () => {
+        const values = storage();
+        const reload = vi.fn();
+        vi.stubGlobal("window", { location: { reload } });
+        const { chooseEmbeddingModel, chosenEmbeddingModel } = await import("./scan-client");
+        chooseEmbeddingModel("dhv-embed");
+        expect(values.get("scanner.embedding-model")).toBe("dhv-embed");
+        expect(chosenEmbeddingModel()).toBe("dhv-embed");
+        expect(reload).toHaveBeenCalledOnce();
+        chooseEmbeddingModel("dinov2-small");
+        expect(values.has("scanner.embedding-model")).toBe(false);
+    });
+
+    it("asks the worker for the chosen model", async () => {
+        storage({ "scanner.embedding-model": "dhv-embed" });
+        const { loadScanner } = await import("./scan-client");
+        void loadScanner();
+        expect(targets[0].postMessage.mock.calls[0][0]).toMatchObject({ type: "load", model: "dhv-embed" });
+    });
+
+    it("keeps one WebGPU verdict per model, the default model under its old key", async () => {
+        storage();
+        const { strategyKey } = await import("./scan-client");
+        expect(strategyKey("dinov2-small")).toBe("scanner.webgpu-strategy.v2");
+        expect(strategyKey("dhv-embed")).toBe("scanner.webgpu-strategy.v2.dhv-embed");
+    });
+
+    it("clears the chosen model's WebGPU verdict on a retry", async () => {
+        const values = storage({
+            "scanner.embedding-model": "dhv-embed",
+            "scanner.webgpu-strategy.v2": "1.0 off",
+            "scanner.webgpu-strategy.v2.dhv-embed": "1.0 off",
+        });
+        vi.stubGlobal("window", { location: { reload: vi.fn() } });
+        const { retryWebGpu } = await import("./scan-client");
+        retryWebGpu();
+        expect(values.has("scanner.webgpu-strategy.v2.dhv-embed")).toBe(false);
+        expect(values.has("scanner.webgpu-strategy.v2")).toBe(true);
+    });
+});

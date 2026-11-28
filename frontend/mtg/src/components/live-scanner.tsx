@@ -361,7 +361,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
                 (detection) => {
                     if (!running.current || generation !== scanGeneration.current) return;
                     setWarm(true);
-                    setFrame({
+                    setFrame((previous) => ({
                         ...detection,
                         crop: null,
                         preview: null,
@@ -372,6 +372,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
                         ocrError: "",
                         ocrModel: "",
                         attempts: 0,
+                        embedAverage: previous?.embedAverage ?? { runs: 0, milliseconds: 0 },
                         shortcomings: [],
                         timings: {
                             detect: detection.milliseconds,
@@ -382,7 +383,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
                             references: 0,
                             verify: 0,
                         },
-                    });
+                    }));
                 },
             );
             if (!running.current || generation !== scanGeneration.current) {
