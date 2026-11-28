@@ -7,8 +7,6 @@ Errors that can occur while resetting a password
 
 Name | Type
 ------------ | -------------
-`expired` | boolean
-`invalid_code` | boolean
 `low_entropy` | boolean
 
 

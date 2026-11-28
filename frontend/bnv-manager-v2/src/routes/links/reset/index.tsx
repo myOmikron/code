@@ -57,12 +57,14 @@ export default function ResetPassword(props: ResetPasswordProps) {
         },
         validators: {
             onSubmitAsync: async ({ value }) => {
-                const res = await Api.common.credentialReset.reset(code, { password: value.password });
+                let res;
+                try {
+                    res = await Api.common.credentialReset.reset(code, { password: value.password });
+                } catch {
+                    return { form: t("error.invalid-code") };
+                }
 
                 if (res.result === "Err" && "error" in res) {
-                    if (res.error.invalid_code || res.error.expired) {
-                        return { form: t("error.invalid-code") };
-                    }
                     if (res.error.low_entropy) {
                         return { form: t("error.low-entropy") };
                     }

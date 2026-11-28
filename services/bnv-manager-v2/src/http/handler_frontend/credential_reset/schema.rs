@@ -21,10 +21,6 @@ pub struct ResetPasswordRequest {
 /// Errors that can occur while resetting a password
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
 pub struct ResetPasswordError {
-    /// The code is invalid or not found
-    pub invalid_code: bool,
-    /// The code has expired
-    pub expired: bool,
     /// The password entropy is too low
     pub low_entropy: bool,
 }

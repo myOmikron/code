@@ -15,7 +15,9 @@ use tracing::warn;
 
 /// Rate limit based on the client IPAddr.
 ///
-/// The IP Address is taken from the X-Real-IP header, so make sure the proxy sets this correctly.
+/// Counts the failed (non-2xx) responses of an IP per UTC day; a successful response
+/// does not clear them. The IP Address is taken from the X-Real-IP header, so make
+/// sure the proxy sets this correctly.
 #[derive(Debug, Clone)]
 pub struct AuthRateLimit {
     tries: Arc<Mutex<HashMap<IpAddr, u8>>>,
@@ -27,7 +29,7 @@ pub struct AuthRateLimit {
 impl AuthRateLimit {
     /// Create a new rate limiter.
     ///
-    /// `max_tries` specifies the tries an IP has until is blocked.
+    /// `max_tries` specifies the failed tries an IP has until it is blocked.
     /// The client will be blocked at the current day (based on the UTC date)
     pub fn new(max_tries: u8) -> Self {
         Self {
@@ -80,7 +82,7 @@ impl SimpleGalvynMiddleware for AuthRateLimit {
 
             let tries = guard.entry(client_ip_addr).or_insert(0);
 
-            if *tries > self.max_tries {
+            if *tries >= self.max_tries {
                 warn!("Blocking request due to too many tries");
                 return ControlFlow::Break(
                     (StatusCode::BAD_REQUEST, "Invalid X-Real-IP Header").into_response(),
@@ -95,19 +97,13 @@ impl SimpleGalvynMiddleware for AuthRateLimit {
         #[allow(clippy::expect_used)]
         let client_id = self.client_id.expect("Must be set in pre_handler");
 
-        if response.status().is_success() {
-            #[allow(clippy::expect_used)]
-            self.tries
-                .lock()
-                .expect("Poison error")
-                .insert(client_id, 0);
-        } else {
+        if !response.status().is_success() {
             #[allow(clippy::expect_used)]
             self.tries
                 .lock()
                 .expect("Poison error")
                 .entry(client_id)
-                .and_modify(|x| *x += 1);
+                .and_modify(|x| *x = x.saturating_add(1));
         }
 
         response

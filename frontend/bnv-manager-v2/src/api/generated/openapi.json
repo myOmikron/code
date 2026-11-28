@@ -4346,22 +4346,12 @@
                 "description": "Errors that can occur while resetting a password",
                 "type": "object",
                 "properties": {
-                    "expired": {
-                        "description": "The code has expired",
-                        "type": "boolean"
-                    },
-                    "invalid_code": {
-                        "description": "The code is invalid or not found",
-                        "type": "boolean"
-                    },
                     "low_entropy": {
                         "description": "The password entropy is too low",
                         "type": "boolean"
                     }
                 },
                 "required": [
-                    "expired",
-                    "invalid_code",
                     "low_entropy"
                 ]
             },
