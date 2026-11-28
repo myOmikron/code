@@ -1,5 +1,6 @@
 //! Black-box HTTP tests, driving the service's router in-process
 
+mod credential_reset;
 mod fake_mailcow;
 mod flow;
 pub mod harness;

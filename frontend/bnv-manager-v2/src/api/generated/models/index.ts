@@ -947,14 +947,6 @@ export interface PageForSimpleMemberAccountSchema {
  */
 export interface ResetPasswordError {
     /**
-     * The code has expired
-     */
-    expired: boolean;
-    /**
-     * The code is invalid or not found
-     */
-    invalid_code: boolean;
-    /**
      * The password entropy is too low
      */
     low_entropy: boolean;

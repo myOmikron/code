@@ -55,7 +55,6 @@ fn do_reset(
     if entropy.score() < Score::Three {
         return Err(ApiJson(FormResult::err(ResetPasswordError {
             low_entropy: true,
-            ..Default::default()
         })));
     }
 
@@ -96,10 +95,7 @@ pub async fn reset_password(
 
     let Some((reset, mut account)) = CredentialReset::find_by_code(&mut tx, &code).await? else {
         tx.rollback().await?;
-        return Ok(ApiJson(FormResult::err(ResetPasswordError {
-            invalid_code: true,
-            ..Default::default()
-        })));
+        return Err(ApiError::bad_request("Invalid or expired code"));
     };
 
     if let Err(err) = do_reset(&mut account, &password) {
@@ -166,10 +162,7 @@ pub async fn reset_password_by_uuid(
         CredentialReset::find_by_uuid(&mut tx, CredentialResetUuid(uuid)).await?
     else {
         tx.rollback().await?;
-        return Ok(ApiJson(FormResult::err(ResetPasswordError {
-            invalid_code: true,
-            ..Default::default()
-        })));
+        return Err(ApiError::bad_request("Invalid or expired reset link"));
     };
 
     if let Err(err) = do_reset(&mut account, &password) {
