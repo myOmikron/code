@@ -53,9 +53,6 @@ export function RouteError(props: ErrorComponentProps) {
                         {tg("button.report-bug")}
                     </Button>
                 ) : null}
-                <Button plain href={"/scan"}>
-                    {tg("button.to-scanner")}
-                </Button>
             </div>
             {signedIn ? (
                 <BugReportDialog
