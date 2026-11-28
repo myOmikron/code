@@ -23,7 +23,7 @@ RUN uv sync --locked --no-dev --extra api --extra solver --extra edhrec
 # looks elsewhere and finds nothing (ModuleNotFoundError for every import).
 # Move both FROM lines together; Renovate never automerges a minor bump of
 # this one (renovate.json).
-FROM python:3.14.8-slim-trixie@sha256:fbecd461fc72d21b2143c6eaba25143738079154a6d0ea3da3aec724f50eed4a
+FROM python:3.15.2-slim-trixie@sha256:08a4c22c92b79ec821a7ad49768480039ee5b7accac3955228e75366e30abc8e
 
 RUN <<EOF
 set -e
